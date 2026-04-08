@@ -1,6 +1,16 @@
 import 'package:flutter/material.dart';
 
-/// Widget empty state yang reusable untuk semua layar.
+/// Widget empty state reusable untuk semua layar yang bisa kosong.
+///
+/// Contoh penggunaan:
+/// ```dart
+/// if (events.isEmpty)
+///   EmptyStateWidget(
+///     icon: Icons.event_busy,
+///     title: 'Belum ada event',
+///     subtitle: 'Buat event pertama dengan tombol +',
+///   )
+/// ```
 class EmptyStateWidget extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -23,8 +33,8 @@ class EmptyStateWidget extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 64, color: Colors.grey.shade400),
-            const SizedBox(height: 16),
+            Icon(icon, size: 72, color: Colors.grey.shade400),
+            const SizedBox(height: 20),
             Text(
               title,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(

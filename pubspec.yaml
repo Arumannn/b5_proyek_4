@@ -1,5 +1,5 @@
 name: b5_proyek_4
-description: "PRASASTI - Pusat Rekam Aktivitas dan Sistem Adminstrasi Terintegrasi"
+description: "PRASASTI - Pusat Rekam Aktivitas dan Sistem Administrasi Terintegrasi"
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -15,11 +15,14 @@ dependencies:
   hive: ^2.2.3
   hive_flutter: ^1.1.0
 
+  # ── MongoDB Driver (menggantikan Data API yang sudah deprecated) ──
+  mongo_dart: ^0.10.3
+
   # QR Code
   qr_flutter: ^4.1.0
   mobile_scanner: ^5.0.0
 
-  # HTTP Client
+  # HTTP Client (tetap dipakai untuk keperluan HTTP lain jika ada)
   dio: ^5.0.0
 
   # Network Detection
@@ -28,20 +31,21 @@ dependencies:
   # UUID Generator
   uuid: ^4.0.0
 
-  # Charts untuk Dashboard
+  # Charts untuk Dashboard Statistik
   fl_chart: ^0.68.0
+
+  # Secret Management
+  flutter_dotenv: ^5.1.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
-
-  # Testing
   mockito: ^5.4.0
-
-  # Code Generation (Hive adapters + Mockito mocks)
   build_runner: ^2.4.0
   hive_generator: ^2.0.0
 
 flutter:
   uses-material-design: true
+  assets:
+    - .env

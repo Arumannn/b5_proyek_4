@@ -1,7 +1,17 @@
 import 'package:flutter/material.dart';
 
-/// Overlay loading yang menutupi layar saat proses sedang berjalan.
-/// Gunakan bersama ValueListenableBuilder yang listen isLoading ValueNotifier.
+/// Loading overlay yang menutupi layar saat proses berjalan.
+///
+/// Cara pakai dengan ValueListenableBuilder:
+/// ```dart
+/// ValueListenableBuilder<bool>(
+///   valueListenable: controller.isLoading,
+///   builder: (_, isLoading, __) => LoadingOverlay(
+///     isLoading: isLoading,
+///     child: YourWidget(),
+///   ),
+/// )
+/// ```
 class LoadingOverlay extends StatelessWidget {
   final bool isLoading;
   final Widget child;
@@ -21,7 +31,7 @@ class LoadingOverlay extends StatelessWidget {
         child,
         if (isLoading)
           Container(
-            color: Colors.black.withOpacity(0.4),
+            color: Colors.black.withValues(alpha: 0.45),
             child: Center(
               child: Container(
                 padding: const EdgeInsets.symmetric(
@@ -33,9 +43,9 @@ class LoadingOverlay extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
+                      color: Colors.black.withValues(alpha: 0.15),
+                      blurRadius: 12,
+                      offset: const Offset(0, 6),
                     ),
                   ],
                 ),
@@ -51,6 +61,7 @@ class LoadingOverlay extends StatelessWidget {
                           fontSize: 14,
                           color: Colors.black87,
                         ),
+                        textAlign: TextAlign.center,
                       ),
                     ],
                   ],
