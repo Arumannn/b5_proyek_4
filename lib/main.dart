@@ -183,7 +183,7 @@ class _Week7SetupVerifierState extends State<_Week7SetupVerifier> {
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
+                  color: Colors.white.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: _mongoSuccess
@@ -265,7 +265,7 @@ class _Week7SetupVerifierState extends State<_Week7SetupVerifier> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.15),
+                  color: Colors.green.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: Colors.green.shade600),
                 ),
