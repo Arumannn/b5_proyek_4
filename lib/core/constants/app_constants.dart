@@ -42,6 +42,20 @@ class AppConstants {
   static const String roleOrganizer = 'organizer';
   static const String roleMember = 'member';
 
+  static const List<String> allowedRoles = [
+    roleAdmin,
+    roleManager,
+    roleOrganizer,
+    roleMember,
+  ];
+
+  // ─── Default Admin Seeding ───────────────────────
+  static const String defaultAdminNim = '241511038';
+  static const String defaultAdminPassword = 'admin123';
+  static const String defaultAdminName = 'Admin Utama';
+  static const String defaultAdminDivision = 'Core';
+  static const String adminSeedFlagKey = '__seed_admin_done__';
+
   // ─── Event Types ─────────────────────────────────
   static const List<String> eventTypes = ['Rapat', 'Acara', 'Kegiatan', 'Lainnya'];
 }

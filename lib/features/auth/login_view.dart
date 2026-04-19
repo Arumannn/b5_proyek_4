@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../widgets/custom_snackbar.dart';
 import '../../widgets/loading_overlay.dart';
 import 'auth_controller.dart';
-import 'register_view.dart';
 
 /// Layar Login dengan state reaktif dari AuthController.
 class LoginView extends StatefulWidget {
@@ -161,18 +160,13 @@ class _LoginViewState extends State<LoginView> {
                                 child: const Text('Login'),
                               ),
                               const SizedBox(height: 12),
-                              TextButton(
-                                onPressed: isLoading
-                                    ? null
-                                    : () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute<void>(
-                                            builder: (_) => const RegisterView(),
-                                          ),
-                                        );
-                                      },
-                                child: const Text('Belum punya akun? Daftar'),
+                              const Text(
+                                'Pembuatan akun hanya oleh admin.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Colors.black54,
+                                  fontSize: 12,
+                                ),
                               ),
                             ],
                           ),
