@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'core/constants/app_constants.dart';
+import 'features/auth/login_view.dart';
 import 'core/services/hive_service.dart';
 import 'core/services/mongo_service.dart';
 import 'core/utils/network_status_controller.dart';
@@ -74,7 +75,7 @@ class PRASASTIApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const _Week7SetupVerifier(),
+      home: const LoginView(),
     );
   }
 }
