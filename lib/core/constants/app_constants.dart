@@ -37,8 +37,10 @@ class AppConstants {
   static const Duration syncRetryDelay = Duration(seconds: 5);
 
   // ─── Role Definitions ────────────────────────────
-  static const String roleAdmin = 'Admin';
-  static const String roleMember = 'Member';
+  static const String roleAdmin = 'admin';
+  static const String roleManager = 'manager';
+  static const String roleOrganizer = 'organizer';
+  static const String roleMember = 'member';
 
   // ─── Event Types ─────────────────────────────────
   static const List<String> eventTypes = ['Rapat', 'Acara', 'Kegiatan', 'Lainnya'];
