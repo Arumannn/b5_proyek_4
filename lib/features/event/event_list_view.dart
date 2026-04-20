@@ -3,10 +3,19 @@ import '../../models/event_model.dart';
 import '../attendance/scan_screen.dart';
 import '../../widgets/loading_overlay.dart';
 import '../../widgets/custom_snackbar.dart';
+import '../../widgets/empty_state_widget.dart';
 import 'event_controller.dart';
 import 'event_form_view.dart';
 
-/// Layar daftar event (Admin) — Implementasi penuh: Week 9
+/// Layar daftar event (Admin) — Enhanced Week 9 Sub-Tahap B
+///
+/// FITUR BARU:
+/// - Expandable Main Event dengan Sub-Event
+/// - Filter berdasarkan jenis dan range tanggal
+/// - Search bar untuk cari event
+/// - Empty state yang informatif
+/// - Chip untuk menampilkan filter aktif
+/// - Better UX dengan animasi smooth
 class EventListView extends StatefulWidget {
   const EventListView({super.key});
 
@@ -16,11 +25,22 @@ class EventListView extends StatefulWidget {
 
 class _EventListViewState extends State<EventListView> {
   final EventController _controller = EventController.instance;
+  final Map<String, bool> _expandedState = {}; // Track expanded/collapsed state
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _controller.loadEvents();
+    _searchController.addListener(() {
+      _controller.setSearchQuery(_searchController.text);
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   List<EventParentOption> get _parentOptions {
@@ -29,6 +49,69 @@ class _EventListViewState extends State<EventListView> {
         .map((event) => EventParentOption(id: event.eventId, name: event.nama))
         .toList();
   }
+
+  // ═══════════════════════════════════════════════════════════════
+  // FILTER ACTIONS
+  // ═══════════════════════════════════════════════════════════════
+
+  Future<void> _showJenisFilter() async {
+    final selected = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        return SimpleDialog(
+          title: const Text('Filter Jenis Event'),
+          children: [
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(dialogContext, null),
+              child: const Text('Semua Jenis'),
+            ),
+            const Divider(),
+            ..._controller.events.value
+                .map((e) => e.jenis)
+                .toSet()
+                .map((jenis) {
+              return SimpleDialogOption(
+                onPressed: () => Navigator.pop(dialogContext, jenis),
+                child: Text(jenis),
+              );
+            }),
+          ],
+        );
+      },
+    );
+
+    if (selected != null || selected == null) {
+      _controller.setJenisFilter(selected);
+    }
+  }
+
+  Future<void> _showDateRangeFilter() async {
+    final picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+      currentDate: DateTime.now(),
+      saveText: 'Terapkan',
+      helpText: 'Pilih Range Tanggal',
+      cancelText: 'Batal',
+      fieldStartLabelText: 'Dari',
+      fieldEndLabelText: 'Sampai',
+    );
+
+    if (picked != null) {
+      _controller.setDateRangeFilter(picked);
+    }
+  }
+
+  void _clearAllFilters() {
+    _searchController.clear();
+    _controller.clearAllFilters();
+    CustomSnackbar.showInfo(context, 'Filter dibersihkan');
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // EVENT CRUD ACTIONS
+  // ═══════════════════════════════════════════════════════════════
 
   Future<void> _addEvent() async {
     final result = await Navigator.push<EventFormValue>(
@@ -47,7 +130,9 @@ class _EventListViewState extends State<EventListView> {
       nama: result.name,
       tanggal: result.date,
       parentEventId: result.isSubEvent ? result.parentId : null,
-      jenis: 'Kegiatan',
+      jenis: result.jenis,
+      deskripsi: result.deskripsi,
+      targetPeserta: result.targetPeserta,
     );
 
     if (!mounted) return;
@@ -75,6 +160,7 @@ class _EventListViewState extends State<EventListView> {
             date: target.tanggal,
             isSubEvent: isSubEvent,
             parentId: target.parentEventId,
+            jenis: target.jenis,
           ),
         ),
       ),
@@ -86,6 +172,7 @@ class _EventListViewState extends State<EventListView> {
       target.copyWith(
         nama: result.name,
         tanggal: result.date,
+        jenis: result.jenis,
       ),
     );
 
@@ -114,6 +201,9 @@ class _EventListViewState extends State<EventListView> {
             ),
             FilledButton(
               onPressed: () => Navigator.pop(dialogContext, true),
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.red,
+              ),
               child: const Text('Hapus'),
             ),
           ],
@@ -136,35 +226,145 @@ class _EventListViewState extends State<EventListView> {
     }
   }
 
+  // ═══════════════════════════════════════════════════════════════
+  // UI BUILDERS
+  // ═══════════════════════════════════════════════════════════════
+
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TextField(
+        controller: _searchController,
+        decoration: InputDecoration(
+          hintText: 'Cari event...',
+          prefixIcon: const Icon(Icons.search),
+          suffixIcon: _searchController.text.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.clear),
+                  onPressed: () => _searchController.clear(),
+                )
+              : null,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          filled: true,
+          fillColor: Colors.grey.shade50,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilterChips() {
+    return ValueListenableBuilder<String?>(
+      valueListenable: _controller.selectedJenisFilter,
+      builder: (_, jenisFilter, __) {
+        return ValueListenableBuilder<DateTimeRange?>(
+          valueListenable: _controller.selectedDateRangeFilter,
+          builder: (_, dateRange, __) {
+            final hasFilters = _controller.hasActiveFilters;
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  // Filter Jenis Button
+                  FilterChip(
+                    label: Text(jenisFilter ?? 'Semua Jenis'),
+                    selected: jenisFilter != null,
+                    onSelected: (_) => _showJenisFilter(),
+                    avatar: const Icon(Icons.category_outlined, size: 18),
+                  ),
+                  
+                  // Filter Tanggal Button
+                  FilterChip(
+                    label: Text(
+                      dateRange != null
+                          ? '${_formatDate(dateRange.start)} - ${_formatDate(dateRange.end)}'
+                          : 'Semua Tanggal',
+                    ),
+                    selected: dateRange != null,
+                    onSelected: (_) => _showDateRangeFilter(),
+                    avatar: const Icon(Icons.date_range, size: 18),
+                  ),
+
+                  // Clear All Filters
+                  if (hasFilters)
+                    ActionChip(
+                      label: const Text('Reset Filter'),
+                      onPressed: _clearAllFilters,
+                      avatar: const Icon(Icons.clear_all, size: 18),
+                    ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   Widget _buildSubEventItem(EventModel subEvent) {
     return Container(
       margin: const EdgeInsets.only(top: 8),
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.grey.shade300,
+          width: 1,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.subdirectory_arrow_right, size: 18),
-              const SizedBox(width: 6),
+              Icon(
+                Icons.subdirectory_arrow_right,
+                size: 20,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   subEvent.nama,
-                  style: Theme.of(context).textTheme.titleSmall,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: _getJenisColor(subEvent.jenis).withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  subEvent.jenis,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: _getJenisColor(subEvent.jenis),
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            _formatDate(subEvent.tanggal),
-            style: Theme.of(context).textTheme.bodySmall,
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Icon(Icons.calendar_today, size: 14, color: Colors.grey.shade600),
+              const SizedBox(width: 4),
+              Text(
+                _formatDate(subEvent.tanggal),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -178,18 +378,31 @@ class _EventListViewState extends State<EventListView> {
                     ),
                   );
                 },
-                icon: const Icon(Icons.qr_code_scanner, size: 18),
+                icon: const Icon(Icons.qr_code_scanner, size: 16),
                 label: const Text('Scan'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  minimumSize: Size.zero,
+                ),
               ),
               OutlinedButton.icon(
                 onPressed: () => _editEvent(subEvent),
-                icon: const Icon(Icons.edit_outlined, size: 18),
+                icon: const Icon(Icons.edit_outlined, size: 16),
                 label: const Text('Edit'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  minimumSize: Size.zero,
+                ),
               ),
               OutlinedButton.icon(
                 onPressed: () => _deleteEvent(subEvent),
-                icon: const Icon(Icons.delete_outline, size: 18),
+                icon: const Icon(Icons.delete_outline, size: 16),
                 label: const Text('Hapus'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  minimumSize: Size.zero,
+                  foregroundColor: Colors.red,
+                ),
               ),
             ],
           ),
@@ -199,112 +412,209 @@ class _EventListViewState extends State<EventListView> {
   }
 
   Widget _buildEventCard(EventModel event, {List<EventModel> subEvents = const []}) {
+    final eventId = event.eventId;
+    final isExpanded = _expandedState[eventId] ?? false;
+    final hasSubEvents = subEvents.isNotEmpty;
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(event.nama, style: Theme.of(context).textTheme.titleMedium),
-                      const SizedBox(height: 4),
-                      Text(_formatDate(event.tanggal), style: Theme.of(context).textTheme.bodySmall),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  tooltip: 'Tambah Sub Event',
-                  onPressed: () async {
-                    final result = await Navigator.push<EventFormValue>(
-                      context,
-                      MaterialPageRoute<EventFormValue>(
-                        builder: (_) => EventFormView(
-                          title: 'Tambah Sub Event',
-                          canChangeHierarchy: false,
-                          parentOptions: _parentOptions,
-                          initialValue: EventFormValue(
-                            name: '',
-                            date: DateTime.now(),
-                            isSubEvent: true,
-                            parentId: event.eventId,
-                          ),
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: hasSubEvents
+            ? () {
+                setState(() {
+                  _expandedState[eventId] = !isExpanded;
+                });
+              }
+            : null,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── Header Row ────────────────────────────
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          event.nama,
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
                         ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Icon(Icons.calendar_today, 
+                                 size: 14, 
+                                 color: Colors.grey.shade600),
+                            const SizedBox(width: 4),
+                            Text(
+                              _formatDate(event.tanggal),
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                            const SizedBox(width: 12),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _getJenisColor(event.jenis)
+                                    .withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                event.jenis,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: _getJenisColor(event.jenis),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Expand/Collapse Icon
+                  if (hasSubEvents)
+                    Icon(
+                      isExpanded 
+                          ? Icons.expand_less 
+                          : Icons.expand_more,
+                      color: Theme.of(context).colorScheme.primary,
+                    )
+                  else
+                    IconButton(
+                      tooltip: 'Tambah Sub Event',
+                      onPressed: () => _addSubEvent(event),
+                      icon: Icon(
+                        Icons.add_circle_outline,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
-                    );
-
-                    if (result == null) return;
-
-                    final success = await _controller.createEvent(
-                      nama: result.name,
-                      tanggal: result.date,
-                      parentEventId: event.eventId,
-                      jenis: 'Kegiatan',
-                    );
-
-                    if (!mounted) return;
-                    if (success) {
-                      CustomSnackbar.showSuccess(context, 'Sub event berhasil ditambahkan.');
-                    } else {
-                      CustomSnackbar.showError(
-                        context,
-                        _controller.errorMessage.value ?? 'Gagal menambah sub event.',
-                      );
-                    }
-                  },
-                  icon: const Icon(Icons.add_circle_outline),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                OutlinedButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute<void>(
-                        builder: (_) => ScanScreen(eventId: event.eventId),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.qr_code_scanner),
-                  label: const Text('Scan Absensi'),
-                ),
-                OutlinedButton.icon(
-                  onPressed: () => _editEvent(event),
-                  icon: const Icon(Icons.edit_outlined),
-                  label: const Text('Edit'),
-                ),
-                OutlinedButton.icon(
-                  onPressed: () => _deleteEvent(event),
-                  icon: const Icon(Icons.delete_outline),
-                  label: const Text('Hapus'),
-                ),
-              ],
-            ),
-            if (subEvents.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              const Divider(height: 1),
-              const SizedBox(height: 10),
-              Text(
-                'Sub Event',
-                style: Theme.of(context).textTheme.titleSmall,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                ],
               ),
-              ...subEvents.map(_buildSubEventItem),
+
+              if (hasSubEvents) ...[
+                const SizedBox(height: 8),
+                Text(
+                  '${subEvents.length} sub event',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.grey.shade600,
+                        fontStyle: FontStyle.italic,
+                      ),
+                ),
+              ],
+
+              const SizedBox(height: 12),
+
+              // ── Action Buttons ────────────────────────
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute<void>(
+                          builder: (_) => ScanScreen(eventId: event.eventId),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.qr_code_scanner),
+                    label: const Text('Scan Absensi'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () => _editEvent(event),
+                    icon: const Icon(Icons.edit_outlined),
+                    label: const Text('Edit'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () => _deleteEvent(event),
+                    icon: const Icon(Icons.delete_outline),
+                    label: const Text('Hapus'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.red,
+                    ),
+                  ),
+                ],
+              ),
+
+              // ── Sub Events (Expandable) ───────────────
+              if (hasSubEvents && isExpanded) ...[
+                const SizedBox(height: 12),
+                const Divider(height: 1),
+                const SizedBox(height: 12),
+                Text(
+                  'Sub Event',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+                ...subEvents.map(_buildSubEventItem),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
+  }
+
+  Future<void> _addSubEvent(EventModel parentEvent) async {
+    final result = await Navigator.push<EventFormValue>(
+      context,
+      MaterialPageRoute<EventFormValue>(
+        builder: (_) => EventFormView(
+          title: 'Tambah Sub Event',
+          canChangeHierarchy: false,
+          parentOptions: _parentOptions,
+          initialValue: EventFormValue(
+            name: '',
+            date: DateTime.now(),
+            isSubEvent: true,
+            parentId: parentEvent.eventId,
+          ),
+        ),
+      ),
+    );
+
+    if (result == null) return;
+
+    final success = await _controller.createEvent(
+      nama: result.name,
+      tanggal: result.date,
+      parentEventId: parentEvent.eventId,
+      jenis: result.jenis,
+      deskripsi: result.deskripsi,
+      targetPeserta: result.targetPeserta,
+    );
+
+    if (!mounted) return;
+    if (success) {
+      setState(() {
+        _expandedState[parentEvent.eventId] = true; // Auto-expand after add
+      });
+      CustomSnackbar.showSuccess(context, 'Sub event berhasil ditambahkan.');
+    } else {
+      CustomSnackbar.showError(
+        context,
+        _controller.errorMessage.value ?? 'Gagal menambah sub event.',
+      );
+    }
   }
 
   String _formatDate(DateTime date) {
@@ -314,6 +624,21 @@ class _EventListViewState extends State<EventListView> {
     return '$dd/$mm/$yyyy';
   }
 
+  Color _getJenisColor(String jenis) {
+    switch (jenis) {
+      case 'Rapat':
+        return Colors.blue;
+      case 'Acara':
+        return Colors.purple;
+      case 'Kegiatan':
+        return Colors.green;
+      case 'Lainnya':
+        return Colors.orange;
+      default:
+        return Colors.grey;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -321,66 +646,75 @@ class _EventListViewState extends State<EventListView> {
         title: const Text('Daftar Event'),
         actions: [
           IconButton(
+            tooltip: 'Refresh',
+            onPressed: () => _controller.loadEvents(force: true),
+            icon: const Icon(Icons.refresh),
+          ),
+          IconButton(
             tooltip: 'Tambah Event',
             onPressed: _addEvent,
             icon: const Icon(Icons.add),
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: _addEvent,
-        tooltip: 'Tambah Event',
-        child: const Icon(Icons.add),
+        icon: const Icon(Icons.add),
+        label: const Text('Tambah Event'),
       ),
       body: ValueListenableBuilder<bool>(
         valueListenable: _controller.isLoading,
         builder: (context, isLoading, _) {
           return LoadingOverlay(
             isLoading: isLoading,
+            message: 'Memuat event...',
             child: ValueListenableBuilder<List<EventModel>>(
               valueListenable: _controller.events,
-              builder: (context, events, _) {
-                final rootEvents = events.where((e) => e.parentEventId == null).toList();
-                rootEvents.sort((a, b) => a.tanggal.compareTo(b.tanggal));
+              builder: (context, allEvents, _) {
+                final rootEvents = _controller.getRootEvents();
 
                 return Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     children: [
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: FilledButton.icon(
-                          onPressed: _addEvent,
-                          icon: const Icon(Icons.add),
-                          label: const Text('Tambah Event'),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
+                      // ── Search Bar ──────────────────────
+                      _buildSearchBar(),
+
+                      // ── Filter Chips ────────────────────
+                      _buildFilterChips(),
+
+                      // ── Event List ──────────────────────
                       Expanded(
                         child: rootEvents.isEmpty
-                            ? const Center(
-                                child: Text('Belum ada event. Tekan tombol + untuk menambah.'),
+                            ? EmptyStateWidget(
+                                icon: _controller.hasActiveFilters
+                                    ? Icons.filter_list_off
+                                    : Icons.event_busy,
+                                title: _controller.hasActiveFilters
+                                    ? 'Tidak ada event yang cocok'
+                                    : 'Belum ada event',
+                                subtitle: _controller.hasActiveFilters
+                                    ? 'Coba ubah filter atau reset untuk melihat semua event'
+                                    : 'Tekan tombol + untuk menambah event pertama',
+                                action: _controller.hasActiveFilters
+                                    ? FilledButton.icon(
+                                        onPressed: _clearAllFilters,
+                                        icon: const Icon(Icons.clear_all),
+                                        label: const Text('Reset Filter'),
+                                      )
+                                    : null,
                               )
-                            : ListView(
-                                children: rootEvents
-                                    .map(
-                                      (event) {
-                                        final children = events
-                                            .where((e) => e.parentEventId == event.eventId)
-                                            .toList()
-                                          ..sort((a, b) => a.tanggal.compareTo(b.tanggal));
+                            : ListView.builder(
+                                itemCount: rootEvents.length,
+                                itemBuilder: (context, index) {
+                                  final event = rootEvents[index];
+                                  final subEvents = _controller.getSubEvents(event.eventId);
 
-                                        return Column(
-                                          children: [
-                                            _buildEventCard(
-                                              event,
-                                              subEvents: children,
-                                            ),
-                                          ],
-                                        );
-                                      },
-                                    )
-                                    .toList(),
+                                  return _buildEventCard(
+                                    event,
+                                    subEvents: subEvents,
+                                  );
+                                },
                               ),
                       ),
                     ],

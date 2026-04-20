@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1038456899752",
+    "project_id": "prasasti-b5",
+    "storage_bucket": "prasasti-b5.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1038456899752:android:79599395e72b9b057c1a9d",
+        "android_client_info": {
+          "package_name": "com.example.b5_proyek_4"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCsMs-Y6HOfq0veppwl4Yjm3Zi8GXtD-I8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

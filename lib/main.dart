@@ -6,6 +6,9 @@ import 'features/auth/login_view.dart';
 import 'core/services/hive_service.dart';
 import 'core/services/mongo_service.dart';
 import 'core/utils/network_status_controller.dart';
+import 'core/services/fcm_service.dart';
+import 'package:firebase_core/firebase_core.dart';
+
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -13,6 +16,16 @@ Future<void> main() async {
   // ── Step 1: Load .env ──────────────────────────────────────────
   await dotenv.load(fileName: '.env');
   debugPrint('✅ Step 1: Environment variables loaded');
+
+  await Firebase.initializeApp();
+  debugPrint('✅ Firebase initialized');
+
+  await HiveService.init();
+  await NetworkStatusController.instance.startListening();
+  await AuthController.instance.initializeAuth();
+
+  // FcmService init (stub — implementasi Week 11)
+  await FcmService.instance.init();
 
   // ── Step 2: Inisialisasi Hive ──────────────────────────────────
   await HiveService.init();
