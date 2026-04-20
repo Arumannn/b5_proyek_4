@@ -56,6 +56,13 @@ class AppConstants {
   static const String defaultAdminDivision = 'Core';
   static const String adminSeedFlagKey = '__seed_admin_done__';
 
+    // ─── Default Admin Seeding ───────────────────────
+  static const String defaultMemberNim = '241511039';
+  static const String defaultMemberPassword = 'member123';
+  static const String defaultMemberName = 'Member Biasa';
+  static const String defaultMemberDivision = 'Anggota';
+  static const String memberSeedFlagKey = '__seed_member_done__';
+
   // ─── Event Types ─────────────────────────────────
   static const List<String> eventTypes = ['Rapat', 'Acara', 'Kegiatan', 'Lainnya'];
 }

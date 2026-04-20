@@ -77,7 +77,21 @@ Future<void> seedDefaultAdminIfNeeded() async {
       'updatedAt': nowIso,
     };
 
+    final seededMember = <String, dynamic>{
+      'memberId': memberId,
+      'nama': AppConstants.defaultAdminName,
+      'nim': AppConstants.defaultAdminNim,
+      'divisi': AppConstants.defaultAdminDivision,
+      'role': AppConstants.roleMember,
+      'password': _hashPassword(AppConstants.defaultAdminPassword),
+      'qrData': QrService.generateQrData(memberId),
+      'isSynced': false,
+      'createdAt': nowIso,
+      'updatedAt': nowIso,
+    };
+
     await HiveService.members.put(memberId, _memberFromMap(seededAdmin));
+    await HiveService.members.put(memberId, _memberFromMap(seededMember));
 
     debugPrint(
       '[Auth][seed] default admin created nim=${AppConstants.defaultAdminNim}',
