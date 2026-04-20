@@ -19,7 +19,7 @@ class AttendanceRecordAdapter extends TypeAdapter<AttendanceRecord> {
     return AttendanceRecord(
       recordId: fields[0] as String,
       eventId: fields[1] as String,
-      memberId: fields[2] as String,
+      nim: fields[2] as String,
       timestamp: fields[3] as DateTime,
       isSynced: fields[4] as bool,
       compositeKey: fields[5] as String,
@@ -35,7 +35,7 @@ class AttendanceRecordAdapter extends TypeAdapter<AttendanceRecord> {
       ..writeByte(1)
       ..write(obj.eventId)
       ..writeByte(2)
-      ..write(obj.memberId)
+      ..write(obj.nim)
       ..writeByte(3)
       ..write(obj.timestamp)
       ..writeByte(4)

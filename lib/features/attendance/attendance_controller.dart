@@ -18,7 +18,7 @@ enum AttendanceResult {
 /// Controller untuk logika absensi QR Code.
 ///
 /// KUNCI ANTI-DUPLIKASI:
-///   compositeKey = '${eventId}_${memberId}'
+///   compositeKey = '${eventId}_${nim}'
 ///   Cek compositeKey di Hive sebelum menyimpan record baru.
 ///
 /// Implementasi penuh: Week 10
@@ -31,5 +31,5 @@ class AttendanceController {
 
   // TODO Week 10: Implementasi recordAttendance(eventId, scannedQrData)
   // TODO Week 10: Implementasi getAttendanceByEvent(eventId)
-  // TODO Week 10: Implementasi getAttendanceByMember(memberId)
+  // TODO Week 10: Implementasi getAttendanceByMember(nim)
 }
