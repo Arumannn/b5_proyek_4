@@ -10,26 +10,26 @@ void main() {
   // ─── Week 7: QrService Tests ────────────────────────────────
   group('QrService — Week 7 Basic Validation', () {
     test('generateQrData menghasilkan format PRASASTI yang benar', () {
-      const memberId = 'member-123';
-      final result = QrService.generateQrData(memberId);
-      expect(result, equals('PRASASTI:member-123'));
+      const nim = '241511123';
+      final result = QrService.generateQrData(nim);
+      expect(result, equals('PRASASTI:241511123'));
     });
 
-    test('parseMemberId berhasil extract ID dari QR valid', () {
-      const qrData = 'PRASASTI:member-abc';
-      final result = QrService.parseMemberId(qrData);
-      expect(result, equals('member-abc'));
+    test('parseNim berhasil extract NIM dari QR valid', () {
+      const qrData = 'PRASASTI:241511999';
+      final result = QrService.parseNim(qrData);
+      expect(result, equals('241511999'));
     });
 
-    test('parseMemberId return null untuk format QR tidak valid', () {
+    test('parseNim return null untuk format QR tidak valid', () {
       const qrData = 'INVALID:something';
-      final result = QrService.parseMemberId(qrData);
+      final result = QrService.parseNim(qrData);
       expect(result, isNull);
     });
 
-    test('parseMemberId return null untuk empty memberId', () {
+    test('parseNim return null untuk empty nim', () {
       const qrData = 'PRASASTI:';
-      final result = QrService.parseMemberId(qrData);
+      final result = QrService.parseNim(qrData);
       expect(result, isNull);
     });
 
@@ -50,66 +50,62 @@ void main() {
   group('MemberModel — Week 8 Sub-Tahap A', () {
     test('MemberModel bisa diinstansiasi dengan semua field', () {
       final member = MemberModel(
-        memberId: 'uuid-001',
-        nama: 'Ahmad Riyadh',
         nim: '241511035',
+        nama: 'Ahmad Riyadh',
         divisi: 'Frontend',
         role: AppConstants.roleAdmin,
         password: 'password123',
-        qrData: 'PRASASTI:uuid-001',
+        qrData: 'PRASASTI:241511035',
       );
-      expect(member.memberId, equals('uuid-001'));
+      expect(member.nim, equals('241511035'));
       expect(member.nama, equals('Ahmad Riyadh'));
-      expect(member.role, equals('Admin'));
+      expect(member.role, equals(AppConstants.roleAdmin));
     });
 
     test('MemberModel.toMap() TIDAK mengandung password', () {
       final member = MemberModel(
-        memberId: 'uuid-001',
-        nama: 'Ahmad Riyadh',
         nim: '241511035',
+        nama: 'Ahmad Riyadh',
         divisi: 'Frontend',
         role: AppConstants.roleAdmin,
         password: 'rahasia123',
-        qrData: 'PRASASTI:uuid-001',
+        qrData: 'PRASASTI:241511035',
       );
       final map = member.toMap();
       expect(map.containsKey('password'), isFalse,
           reason: 'Password tidak boleh dikirim ke cloud!');
-      expect(map['memberId'], equals('uuid-001'));
+      expect(map['nim'], equals('241511035'));
       expect(map['nama'], equals('Ahmad Riyadh'));
     });
 
     test('MemberModel.fromMap() bisa parse dari Map', () {
       final map = {
-        'memberId': 'uuid-002',
         'nama': 'Arman Yusuf',
         'nim': '241511038',
         'divisi': 'Backend',
-        'role': 'Member',
-        'qrData': 'PRASASTI:uuid-002',
+        'role': AppConstants.roleMember,
+        'qrData': 'PRASASTI:241511038',
       };
       final member = MemberModel.fromMap(map);
-      expect(member.memberId, equals('uuid-002'));
+      expect(member.nim, equals('241511038'));
       expect(member.nama, equals('Arman Yusuf'));
-      expect(member.role, equals('Member'));
+      expect(member.role, equals(AppConstants.roleMember));
     });
 
     test('MemberModel qrData menggunakan format PRASASTI yang benar', () {
-      const memberId = 'uuid-abc-123';
-      final qrData = QrService.generateQrData(memberId);
+      const nim = '241511123';
+      final qrData = QrService.generateQrData(nim);
       final member = MemberModel(
-        memberId: memberId,
+        nim: nim,
         nama: 'Test Member',
-        nim: '123456789',
         divisi: 'Test',
         role: AppConstants.roleMember,
         password: 'test',
         qrData: qrData,
       );
-      expect(member.qrData, equals('PRASASTI:uuid-abc-123'));
+      expect(member.qrData, equals('PRASASTI:241511123'));
       expect(QrService.isValidQr(member.qrData), isTrue);
-      expect(QrService.parseMemberId(member.qrData), equals(memberId));
+      expect(QrService.parseNim(member.qrData), equals(nim));
     });
   });
 
@@ -178,10 +174,10 @@ void main() {
       final record = AttendanceRecord.create(
         recordId: 'rec-001',
         eventId: 'event-001',
-        memberId: 'member-001',
+        nim: '241511001',
       );
-      expect(record.compositeKey, equals('event-001_member-001'),
-          reason: 'compositeKey harus format: eventId_memberId');
+      expect(record.compositeKey, equals('event-001_241511001'),
+          reason: 'compositeKey harus format: eventId_nim');
       expect(record.isSynced, isFalse,
           reason: 'Record baru harus isSynced=false (offline-first)');
     });
@@ -190,12 +186,12 @@ void main() {
       final record1 = AttendanceRecord.create(
         recordId: 'rec-001',
         eventId: 'event-001',
-        memberId: 'member-001',
+        nim: '241511001',
       );
       final record2 = AttendanceRecord.create(
         recordId: 'rec-002',
         eventId: 'event-002', // event berbeda
-        memberId: 'member-001', // member sama
+        nim: '241511001', // member sama
       );
       expect(record1.compositeKey, isNot(equals(record2.compositeKey)),
           reason: 'Member yang sama di event berbeda = compositeKey berbeda');
@@ -205,12 +201,12 @@ void main() {
       final record1 = AttendanceRecord.create(
         recordId: 'rec-001',
         eventId: 'event-001',
-        memberId: 'member-001',
+        nim: '241511001',
       );
       final record2 = AttendanceRecord.create(
         recordId: 'rec-002',
         eventId: 'event-001', // event sama
-        memberId: 'member-002', // member berbeda
+        nim: '241511002', // member berbeda
       );
       expect(record1.compositeKey, isNot(equals(record2.compositeKey)));
     });
@@ -219,25 +215,25 @@ void main() {
       final record = AttendanceRecord.create(
         recordId: 'rec-001',
         eventId: 'event-001',
-        memberId: 'member-001',
+        nim: '241511001',
       );
       final map = record.toMap();
       expect(map.containsKey('compositeKey'), isTrue,
           reason: 'compositeKey harus ada di Map untuk unique index MongoDB');
-      expect(map['compositeKey'], equals('event-001_member-001'));
+      expect(map['compositeKey'], equals('event-001_241511001'));
     });
 
-    test('Anti-duplikasi: dua record dengan eventId+memberId sama punya compositeKey sama', () {
+    test('Anti-duplikasi: dua record dengan eventId+nim sama punya compositeKey sama', () {
       // Simulasi dua perangkat scan orang yang sama di event yang sama
       final record1 = AttendanceRecord.create(
         recordId: 'rec-device-A',
         eventId: 'event-001',
-        memberId: 'member-001',
+        nim: '241511001',
       );
       final record2 = AttendanceRecord.create(
         recordId: 'rec-device-B',
         eventId: 'event-001',
-        memberId: 'member-001',
+        nim: '241511001',
       );
       // compositeKey sama → MongoDB unique index akan tolak record kedua saat sync
       expect(record1.compositeKey, equals(record2.compositeKey),

@@ -23,7 +23,7 @@ class EventModel extends HiveObject {
   final DateTime tanggal;
 
   @HiveField(4)
-  final String createdBy; // memberId Admin yang membuat event
+  final String createdBy; // nim Admin yang membuat event
 
   @HiveField(5)
   bool isSynced; // false = belum di-upload ke MongoDB Atlas

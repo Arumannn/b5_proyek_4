@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 /// Layar tampilkan QR Code pribadi anggota — Implementasi penuh: Week 8
 class QrDisplayView extends StatelessWidget {
-  final String memberId;
-  const QrDisplayView({super.key, required this.memberId});
+  final String nim;
+  const QrDisplayView({super.key, required this.nim});
 
   @override
   Widget build(BuildContext context) {

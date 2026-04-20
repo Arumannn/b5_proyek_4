@@ -27,7 +27,7 @@ class AppConstants {
   static const String attendanceCollection = 'attendance';
 
   // ─── QR Code Format ──────────────────────────────
-  // Format QR: "PRASASTI:{memberId}"
+  // Format QR: "PRASASTI:{nim}"
   static const String qrPrefix = 'PRASASTI:';
 
   // ─── UI / UX Constants ───────────────────────────

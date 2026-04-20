@@ -6,7 +6,7 @@ part 'attendance_record.g.dart';
 /// Model untuk record absensi anggota di sebuah event.
 ///
 /// KUNCI ANTI-DUPLIKASI — [compositeKey]:
-/// - Format: '${eventId}_${memberId}'
+/// - Format: '${eventId}_${nim}'
 /// - Dijadikan unique index di MongoDB Atlas (setup di Week 11)
 /// - Dicek di Hive lokal SEBELUM menyimpan untuk cegah double scan
 /// - Jika dua perangkat scan anggota yang sama secara offline,
@@ -24,7 +24,7 @@ class AttendanceRecord extends HiveObject {
   final String eventId;
 
   @HiveField(2)
-  final String memberId;
+  final String nim;
 
   @HiveField(3)
   final DateTime timestamp; // Waktu scan dilakukan
@@ -32,7 +32,7 @@ class AttendanceRecord extends HiveObject {
   @HiveField(4)
   bool isSynced; // false = pending upload ke cloud
 
-  /// Composite key = '${eventId}_${memberId}'
+  /// Composite key = '${eventId}_${nim}'
   /// WAJIB unik per kombinasi event-member.
   /// Dijadikan unique index di MongoDB Atlas untuk anti-duplikasi multi-perangkat.
   @HiveField(5)
@@ -41,7 +41,7 @@ class AttendanceRecord extends HiveObject {
   AttendanceRecord({
     required this.recordId,
     required this.eventId,
-    required this.memberId,
+    required this.nim,
     required this.timestamp,
     this.isSynced = false,
     required this.compositeKey,
@@ -49,19 +49,19 @@ class AttendanceRecord extends HiveObject {
 
   // ─── Factory constructor (cara standar membuat record baru) ──
   /// Buat AttendanceRecord baru dari hasil scan QR.
-  /// compositeKey di-generate otomatis dari eventId + memberId.
+  /// compositeKey di-generate otomatis dari eventId + nim.
   factory AttendanceRecord.create({
     required String recordId,
     required String eventId,
-    required String memberId,
+    required String nim,
   }) {
     return AttendanceRecord(
       recordId: recordId,
       eventId: eventId,
-      memberId: memberId,
+      nim: nim,
       timestamp: DateTime.now(),
       isSynced: false,
-      compositeKey: '${eventId}_$memberId',
+      compositeKey: '${eventId}_$nim',
     );
   }
 
@@ -70,7 +70,7 @@ class AttendanceRecord extends HiveObject {
     return {
       'recordId': recordId,
       'eventId': eventId,
-      'memberId': memberId,
+      'nim': nim,
       'timestamp': timestamp.toIso8601String(),
       'compositeKey': compositeKey, // Dipakai untuk unique index di Atlas
     };
@@ -81,19 +81,19 @@ class AttendanceRecord extends HiveObject {
     return AttendanceRecord(
       recordId: map['recordId']?.toString() ?? '',
       eventId: map['eventId']?.toString() ?? '',
-      memberId: map['memberId']?.toString() ?? '',
+        nim: map['nim']?.toString() ?? '',
       timestamp: map['timestamp'] != null
           ? DateTime.parse(map['timestamp'].toString())
           : DateTime.now(),
       isSynced: true,
       compositeKey: map['compositeKey']?.toString() ??
-          '${map['eventId']}_${map['memberId']}',
+          '${map['eventId']}_${map['nim']}',
     );
   }
 
   @override
   String toString() {
     return 'AttendanceRecord(recordId: $recordId, eventId: $eventId, '
-        'memberId: $memberId, isSynced: $isSynced, compositeKey: $compositeKey)';
+        'nim: $nim, isSynced: $isSynced, compositeKey: $compositeKey)';
   }
 }

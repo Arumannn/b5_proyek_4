@@ -8,34 +8,30 @@ part 'member_model.g.dart';
 /// ATURAN KEAMANAN:
 /// - Field [password] HANYA disimpan di Hive lokal — TIDAK pernah dikirim ke cloud.
 /// - Gunakan [toMap()] untuk sync ke MongoDB — password otomatis dikecualikan.
-/// - [qrData] adalah string yang di-encode ke QR Code, formatnya: "PRASASTI:{memberId}"
+/// - [qrData] adalah string yang di-encode ke QR Code, formatnya: "PRASASTI:{nim}"
 @HiveType(typeId: AppConstants.memberTypeId) // typeId: 0
 class MemberModel extends HiveObject {
   @HiveField(0)
-  final String memberId; // UUID unik — basis dari QR Code
+  final String nim; // Identifier unik akun
 
   @HiveField(1)
   final String nama;
 
   @HiveField(2)
-  final String nim;
-
-  @HiveField(3)
   final String divisi;
 
-  @HiveField(4)
+  @HiveField(3)
   final String role; // Gunakan AppConstants.roleAdmin atau AppConstants.roleMember
 
-  @HiveField(5)
+  @HiveField(4)
   final String password; // Disimpan lokal saja — TIDAK dikirim ke cloud
 
-  @HiveField(6)
-  final String qrData; // Format: "PRASASTI:{memberId}"
+  @HiveField(5)
+  final String qrData; // Format: "PRASASTI:{nim}"
 
   MemberModel({
-    required this.memberId,
-    required this.nama,
     required this.nim,
+    required this.nama,
     required this.divisi,
     required this.role,
     required this.password,
@@ -46,7 +42,6 @@ class MemberModel extends HiveObject {
   // PENTING: password TIDAK dimasukkan — hanya disimpan lokal di Hive.
   Map<String, dynamic> toMap() {
     return {
-      'memberId': memberId,
       'nama': nama,
       'nim': nim,
       'divisi': divisi,
@@ -60,9 +55,8 @@ class MemberModel extends HiveObject {
   // Password dari cloud tidak ada — gunakan string kosong sebagai placeholder.
   factory MemberModel.fromMap(Map<String, dynamic> map) {
     return MemberModel(
-      memberId: map['memberId']?.toString() ?? '',
-      nama: map['nama']?.toString() ?? '',
       nim: map['nim']?.toString() ?? '',
+      nama: map['nama']?.toString() ?? '',
       divisi: map['divisi']?.toString() ?? '',
       role: map['role']?.toString() ?? AppConstants.roleMember,
       password: map['password']?.toString() ?? '', // Kosong jika dari cloud
@@ -72,18 +66,16 @@ class MemberModel extends HiveObject {
 
   // ─── CopyWith (berguna saat update data member) ──────────────
   MemberModel copyWith({
-    String? memberId,
-    String? nama,
     String? nim,
+    String? nama,
     String? divisi,
     String? role,
     String? password,
     String? qrData,
   }) {
     return MemberModel(
-      memberId: memberId ?? this.memberId,
-      nama: nama ?? this.nama,
       nim: nim ?? this.nim,
+      nama: nama ?? this.nama,
       divisi: divisi ?? this.divisi,
       role: role ?? this.role,
       password: password ?? this.password,
@@ -93,7 +85,7 @@ class MemberModel extends HiveObject {
 
   @override
   String toString() {
-    return 'MemberModel(memberId: $memberId, nama: $nama, nim: $nim, '
+    return 'MemberModel(nim: $nim, nama: $nama, '
         'divisi: $divisi, role: $role)';
   }
 }
