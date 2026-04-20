@@ -1,15 +1,25 @@
-// ============================================================
-// EVENT MODEL — Implementasi Penuh: Week 8
-// ============================================================
-//
-// TODO Week 8: Tambahkan @HiveType(typeId: 1), extends HiveObject,
-//   @HiveField annotations, toMap(), factory fromMap()
+import 'package:hive/hive.dart';
+import '../core/constants/app_constants.dart';
 
-/// Model data untuk event/kegiatan organisasi.
-class EventModel {
+part 'event_model.g.dart';
+
+/// Model data untuk event/kegiatan organisasi PRASASTI.
+///
+/// ALUR DATA:
+/// - Dibuat oleh Admin → disimpan ke Hive lokal (isSynced = false)
+/// - SyncManager otomatis upload ke MongoDB Atlas saat online (isSynced = true)
+@HiveType(typeId: AppConstants.eventTypeId) // typeId: 1
+class EventModel extends HiveObject {
+  @HiveField(0)
   final String eventId; // UUID unik
-  final String nama;
-  final String jenis; // 'Rapat', 'Acara', 'Kegiatan', 'Lainnya'
+
+  @HiveField(1)
+  final String nama; // Nama event, contoh: "Rapat Bulanan Desember"
+
+  @HiveField(2)
+  final String jenis; // Gunakan AppConstants.eventTypes: 'Rapat','Acara','Kegiatan','Lainnya'
+
+  @HiveField(3)
   final DateTime tanggal;
   final String createdBy; // memberId Admin yang membuat event
   final String? parentEventId; // null = event utama, non-null = sub event

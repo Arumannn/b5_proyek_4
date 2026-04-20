@@ -28,18 +28,7 @@ class EventController {
 
     try {
       final box = HiveService.events;
-      final loaded = <EventModel>[];
-
-      for (final raw in box.values) {
-        if (raw is EventModel) {
-          loaded.add(raw);
-          continue;
-        }
-
-        if (raw is Map) {
-          loaded.add(EventModel.fromMap(raw));
-        }
-      }
+      final loaded = box.values.toList();
 
       loaded.sort((a, b) => a.tanggal.compareTo(b.tanggal));
       events.value = loaded;
@@ -95,7 +84,7 @@ class EventController {
         isSynced: false,
       );
 
-      await HiveService.events.put(created.eventId, created.toMap());
+      await HiveService.events.put(created.eventId, created);
 
       final updated = List<EventModel>.from(events.value)..add(created);
       updated.sort((a, b) => a.tanggal.compareTo(b.tanggal));
@@ -136,12 +125,12 @@ class EventController {
         return false;
       }
 
-      final updated = List<EventModel>.from(events.value);
-  final saved = event.copyWith(nama: trimmed, isSynced: false);
+        final updated = List<EventModel>.from(events.value);
+        final saved = event.copyWith(nama: trimmed, isSynced: false);
 
-  await HiveService.events.put(saved.eventId, saved.toMap());
+        await HiveService.events.put(saved.eventId, saved);
 
-  updated[index] = saved;
+        updated[index] = saved;
       updated.sort((a, b) => a.tanggal.compareTo(b.tanggal));
       events.value = updated;
       return true;

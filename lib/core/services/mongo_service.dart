@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:mongo_dart/mongo_dart.dart';
-import '../constants/app_constants.dart';
 
 /// Singleton service untuk berkomunikasi dengan MongoDB Atlas.
 ///
@@ -204,17 +203,16 @@ class MongoService {
     required Map<String, dynamic> updateFields,
   }) async {
     await ensureConnected();
+
+    // Build ModifierBuilder dari semua field yang ingin di-update
+    ModifierBuilder modifier = modify;
+    for (final entry in updateFields.entries) {
+      modifier = modifier.set(entry.key, entry.value);
+    }
+
     final result = await collection(collectionName).updateOne(
       filter,
-      modify.set(updateFields.keys.first, updateFields.values.first)
-          .let((m) {
-        var builder = m;
-        final entries = updateFields.entries.skip(1);
-        for (final entry in entries) {
-          builder = builder.set(entry.key, entry.value);
-        }
-        return builder;
-      }),
+      modifier,
     );
     return result.nModified ?? 0;
   }
@@ -260,9 +258,4 @@ class MongoService {
       debugPrint('🔒 MongoService: Koneksi ditutup');
     }
   }
-}
-
-// ─── Extension Helper ───────────────────────────────────────────
-extension _ModifyBuilderExt on ModifierBuilder {
-  ModifierBuilder let(ModifierBuilder Function(ModifierBuilder) fn) => fn(this);
 }

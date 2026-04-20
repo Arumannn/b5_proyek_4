@@ -3,10 +3,8 @@ import 'dart:convert';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:uuid/uuid.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../core/services/hive_service.dart';
@@ -43,58 +41,106 @@ class AuthController {
         );
 
   final Dio _dio;
-  final Uuid _uuid = const Uuid();
 
   final ValueNotifier<MemberModel?> currentUser = ValueNotifier(null);
   final ValueNotifier<bool> isLoading = ValueNotifier(false);
   final ValueNotifier<String?> errorMessage = ValueNotifier(null);
 
   Future<void> initializeAuth() async {
-    await seedDefaultAdminIfNeeded();
+    await seedDefaultAccount();
   }
 
-  Future<void> seedDefaultAdminIfNeeded() async {
-    try {
-      final seedDone = HiveService.members.get(AppConstants.adminSeedFlagKey);
-      if (seedDone == true) {
+  // seedDefaultAccount()
+Future<void> seedDefaultAccount() async {
+  try {
+    final nowIso = DateTime.now().toIso8601String();
+
+    Future<void> ensureDefaultAccount({
+      required String nim,
+      required String nama,
+      required String divisi,
+      required String role,
+      required String password,
+    }) async {
+      final normalizedNim = nim.trim();
+      final existing = _findLocalUserByNim(normalizedNim);
+      final hashedDefaultPassword = _hashPassword(password);
+
+      final needsCreate = existing == null;
+      final needsRepair = existing != null && (
+        _normalizeRole((existing['role'] ?? '').toString()) != role ||
+        !_verifyPassword(password, (existing['password'] ?? '').toString()) ||
+        (existing['nama'] ?? '').toString().trim().isEmpty ||
+        (existing['divisi'] ?? '').toString().trim().isEmpty
+      );
+
+      if (!needsCreate && !needsRepair) {
         return;
       }
 
-      final hasAdmin = _hasAnyLocalAdmin();
-      if (hasAdmin) {
-        await HiveService.members.put(AppConstants.adminSeedFlagKey, true);
-        debugPrint('[Auth][seed] skipped: admin already exists');
-        return;
-      }
-
-      final memberId = _uuid.v4();
-      final nowIso = DateTime.now().toIso8601String();
-      final seededAdmin = <String, dynamic>{
-        'memberId': memberId,
-        'nama': AppConstants.defaultAdminName,
-        'nim': AppConstants.defaultAdminNim,
-        'divisi': AppConstants.defaultAdminDivision,
-        'role': AppConstants.roleAdmin,
-        'password': _hashPassword(AppConstants.defaultAdminPassword),
-        'qrData': QrService.generateQrData(memberId),
+      final merged = <String, dynamic>{
+        ...?existing,
+        'nim': normalizedNim,
+        'nama': nama,
+        'divisi': divisi,
+        'role': role,
+        'password': hashedDefaultPassword,
+        'qrData': QrService.generateQrData(normalizedNim),
         'isSynced': false,
-        'createdAt': nowIso,
+        'createdAt': (existing?['createdAt'] ?? nowIso).toString(),
         'updatedAt': nowIso,
       };
 
-      await HiveService.members.put(memberId, seededAdmin);
-      await HiveService.members.put(AppConstants.adminSeedFlagKey, true);
+      await HiveService.members.put(normalizedNim, _memberFromMap(merged));
+      unawaited(_syncUpsertUserInBackground(nim: normalizedNim, userDoc: merged));
 
-      debugPrint(
-        '[Auth][seed] default admin created nim=${AppConstants.defaultAdminNim}',
-      );
-
-      unawaited(_syncUpsertUserInBackground(memberId: memberId, userDoc: seededAdmin));
-    } catch (e, st) {
-      debugPrint('[Auth][seed] error: $e');
-      debugPrint(st.toString());
+      if (needsCreate) {
+        debugPrint('[Auth][seed] created default account nim=$normalizedNim role=$role');
+      } else {
+        debugPrint('[Auth][seed] repaired default account nim=$normalizedNim role=$role');
+      }
     }
+
+    await ensureDefaultAccount(
+      nim: AppConstants.defaultAdminNim,
+      nama: AppConstants.defaultAdminName,
+      divisi: AppConstants.defaultAdminDivision,
+      role: AppConstants.roleAdmin,
+      password: AppConstants.defaultAdminPassword,
+    );
+
+    await ensureDefaultAccount(
+      nim: AppConstants.defaultMemberNim,
+      nama: AppConstants.defaultMemberName,
+      divisi: AppConstants.defaultMemberDivision,
+      role: AppConstants.roleMember,
+      password: AppConstants.defaultMemberPassword,
+    );
+
+    await ensureDefaultAccount(
+      nim: AppConstants.defaultOrganizerNim,
+      nama: AppConstants.defaultOrganizerName,
+      divisi: AppConstants.defaultOrganizerDivision,
+      role: AppConstants.roleOrganizer,
+      password: AppConstants.defaultOrganizerPassword,
+    );
+
+    await ensureDefaultAccount(
+      nim: AppConstants.defaultManagerNim,
+      nama: AppConstants.defaultManagerName,
+      divisi: AppConstants.defaultManagerDivision,
+      role: AppConstants.roleManager,
+      password: AppConstants.defaultManagerPassword,
+    );
+
+    debugPrint(
+      '[Auth][seed] default accounts ensured/repaired (admin/member/organizer/manager)',
+    );
+  } catch (e, st) {
+    debugPrint('[Auth][seed] error: $e');
+    debugPrint(st.toString());
   }
+}
 
   Future<bool> createUserByAdmin({
     required String nama,
@@ -113,34 +159,32 @@ class AuthController {
       }
 
       final normalizedRole = _normalizeRole(role);
+      final normalizedNim = nim.trim();
       debugPrint('[Auth][createUser] start nim=$nim role=$normalizedRole');
 
-      final existing = _findLocalUserByNim(nim);
+      final existing = _findLocalUserByNim(normalizedNim);
       if (existing != null) {
         errorMessage.value = 'NIM sudah terdaftar.';
         debugPrint('[Auth][createUser] failed: duplicate nim in local');
         return false;
       }
 
-      final memberId = _uuid.v4();
       final nowIso = DateTime.now().toIso8601String();
       final localDoc = <String, dynamic>{
-        'memberId': memberId,
         'nama': nama.trim(),
-        'nim': nim.trim(),
+        'nim': normalizedNim,
         'divisi': divisi.trim(),
         'role': normalizedRole,
         'password': _hashPassword(password),
-        'qrData': QrService.generateQrData(memberId),
+        'qrData': QrService.generateQrData(normalizedNim),
         'isSynced': false,
         'createdAt': nowIso,
         'updatedAt': nowIso,
       };
 
-      await HiveService.members.put(memberId, localDoc);
-      debugPrint('[Auth][createUser] local saved memberId=$memberId');
-
-      unawaited(_syncUpsertUserInBackground(memberId: memberId, userDoc: localDoc));
+      await HiveService.members.put(normalizedNim, _memberFromMap(localDoc));
+      debugPrint('[Auth][createUser] local saved nim=$normalizedNim');
+      unawaited(_syncUpsertUserInBackground(nim: normalizedNim, userDoc: localDoc));
       return true;
     } catch (e, st) {
       debugPrint('[Auth][createUser] error: $e');
@@ -166,7 +210,7 @@ class AuthController {
   }
 
   Future<bool> updateUserByAdmin({
-    required String memberId,
+    required String nim,
     String? nama,
     String? divisi,
     String? role,
@@ -181,7 +225,8 @@ class AuthController {
         return false;
       }
 
-      final raw = HiveService.members.get(memberId);
+      final storageKey = _resolveLocalStorageKey(nim);
+      final raw = storageKey != null ? HiveService.members.get(storageKey) : null;
       final currentDoc = _toMap(raw);
       if (currentDoc == null || !_isUserDocument(currentDoc)) {
         errorMessage.value = 'User tidak ditemukan.';
@@ -205,14 +250,19 @@ class AuthController {
       updatedDoc['isSynced'] = false;
       updatedDoc['updatedAt'] = DateTime.now().toIso8601String();
 
-      await HiveService.members.put(memberId, updatedDoc);
-      debugPrint('[Auth][updateUser] local updated memberId=$memberId');
+        final nimStorageKey = (updatedDoc['nim'] ?? '').toString().trim();
+        final updatedStorageKey = nimStorageKey.isNotEmpty
+          ? nimStorageKey
+            : (storageKey ?? nim.trim());
 
-      if (currentUser.value?.memberId == memberId) {
+        await HiveService.members.put(updatedStorageKey, _memberFromMap(updatedDoc));
+        debugPrint('[Auth][updateUser] local updated nim=$updatedStorageKey');
+
+        if (currentUser.value?.nim == nim.trim()) {
         currentUser.value = _memberFromMap(updatedDoc);
       }
 
-      unawaited(_syncUpsertUserInBackground(memberId: memberId, userDoc: updatedDoc));
+        unawaited(_syncUpsertUserInBackground(nim: updatedStorageKey, userDoc: updatedDoc));
       return true;
     } catch (e, st) {
       debugPrint('[Auth][updateUser] error: $e');
@@ -224,7 +274,7 @@ class AuthController {
     }
   }
 
-  Future<bool> deleteUserByAdmin(String memberId) async {
+  Future<bool> deleteUserByAdmin(String nim) async {
     isLoading.value = true;
     errorMessage.value = null;
 
@@ -234,21 +284,23 @@ class AuthController {
         return false;
       }
 
-      final raw = HiveService.members.get(memberId);
+      final storageKey = _resolveLocalStorageKey(nim);
+      final raw = storageKey != null ? HiveService.members.get(storageKey) : null;
       final doc = _toMap(raw);
       if (doc == null || !_isUserDocument(doc)) {
         errorMessage.value = 'User tidak ditemukan.';
         return false;
       }
 
-      await HiveService.members.delete(memberId);
-      debugPrint('[Auth][deleteUser] local deleted memberId=$memberId');
+      await HiveService.members.delete(storageKey);
+      debugPrint('[Auth][deleteUser] local deleted nim=$nim');
 
-      if (currentUser.value?.memberId == memberId) {
+      if (currentUser.value?.nim == nim.trim()) {
         clearSession();
       }
 
-      unawaited(_deleteUserFromCloudInBackground(memberId));
+      final nimToDelete = (doc['nim'] ?? nim).toString().trim();
+      unawaited(_deleteUserFromCloudInBackground(nimToDelete));
       return true;
     } catch (e, st) {
       debugPrint('[Auth][deleteUser] error: $e');
@@ -280,11 +332,12 @@ class AuthController {
 
         if (userDoc != null) {
           userDoc['isSynced'] = true;
-          final memberId = (userDoc['memberId'] ?? _uuid.v4()).toString();
-          userDoc['memberId'] = memberId;
+          final cloudNim = (userDoc['nim'] ?? normalizedNim).toString().trim();
+          userDoc['nim'] = cloudNim;
 
-          await HiveService.members.put(memberId, userDoc);
-          debugPrint('[Auth][login] cloud hit -> cached locally memberId=$memberId');
+          final storageKey = cloudNim.isNotEmpty ? cloudNim : normalizedNim;
+          await HiveService.members.put(storageKey, _memberFromMap(userDoc));
+          debugPrint('[Auth][login] cloud hit -> cached locally nim=$storageKey');
         }
       }
 
@@ -334,18 +387,18 @@ class AuthController {
   }
 
   Future<void> _syncUpsertUserInBackground({
-    required String memberId,
+    required String nim,
     required Map<String, dynamic> userDoc,
   }) async {
     try {
       if (!await _isOnline()) {
-        debugPrint('[Auth][syncUpsert] skipped: offline memberId=$memberId');
+        debugPrint('[Auth][syncUpsert] skipped: offline nim=$nim');
         return;
       }
 
       final synced = await _upsertUserToCloud(userDoc);
       if (!synced) {
-        debugPrint('[Auth][syncUpsert] postponed: cloud sync failed memberId=$memberId');
+        debugPrint('[Auth][syncUpsert] postponed: cloud sync failed nim=$nim');
         return;
       }
 
@@ -353,26 +406,28 @@ class AuthController {
         ..['isSynced'] = true
         ..['updatedAt'] = DateTime.now().toIso8601String();
 
-      await HiveService.members.put(memberId, localDoc);
-      debugPrint('[Auth][syncUpsert] success: local sync flag updated memberId=$memberId');
+      final nimStorageKey = (localDoc['nim'] ?? '').toString().trim();
+      final storageKey = nimStorageKey.isNotEmpty ? nimStorageKey : nim;
+      await HiveService.members.put(storageKey, _memberFromMap(localDoc));
+      debugPrint('[Auth][syncUpsert] success: local sync flag updated nim=$storageKey');
     } catch (e) {
-      debugPrint('[Auth][syncUpsert] error memberId=$memberId -> $e');
+      debugPrint('[Auth][syncUpsert] error nim=$nim -> $e');
     }
   }
 
-  Future<void> _deleteUserFromCloudInBackground(String memberId) async {
+  Future<void> _deleteUserFromCloudInBackground(String nim) async {
     try {
       if (!await _isOnline()) {
-        debugPrint('[Auth][syncDelete] skipped: offline memberId=$memberId');
+        debugPrint('[Auth][syncDelete] skipped: offline nim=$nim');
         return;
       }
 
-      final deleted = await _deleteUserFromCloud(memberId);
+      final deleted = await _deleteUserFromCloud(nim);
       if (deleted) {
-        debugPrint('[Auth][syncDelete] success memberId=$memberId');
+        debugPrint('[Auth][syncDelete] success nim=$nim');
       }
     } catch (e) {
-      debugPrint('[Auth][syncDelete] error memberId=$memberId -> $e');
+      debugPrint('[Auth][syncDelete] error nim=$nim -> $e');
     }
   }
 
@@ -380,7 +435,7 @@ class AuthController {
     final payload = _toCloudPayload(userDoc);
     final baseUrl = (dotenv.env['ATLAS_API_BASE_URL'] ?? '').trim();
     final apiKey = (dotenv.env['ATLAS_API_KEY'] ?? '').trim();
-    final memberId = (payload['memberId'] ?? '').toString();
+    final nim = (payload['nim'] ?? '').toString().trim();
 
     if (baseUrl.isNotEmpty) {
       try {
@@ -390,7 +445,7 @@ class AuthController {
         }
 
         final response = await _dio.put(
-          '$baseUrl/users/$memberId',
+          '$baseUrl/users/$nim',
           data: payload,
           options: Options(headers: headers),
         );
@@ -410,7 +465,7 @@ class AuthController {
     try {
       final existing = await MongoService.instance.findOne(
         collectionName: AppConstants.usersCollection,
-        filter: {'memberId': memberId},
+        filter: {'nim': nim},
       );
 
       if (existing == null) {
@@ -421,7 +476,7 @@ class AuthController {
       } else {
         await MongoService.instance.updateOne(
           collectionName: AppConstants.usersCollection,
-          filter: {'memberId': memberId},
+          filter: {'nim': nim},
           updateFields: payload,
         );
       }
@@ -438,7 +493,7 @@ class AuthController {
     }
   }
 
-  Future<bool> _deleteUserFromCloud(String memberId) async {
+  Future<bool> _deleteUserFromCloud(String nim) async {
     final baseUrl = (dotenv.env['ATLAS_API_BASE_URL'] ?? '').trim();
     final apiKey = (dotenv.env['ATLAS_API_KEY'] ?? '').trim();
 
@@ -450,7 +505,7 @@ class AuthController {
         }
 
         final response = await _dio.delete(
-          '$baseUrl/users/$memberId',
+          '$baseUrl/users/$nim',
           options: Options(headers: headers),
         );
 
@@ -466,7 +521,7 @@ class AuthController {
     try {
       await MongoService.instance.deleteOne(
         collectionName: AppConstants.usersCollection,
-        filter: {'memberId': memberId},
+        filter: {'nim': nim},
       );
       return true;
     } catch (e) {
@@ -564,7 +619,6 @@ class AuthController {
 
   Map<String, dynamic> _toCloudPayload(Map<String, dynamic> doc) {
     return <String, dynamic>{
-      'memberId': doc['memberId'],
       'nama': doc['nama'],
       'nim': doc['nim'],
       'divisi': doc['divisi'],
@@ -576,11 +630,33 @@ class AuthController {
     };
   }
 
+  String? _resolveLocalStorageKey(String nim) {
+    final candidate = nim.trim();
+    if (candidate.isEmpty) {
+      return null;
+    }
+
+    if (HiveService.members.containsKey(candidate)) {
+      return candidate;
+    }
+
+    for (final entry in HiveService.members.toMap().entries) {
+      final doc = _toMap(entry.value);
+      if (doc == null) continue;
+
+      final savedNim = (doc['nim'] ?? '').toString().trim();
+      if (savedNim == candidate) {
+        return entry.key.toString();
+      }
+    }
+
+    return null;
+  }
+
   MemberModel _memberFromMap(Map<String, dynamic> doc) {
     return MemberModel(
-      memberId: (doc['memberId'] ?? _uuid.v4()).toString(),
-      nama: (doc['nama'] ?? '').toString(),
       nim: (doc['nim'] ?? '').toString(),
+      nama: (doc['nama'] ?? '').toString(),
       divisi: (doc['divisi'] ?? '').toString(),
       role: _normalizeRole((doc['role'] ?? AppConstants.roleMember).toString()),
       password: (doc['password'] ?? '').toString(),
@@ -601,7 +677,6 @@ class AuthController {
     }
     if (raw is MemberModel) {
       return <String, dynamic>{
-        'memberId': raw.memberId,
         'nama': raw.nama,
         'nim': raw.nim,
         'divisi': raw.divisi,
@@ -666,23 +741,8 @@ class AuthController {
     return _normalizeRole(currentUser.value?.role ?? '') == AppConstants.roleAdmin;
   }
 
-  bool _hasAnyLocalAdmin() {
-    for (final raw in HiveService.members.values) {
-      final doc = _toMap(raw);
-      if (doc == null || !_isUserDocument(doc)) {
-        continue;
-      }
-
-      if (_normalizeRole((doc['role'] ?? '').toString()) == AppConstants.roleAdmin) {
-        return true;
-      }
-    }
-    return false;
-  }
-
   bool _isUserDocument(Map<String, dynamic> doc) {
-    return (doc['memberId']?.toString().isNotEmpty ?? false) &&
-        (doc['nim']?.toString().isNotEmpty ?? false);
+    return doc['nim']?.toString().trim().isNotEmpty ?? false;
   }
 
   String _normalizeRole(String role) {

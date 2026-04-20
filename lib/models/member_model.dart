@@ -1,43 +1,91 @@
-// ============================================================
-// MEMBER MODEL — Implementasi Penuh: Week 8
-// ============================================================
-//
-// TODO Week 8 — Langkah implementasi:
-// 1. Tambahkan import: import 'package:hive/hive.dart';
-// 2. Tambahkan: part 'member_model.g.dart';
-// 3. Tambahkan @HiveType(typeId: 0) di atas class
-// 4. Ubah class extends HiveObject
-// 5. Tambahkan @HiveField(index) di setiap field
-// 6. Tambahkan toMap() untuk sync ke MongoDB
-// 7. Tambahkan factory fromMap() untuk parse response Atlas
-// 8. Jalankan: flutter pub run build_runner build
-//    → Generate file member_model.g.dart (TypeAdapter)
-// 9. Daftarkan adapter di HiveService.init()
+import 'package:hive/hive.dart';
+import '../core/constants/app_constants.dart';
 
-/// Model data untuk anggota organisasi.
+part 'member_model.g.dart';
+
+/// Model data untuk anggota organisasi PRASASTI.
 ///
-/// Setiap anggota memiliki QR Code unik berbasis memberId.
-/// Password TIDAK boleh dikirim ke cloud — hanya disimpan di Hive lokal.
-class MemberModel {
-  final String memberId; // UUID — basis dari QR Code
-  final String nama;
-  final String nim;
-  final String divisi;
-  final String role; // 'Admin' atau 'Member' (lihat AppConstants)
-  final String password; // TODO Week 8: hash password ini!
-  final String qrData; // format: "PRASASTI:{memberId}"
+/// ATURAN KEAMANAN:
+/// - Field [password] HANYA disimpan di Hive lokal — TIDAK pernah dikirim ke cloud.
+/// - Gunakan [toMap()] untuk sync ke MongoDB — password otomatis dikecualikan.
+/// - [qrData] adalah string yang di-encode ke QR Code, formatnya: "PRASASTI:{nim}"
+@HiveType(typeId: AppConstants.memberTypeId) // typeId: 0
+class MemberModel extends HiveObject {
+  @HiveField(0)
+  final String nim; // Identifier unik akun
 
-  const MemberModel({
-    required this.memberId,
-    required this.nama,
+  @HiveField(1)
+  final String nama;
+
+  @HiveField(2)
+  final String divisi;
+
+  @HiveField(3)
+  final String role; // Gunakan AppConstants.roleAdmin atau AppConstants.roleMember
+
+  @HiveField(4)
+  final String password; // Disimpan lokal saja — TIDAK dikirim ke cloud
+
+  @HiveField(5)
+  final String qrData; // Format: "PRASASTI:{nim}"
+
+  MemberModel({
     required this.nim,
+    required this.nama,
     required this.divisi,
     required this.role,
     required this.password,
     required this.qrData,
   });
 
-  // TODO Week 8: Implementasi toMap() — TANPA field password
-  // TODO Week 8: Implementasi factory fromMap()
-  // TODO Week 8: Tambahkan @HiveType(typeId: 0) dan @HiveField annotations
+  // ─── Konversi ke Map untuk MongoDB Atlas ────────────────────
+  // PENTING: password TIDAK dimasukkan — hanya disimpan lokal di Hive.
+  Map<String, dynamic> toMap() {
+    return {
+      'nama': nama,
+      'nim': nim,
+      'divisi': divisi,
+      'role': role,
+      'qrData': qrData,
+    };
+  }
+
+  // ─── Parse dari response MongoDB Atlas ──────────────────────
+  // Digunakan saat fallback login dari cloud (Week 8 Auth).
+  // Password dari cloud tidak ada — gunakan string kosong sebagai placeholder.
+  factory MemberModel.fromMap(Map<String, dynamic> map) {
+    return MemberModel(
+      nim: map['nim']?.toString() ?? '',
+      nama: map['nama']?.toString() ?? '',
+      divisi: map['divisi']?.toString() ?? '',
+      role: map['role']?.toString() ?? AppConstants.roleMember,
+      password: map['password']?.toString() ?? '', // Kosong jika dari cloud
+      qrData: map['qrData']?.toString() ?? '',
+    );
+  }
+
+  // ─── CopyWith (berguna saat update data member) ──────────────
+  MemberModel copyWith({
+    String? nim,
+    String? nama,
+    String? divisi,
+    String? role,
+    String? password,
+    String? qrData,
+  }) {
+    return MemberModel(
+      nim: nim ?? this.nim,
+      nama: nama ?? this.nama,
+      divisi: divisi ?? this.divisi,
+      role: role ?? this.role,
+      password: password ?? this.password,
+      qrData: qrData ?? this.qrData,
+    );
+  }
+
+  @override
+  String toString() {
+    return 'MemberModel(nim: $nim, nama: $nama, '
+        'divisi: $divisi, role: $role)';
+  }
 }
