@@ -53,48 +53,42 @@ class AuthController {
     await seedDefaultAdminIfNeeded();
   }
 
-  Future<void> seedDefaultAdminIfNeeded() async {
-    try {
-      final seedDone = HiveService.members.get(AppConstants.adminSeedFlagKey);
-      if (seedDone == true) {
-        return;
-      }
-
-      final hasAdmin = _hasAnyLocalAdmin();
-      if (hasAdmin) {
-        await HiveService.members.put(AppConstants.adminSeedFlagKey, true);
-        debugPrint('[Auth][seed] skipped: admin already exists');
-        return;
-      }
-
-      final memberId = _uuid.v4();
-      final nowIso = DateTime.now().toIso8601String();
-      final seededAdmin = <String, dynamic>{
-        'memberId': memberId,
-        'nama': AppConstants.defaultAdminName,
-        'nim': AppConstants.defaultAdminNim,
-        'divisi': AppConstants.defaultAdminDivision,
-        'role': AppConstants.roleAdmin,
-        'password': _hashPassword(AppConstants.defaultAdminPassword),
-        'qrData': QrService.generateQrData(memberId),
-        'isSynced': false,
-        'createdAt': nowIso,
-        'updatedAt': nowIso,
-      };
-
-      await HiveService.members.put(memberId, seededAdmin);
-      await HiveService.members.put(AppConstants.adminSeedFlagKey, true);
-
-      debugPrint(
-        '[Auth][seed] default admin created nim=${AppConstants.defaultAdminNim}',
-      );
-
-      unawaited(_syncUpsertUserInBackground(memberId: memberId, userDoc: seededAdmin));
-    } catch (e, st) {
-      debugPrint('[Auth][seed] error: $e');
-      debugPrint(st.toString());
+  // seedDefaultAdminIfNeeded()
+Future<void> seedDefaultAdminIfNeeded() async {
+  try {
+    final hasAdmin = _hasAnyLocalAdmin();
+    if (hasAdmin) {
+      debugPrint('[Auth][seed] skipped: admin already exists');
+      return;
     }
+
+    final memberId = _uuid.v4();
+    final nowIso = DateTime.now().toIso8601String();
+    final seededAdmin = <String, dynamic>{
+      'memberId': memberId,
+      'nama': AppConstants.defaultAdminName,
+      'nim': AppConstants.defaultAdminNim,
+      'divisi': AppConstants.defaultAdminDivision,
+      'role': AppConstants.roleAdmin,
+      'password': _hashPassword(AppConstants.defaultAdminPassword),
+      'qrData': QrService.generateQrData(memberId),
+      'isSynced': false,
+      'createdAt': nowIso,
+      'updatedAt': nowIso,
+    };
+
+    await HiveService.members.put(memberId, _memberFromMap(seededAdmin));
+
+    debugPrint(
+      '[Auth][seed] default admin created nim=${AppConstants.defaultAdminNim}',
+    );
+
+    unawaited(_syncUpsertUserInBackground(memberId: memberId, userDoc: seededAdmin));
+  } catch (e, st) {
+    debugPrint('[Auth][seed] error: $e');
+    debugPrint(st.toString());
   }
+}
 
   Future<bool> createUserByAdmin({
     required String nama,
@@ -137,9 +131,8 @@ class AuthController {
         'updatedAt': nowIso,
       };
 
-      await HiveService.members.put(memberId, localDoc);
+      await HiveService.members.put(memberId, _memberFromMap(localDoc));      
       debugPrint('[Auth][createUser] local saved memberId=$memberId');
-
       unawaited(_syncUpsertUserInBackground(memberId: memberId, userDoc: localDoc));
       return true;
     } catch (e, st) {
@@ -205,7 +198,7 @@ class AuthController {
       updatedDoc['isSynced'] = false;
       updatedDoc['updatedAt'] = DateTime.now().toIso8601String();
 
-      await HiveService.members.put(memberId, updatedDoc);
+      await HiveService.members.put(memberId, _memberFromMap(updatedDoc));
       debugPrint('[Auth][updateUser] local updated memberId=$memberId');
 
       if (currentUser.value?.memberId == memberId) {
@@ -283,7 +276,7 @@ class AuthController {
           final memberId = (userDoc['memberId'] ?? _uuid.v4()).toString();
           userDoc['memberId'] = memberId;
 
-          await HiveService.members.put(memberId, userDoc);
+          await HiveService.members.put(memberId, _memberFromMap(userDoc));
           debugPrint('[Auth][login] cloud hit -> cached locally memberId=$memberId');
         }
       }
@@ -353,7 +346,7 @@ class AuthController {
         ..['isSynced'] = true
         ..['updatedAt'] = DateTime.now().toIso8601String();
 
-      await HiveService.members.put(memberId, localDoc);
+      await HiveService.members.put(memberId, _memberFromMap(localDoc));
       debugPrint('[Auth][syncUpsert] success: local sync flag updated memberId=$memberId');
     } catch (e) {
       debugPrint('[Auth][syncUpsert] error memberId=$memberId -> $e');
