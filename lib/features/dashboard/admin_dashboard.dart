@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../attendance/attendance_recap_view.dart';
 import '../attendance/scan_screen.dart';
+import '../auth/auth_controller.dart';
 import '../event/event_list_view.dart';
 
 /// Dashboard Admin — Implementasi penuh: Week 12
@@ -12,6 +13,33 @@ import '../event/event_list_view.dart';
 /// - NetworkStatusBanner untuk indikator online/offline
 class AdminDashboard extends StatelessWidget {
   const AdminDashboard({super.key});
+
+  Future<void> _confirmAndLogout(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Logout'),
+          content: const Text('Yakin ingin keluar dari akun ini?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Batal'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Logout'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true) {
+      if (!context.mounted) return;
+      await AuthController.instance.logout(context);
+    }
+  }
 
   Widget _buildMenuCard({
     required BuildContext context,
@@ -61,7 +89,16 @@ class AdminDashboard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Dashboard Admin — PRASASTI')),
+      appBar: AppBar(
+        title: const Text('Dashboard Admin — PRASASTI'),
+        actions: [
+          IconButton(
+            tooltip: 'Logout',
+            icon: const Icon(Icons.logout),
+            onPressed: () => _confirmAndLogout(context),
+          ),
+        ],
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
