@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 class QrDisplayView extends StatelessWidget {
-  final String memberId;
-
-  const QrDisplayView({super.key, required this.memberId});
+  final String nim;
+  const QrDisplayView({super.key, required this.nim});
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +32,7 @@ class QrDisplayView extends StatelessWidget {
                   maxScale: 4.0,
                   child: Center(
                     child: QrImageView(
-                      data: memberId,
+                      data: nim,
                       version: QrVersions.auto,
                       size: 300.0,
                       gapless: false,
@@ -44,7 +43,7 @@ class QrDisplayView extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               Text(
-                'ID: $memberId',
+                'ID: $nim',
                 style: const TextStyle(color: Colors.grey),
               ),
               const SizedBox(height: 50),

@@ -16,34 +16,32 @@ class MemberModelAdapter extends TypeAdapter<MemberModel> {
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
+    final nim = (fields[0] ?? fields[2] ?? '').toString();
     return MemberModel(
-      memberId: fields[0] as String,
-      nama: fields[1] as String,
-      nim: fields[2] as String,
-      divisi: fields[3] as String,
-      role: fields[4] as String,
-      password: fields[5] as String,
-      qrData: fields[6] as String,
+      nim: nim,
+      nama: (fields[1] ?? '').toString(),
+      divisi: (fields[2] ?? fields[3] ?? '').toString(),
+      role: (fields[3] ?? fields[4] ?? '').toString(),
+      password: (fields[4] ?? fields[5] ?? '').toString(),
+      qrData: (fields[5] ?? fields[6] ?? '').toString(),
     );
   }
 
   @override
   void write(BinaryWriter writer, MemberModel obj) {
     writer
-      ..writeByte(7)
+      ..writeByte(6)
       ..writeByte(0)
-      ..write(obj.memberId)
+      ..write(obj.nim)
       ..writeByte(1)
       ..write(obj.nama)
       ..writeByte(2)
-      ..write(obj.nim)
-      ..writeByte(3)
       ..write(obj.divisi)
-      ..writeByte(4)
+      ..writeByte(3)
       ..write(obj.role)
-      ..writeByte(5)
+      ..writeByte(4)
       ..write(obj.password)
-      ..writeByte(6)
+      ..writeByte(5)
       ..write(obj.qrData);
   }
 
