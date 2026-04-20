@@ -90,8 +90,36 @@ Future<void> seedDefaultAdminIfNeeded() async {
       'updatedAt': nowIso,
     };
 
+    final seederOrgaizer = <String, dynamic>{
+      'memberId': memberId,
+      'nama': AppConstants.defaultOrganizerName,
+      'nim': AppConstants.defaultOrganizerNim,
+      'divisi': AppConstants.defaultOrganizerDivision,
+      'role': AppConstants.roleOrganizer,
+      'password': _hashPassword(AppConstants.defaultOrganizerPassword),
+      'qrData': QrService.generateQrData(memberId),
+      'isSynced': false,
+      'createdAt': nowIso,
+      'updatedAt': nowIso,
+    };
+
+    final seederManager = <String, dynamic>{
+      'memberId': memberId,
+      'nama': AppConstants.defaultManagerName,
+      'nim': AppConstants.defaultManagerNim,
+      'divisi': AppConstants.defaultManagerDivision,
+      'role': AppConstants.roleManager,
+      'password': _hashPassword(AppConstants.defaultManagerPassword),
+      'qrData': QrService.generateQrData(memberId),
+      'isSynced': false,
+      'createdAt': nowIso,
+      'updatedAt': nowIso,
+    };
+
     await HiveService.members.put(memberId, _memberFromMap(seededAdmin));
     await HiveService.members.put(memberId, _memberFromMap(seededMember));
+    await HiveService.members.put(memberId, _memberFromMap(seederOrgaizer));
+    await HiveService.members.put(memberId, _memberFromMap(seederManager));
 
     debugPrint(
       '[Auth][seed] default admin created nim=${AppConstants.defaultAdminNim}',
