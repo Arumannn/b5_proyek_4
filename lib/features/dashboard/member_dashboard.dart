@@ -12,7 +12,7 @@ class MemberDashboard extends StatelessWidget {
   const MemberDashboard({super.key});
 
   static const String _dummyMemberId = 'MEMBER-PRASASTI-001';
-  static const String _dummyNama = 'Budi Santoso';
+  static const String _dummyNama = 'Budi Santosoo';
   static const String _dummyNim = '2310112345';
   static const String _dummyDivisi = 'Pengembangan Aplikasi';
 
