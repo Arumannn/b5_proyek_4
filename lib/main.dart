@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'core/constants/app_constants.dart';
+import 'features/auth/auth_controller.dart';
+import 'features/auth/login_view.dart';
 import 'core/services/hive_service.dart';
 import 'core/services/mongo_service.dart';
 import 'core/utils/network_status_controller.dart';
@@ -30,6 +32,10 @@ Future<void> main() async {
   // ── Step 4: Start network monitoring ──────────────────────────
   await NetworkStatusController.instance.startListening();
   debugPrint('✅ Step 4: NetworkStatusController started');
+
+  // ── Step 5: Seed default admin (first run only) ───────────────
+  await AuthController.instance.initializeAuth();
+  debugPrint('✅ Step 5: Auth seeding initialized');
 
   debugPrint('🚀 PRASASTI App starting...');
   runApp(const PRASASTIApp());
@@ -74,7 +80,7 @@ class PRASASTIApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const _Week7SetupVerifier(),
+      home: const LoginView(),
     );
   }
 }
