@@ -3,79 +3,112 @@ import '../core/constants/app_constants.dart';
 
 part 'event_model.g.dart';
 
-/// Model data untuk event/kegiatan organisasi PRASASTI.
-///
-/// ALUR DATA:
-/// - Dibuat oleh Admin → disimpan ke Hive lokal (isSynced = false)
-/// - SyncManager otomatis upload ke MongoDB Atlas saat online (isSynced = true)
-@HiveType(typeId: AppConstants.eventTypeId) // typeId: 1
+@HiveType(typeId: AppConstants.eventTypeId)
 class EventModel extends HiveObject {
   @HiveField(0)
-  final String eventId; // UUID unik
+  final String eventId;
 
   @HiveField(1)
-  final String nama; // Nama event, contoh: "Rapat Bulanan Desember"
+  final String? parentEventId; // null = Main Event, ada = Sub-Event
 
   @HiveField(2)
-  final String jenis; // Gunakan AppConstants.eventTypes: 'Rapat','Acara','Kegiatan','Lainnya'
+  final String nama;
 
   @HiveField(3)
+  final String jenis;
+
+  @HiveField(4)
   final DateTime tanggal;
-  final String createdBy; // memberId Admin yang membuat event
-  final String? parentEventId; // null = event utama, non-null = sub event
-  bool isSynced; // false = belum diupload ke MongoDB Atlas
+
+  @HiveField(5)
+  final String? deskripsi;
+
+  @HiveField(6)
+  final List<String> targetPeserta;
+
+  @HiveField(7)
+  final String createdBy;
+
+  @HiveField(8)
+  bool isSynced;
+
+  @HiveField(9)
+  final DateTime createdAt;
 
   EventModel({
     required this.eventId,
+    this.parentEventId,
     required this.nama,
     required this.jenis,
     required this.tanggal,
+    this.deskripsi,
+    List<String>? targetPeserta,
     required this.createdBy,
-    this.parentEventId,
     this.isSynced = false,
-  });
+    DateTime? createdAt,
+  })  : targetPeserta = targetPeserta ?? [],
+        createdAt = createdAt ?? DateTime.now();
 
   Map<String, dynamic> toMap() {
     return {
       'eventId': eventId,
+      'parentEventId': parentEventId,
       'nama': nama,
       'jenis': jenis,
       'tanggal': tanggal.toIso8601String(),
+      'deskripsi': deskripsi,
+      'targetPeserta': targetPeserta,
       'createdBy': createdBy,
-      'parentEventId': parentEventId,
       'isSynced': isSynced,
+      'createdAt': createdAt.toIso8601String(),
     };
   }
 
   factory EventModel.fromMap(Map<dynamic, dynamic> map) {
+    List<String> parsePeserta(dynamic raw) {
+      if (raw is List) return raw.map((e) => e.toString()).toList();
+      return [];
+    }
+
     return EventModel(
       eventId: (map['eventId'] ?? '').toString(),
+      parentEventId: map['parentEventId']?.toString(),
       nama: (map['nama'] ?? '').toString(),
       jenis: (map['jenis'] ?? 'Kegiatan').toString(),
-      tanggal: DateTime.tryParse((map['tanggal'] ?? '').toString()) ?? DateTime.now(),
+      tanggal: DateTime.tryParse((map['tanggal'] ?? '').toString()) ??
+          DateTime.now(),
+      deskripsi: map['deskripsi']?.toString(),
+      targetPeserta: parsePeserta(map['targetPeserta']),
       createdBy: (map['createdBy'] ?? 'system').toString(),
-      parentEventId: map['parentEventId']?.toString(),
       isSynced: map['isSynced'] == true,
+      createdAt: DateTime.tryParse((map['createdAt'] ?? '').toString()) ??
+          DateTime.now(),
     );
   }
 
   EventModel copyWith({
     String? eventId,
+    String? parentEventId,
     String? nama,
     String? jenis,
     DateTime? tanggal,
+    String? deskripsi,
+    List<String>? targetPeserta,
     String? createdBy,
-    String? parentEventId,
     bool? isSynced,
+    DateTime? createdAt,
   }) {
     return EventModel(
       eventId: eventId ?? this.eventId,
+      parentEventId: parentEventId ?? this.parentEventId,
       nama: nama ?? this.nama,
       jenis: jenis ?? this.jenis,
       tanggal: tanggal ?? this.tanggal,
+      deskripsi: deskripsi ?? this.deskripsi,
+      targetPeserta: targetPeserta ?? this.targetPeserta,
       createdBy: createdBy ?? this.createdBy,
-      parentEventId: parentEventId ?? this.parentEventId,
       isSynced: isSynced ?? this.isSynced,
+      createdAt: createdAt ?? this.createdAt,
     );
   }
 }
