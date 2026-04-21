@@ -25,6 +25,17 @@ class EventModel extends HiveObject {
   final String? parentEventId; // null = event utama, non-null = sub event
   bool isSynced; // false = belum diupload ke MongoDB Atlas
 
+  // TAMBAH 3 FIELD INI setelah field yang ada:
+  @HiveField(6)
+  final String? deskripsi; // Deskripsi detail event (opsional)
+
+  @HiveField(7)
+  final List<String>? targetPeserta; // List divisi target ['Core', 'UI/UX', dll]
+
+  @HiveField(8)
+  final DateTime createdAt; // Timestamp pembuatan event
+
+  // UPDATE CONSTRUCTOR:
   EventModel({
     required this.eventId,
     required this.nama,
@@ -33,8 +44,12 @@ class EventModel extends HiveObject {
     required this.createdBy,
     this.parentEventId,
     this.isSynced = false,
+    this.deskripsi,          // ← TAMBAH
+    this.targetPeserta,      // ← TAMBAH
+    required this.createdAt, // ← TAMBAH (buat required)
   });
 
+  // UPDATE toMap():
   Map<String, dynamic> toMap() {
     return {
       'eventId': eventId,
@@ -44,9 +59,13 @@ class EventModel extends HiveObject {
       'createdBy': createdBy,
       'parentEventId': parentEventId,
       'isSynced': isSynced,
+      'deskripsi': deskripsi,                         // ← TAMBAH
+      'targetPeserta': targetPeserta,                 // ← TAMBAH
+      'createdAt': createdAt.toIso8601String(),       // ← TAMBAH
     };
   }
 
+  // UPDATE fromMap():
   factory EventModel.fromMap(Map<dynamic, dynamic> map) {
     return EventModel(
       eventId: (map['eventId'] ?? '').toString(),
@@ -56,9 +75,17 @@ class EventModel extends HiveObject {
       createdBy: (map['createdBy'] ?? 'system').toString(),
       parentEventId: map['parentEventId']?.toString(),
       isSynced: map['isSynced'] == true,
+      deskripsi: map['deskripsi']?.toString(),        // ← TAMBAH
+      targetPeserta: (map['targetPeserta'] as List?)  // ← TAMBAH
+          ?.map((e) => e.toString())
+          .toList(),
+      createdAt: DateTime.tryParse(                   // ← TAMBAH
+          (map['createdAt'] ?? '').toString()) ?? 
+          DateTime.now(),
     );
   }
 
+  // UPDATE copyWith():
   EventModel copyWith({
     String? eventId,
     String? nama,
@@ -67,6 +94,9 @@ class EventModel extends HiveObject {
     String? createdBy,
     String? parentEventId,
     bool? isSynced,
+    String? deskripsi,           // ← TAMBAH
+    List<String>? targetPeserta, // ← TAMBAH
+    DateTime? createdAt,         // ← TAMBAH
   }) {
     return EventModel(
       eventId: eventId ?? this.eventId,
@@ -76,6 +106,9 @@ class EventModel extends HiveObject {
       createdBy: createdBy ?? this.createdBy,
       parentEventId: parentEventId ?? this.parentEventId,
       isSynced: isSynced ?? this.isSynced,
+      deskripsi: deskripsi ?? this.deskripsi,                    // ← TAMBAH
+      targetPeserta: targetPeserta ?? this.targetPeserta,        // ← TAMBAH
+      createdAt: createdAt ?? this.createdAt,                    // ← TAMBAH
     );
   }
 }

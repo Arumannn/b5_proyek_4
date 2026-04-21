@@ -29,6 +29,13 @@ class MemberModel extends HiveObject {
   @HiveField(5)
   final String qrData; // Format: "PRASASTI:{nim}"
 
+  @HiveField(6)
+  final String memberId; // UUID unik sebagai primary key
+
+  @HiveField(7)
+  String? fcmToken; // FCM token untuk push notification
+
+  // UPDATE CONSTRUCTOR:
   MemberModel({
     required this.nim,
     required this.nama,
@@ -36,10 +43,11 @@ class MemberModel extends HiveObject {
     required this.role,
     required this.password,
     required this.qrData,
+    required this.memberId,  // ← TAMBAH
+    this.fcmToken,           // ← TAMBAH
   });
 
-  // ─── Konversi ke Map untuk MongoDB Atlas ────────────────────
-  // PENTING: password TIDAK dimasukkan — hanya disimpan lokal di Hive.
+  // UPDATE toMap():
   Map<String, dynamic> toMap() {
     return {
       'nama': nama,
@@ -47,24 +55,26 @@ class MemberModel extends HiveObject {
       'divisi': divisi,
       'role': role,
       'qrData': qrData,
+      'memberId': memberId,    // ← TAMBAH
+      'fcmToken': fcmToken,    // ← TAMBAH
     };
   }
 
-  // ─── Parse dari response MongoDB Atlas ──────────────────────
-  // Digunakan saat fallback login dari cloud (Week 8 Auth).
-  // Password dari cloud tidak ada — gunakan string kosong sebagai placeholder.
+  // UPDATE fromMap():
   factory MemberModel.fromMap(Map<String, dynamic> map) {
     return MemberModel(
       nim: map['nim']?.toString() ?? '',
       nama: map['nama']?.toString() ?? '',
       divisi: map['divisi']?.toString() ?? '',
       role: map['role']?.toString() ?? AppConstants.roleMember,
-      password: map['password']?.toString() ?? '', // Kosong jika dari cloud
+      password: map['password']?.toString() ?? '',
       qrData: map['qrData']?.toString() ?? '',
+      memberId: map['memberId']?.toString() ?? '',      // ← TAMBAH
+      fcmToken: map['fcmToken']?.toString(),            // ← TAMBAH
     );
   }
 
-  // ─── CopyWith (berguna saat update data member) ──────────────
+  // UPDATE copyWith():
   MemberModel copyWith({
     String? nim,
     String? nama,
@@ -72,6 +82,8 @@ class MemberModel extends HiveObject {
     String? role,
     String? password,
     String? qrData,
+    String? memberId,    // ← TAMBAH
+    String? fcmToken,    // ← TAMBAH
   }) {
     return MemberModel(
       nim: nim ?? this.nim,
@@ -80,6 +92,8 @@ class MemberModel extends HiveObject {
       role: role ?? this.role,
       password: password ?? this.password,
       qrData: qrData ?? this.qrData,
+      memberId: memberId ?? this.memberId,        // ← TAMBAH
+      fcmToken: fcmToken ?? this.fcmToken,        // ← TAMBAH
     );
   }
 
