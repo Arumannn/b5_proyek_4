@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'attendance_controller.dart';
+
 
 // TODO: Jangan lupa sesuaikan path import ini jika sudah ada controller aslinya
 // import 'package:b5_proyek_4/features/attendance/attendance_controller.dart';
@@ -70,13 +72,33 @@ class _ScanScreenState extends State<ScanScreen> {
       }
       */
 
-      // -- DUMMY LOGIC (Hapus blok ini jika Controller asli sudah siap) --
-      if (qrData.contains('UUID')) {
-        _showSnackbar('Berhasil: Hadir ($qrData)', Colors.green);
-      } else {
-        _showSnackbar('QR Tidak Valid / Bukan Member', Colors.red);
+      final result = await AttendanceController.instance.recordAttendance(
+        eventId: widget.eventId,
+        scannedQrValue: qrData,
+      );
+
+      switch (result) {
+        case AttendanceResult.successHadir:
+          final nama = AttendanceController.instance.lastScannedName.value ?? '';
+          _showSnackbar('✅ Hadir: $nama', Colors.green);
+          break;
+        case AttendanceResult.successTerlambat:
+          final nama = AttendanceController.instance.lastScannedName.value ?? '';
+          _showSnackbar('⚠️ Terlambat: $nama', Colors.orange);
+          break;
+        case AttendanceResult.duplicate:
+          _showSnackbar('❌ Sudah absen sebelumnya!', Colors.red);
+          break;
+        case AttendanceResult.memberNotFound:
+          _showSnackbar('❌ QR tidak dikenal / bukan anggota', Colors.red);
+          break;
+        case AttendanceResult.eventNotFound:
+          _showSnackbar('❌ Event tidak ditemukan', Colors.red);
+          break;
+        case AttendanceResult.error:
+          _showSnackbar('❌ Terjadi kesalahan, coba lagi', Colors.red);
+          break;
       }
-      // -----------------------------------------------------------------
 
     } catch (e) {
       _showSnackbar('Terjadi kesalahan: $e', Colors.red);
