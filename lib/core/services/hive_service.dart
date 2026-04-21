@@ -4,7 +4,6 @@ import '../constants/app_constants.dart';
 import '../../models/member_model.dart';
 import '../../models/event_model.dart';
 import '../../models/attendance_record.dart';
-import '../../models/permission_record.dart';
 
 /// Service untuk inisialisasi dan manajemen Hive local database.
 ///
@@ -31,13 +30,11 @@ class HiveService {
     Hive.registerAdapter(MemberModelAdapter());      // typeId: 0
     Hive.registerAdapter(EventModelAdapter());        // typeId: 1
     Hive.registerAdapter(AttendanceRecordAdapter()); // typeId: 2
-    Hive.registerAdapter(PermissionRecordAdapter());   // typeId: 3
 
     // ── Buka semua box dengan tipe yang tepat ────────────────────
     await Hive.openBox<MemberModel>(AppConstants.memberBox);
     await Hive.openBox<EventModel>(AppConstants.eventBox);
     await Hive.openBox<AttendanceRecord>(AppConstants.attendanceBox);
-    await Hive.openBox<PermissionRecord>('permission_box');
 
     _initialized = true;
     debugPrint('✅ HiveService initialized');
@@ -63,11 +60,6 @@ class HiveService {
     _assertInitialized();
     return Hive.box<AttendanceRecord>(AppConstants.attendanceBox);
   }
-
-  static Box<PermissionRecord> get permissions {
-  _assertInitialized();
-  return Hive.box<PermissionRecord>('permission_box');
-}
 
   // ─── Utility ─────────────────────────────────────────────────
   static void _assertInitialized() {

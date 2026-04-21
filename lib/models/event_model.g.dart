@@ -21,16 +21,15 @@ class EventModelAdapter extends TypeAdapter<EventModel> {
       nama: fields[1] as String,
       jenis: fields[2] as String,
       tanggal: fields[3] as DateTime,
-      deskripsi: fields[6] as String?,
-      targetPeserta: (fields[7] as List?)?.cast<String>(),
-      createdAt: fields[8] as DateTime,
+      createdBy: fields[4] as String,
+      isSynced: fields[5] as bool,
     );
   }
 
   @override
   void write(BinaryWriter writer, EventModel obj) {
     writer
-      ..writeByte(7)
+      ..writeByte(6)
       ..writeByte(0)
       ..write(obj.eventId)
       ..writeByte(1)
@@ -39,12 +38,10 @@ class EventModelAdapter extends TypeAdapter<EventModel> {
       ..write(obj.jenis)
       ..writeByte(3)
       ..write(obj.tanggal)
-      ..writeByte(6)
-      ..write(obj.deskripsi)
-      ..writeByte(7)
-      ..write(obj.targetPeserta)
-      ..writeByte(8)
-      ..write(obj.createdAt);
+      ..writeByte(4)
+      ..write(obj.createdBy)
+      ..writeByte(5)
+      ..write(obj.isSynced);
   }
 
   @override

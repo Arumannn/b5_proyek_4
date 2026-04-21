@@ -38,20 +38,6 @@ class AttendanceRecord extends HiveObject {
   @HiveField(5)
   final String compositeKey;
 
-  // TAMBAH 4 FIELD INI:
-  @HiveField(6)
-  final String memberId; // NIM atau memberId member yang absen
-
-  @HiveField(7)
-  String status; // 'hadir', 'terlambat', 'izin', 'sakit', 'alpha'
-
-  @HiveField(8)
-  bool isManualOverride; // true = admin ubah manual status
-
-  @HiveField(9)
-  final String? overrideBy; // memberId admin yang override (null jika scan biasa)
-
-  // UPDATE CONSTRUCTOR:
   AttendanceRecord({
     required this.recordId,
     required this.eventId,
@@ -59,18 +45,15 @@ class AttendanceRecord extends HiveObject {
     required this.timestamp,
     this.isSynced = false,
     required this.compositeKey,
-    required this.memberId,           // ← TAMBAH
-    this.status = 'hadir',            // ← TAMBAH (default hadir)
-    this.isManualOverride = false,    // ← TAMBAH (default false)
-    this.overrideBy,                  // ← TAMBAH
   });
 
-  // UPDATE factory create():
+  // ─── Factory constructor (cara standar membuat record baru) ──
+  /// Buat AttendanceRecord baru dari hasil scan QR.
+  /// compositeKey di-generate otomatis dari eventId + nim.
   factory AttendanceRecord.create({
     required String recordId,
     required String eventId,
     required String nim,
-    String status = 'hadir',          // ← TAMBAH parameter
   }) {
     return AttendanceRecord(
       recordId: recordId,
@@ -79,43 +62,6 @@ class AttendanceRecord extends HiveObject {
       timestamp: DateTime.now(),
       isSynced: false,
       compositeKey: '${eventId}_$nim',
-      memberId: nim,                  // ← TAMBAH (sama dengan nim)
-      status: status,                 // ← TAMBAH
-      isManualOverride: false,        // ← TAMBAH
-    );
-  }
-
-  // UPDATE toMap():
-  Map<String, dynamic> toMap() {
-    return {
-      'recordId': recordId,
-      'eventId': eventId,
-      'nim': nim,
-      'timestamp': timestamp.toIso8601String(),
-      'compositeKey': compositeKey,
-      'memberId': memberId,                       // ← TAMBAH
-      'status': status,                           // ← TAMBAH
-      'isManualOverride': isManualOverride,       // ← TAMBAH
-      'overrideBy': overrideBy,                   // ← TAMBAH
-    };
-  }
-
-  // UPDATE fromMap():
-  factory AttendanceRecord.fromMap(Map<String, dynamic> map) {
-    return AttendanceRecord(
-      recordId: map['recordId']?.toString() ?? '',
-      eventId: map['eventId']?.toString() ?? '',
-      nim: map['nim']?.toString() ?? '',
-      timestamp: map['timestamp'] != null
-          ? DateTime.parse(map['timestamp'].toString())
-          : DateTime.now(),
-      isSynced: true,
-      compositeKey: map['compositeKey']?.toString() ??
-          '${map['eventId']}_${map['nim']}',
-      memberId: map['memberId']?.toString() ?? '',              // ← TAMBAH
-      status: map['status']?.toString() ?? 'hadir',             // ← TAMBAH
-      isManualOverride: map['isManualOverride'] == true,        // ← TAMBAH
-      overrideBy: map['overrideBy']?.toString(),                // ← TAMBAH
     );
   }
 

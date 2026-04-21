@@ -23,17 +23,13 @@ class AttendanceRecordAdapter extends TypeAdapter<AttendanceRecord> {
       timestamp: fields[3] as DateTime,
       isSynced: fields[4] as bool,
       compositeKey: fields[5] as String,
-      memberId: fields[6] as String,
-      status: fields[7] as String,
-      isManualOverride: fields[8] as bool,
-      overrideBy: fields[9] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, AttendanceRecord obj) {
     writer
-      ..writeByte(10)
+      ..writeByte(6)
       ..writeByte(0)
       ..write(obj.recordId)
       ..writeByte(1)
@@ -45,15 +41,7 @@ class AttendanceRecordAdapter extends TypeAdapter<AttendanceRecord> {
       ..writeByte(4)
       ..write(obj.isSynced)
       ..writeByte(5)
-      ..write(obj.compositeKey)
-      ..writeByte(6)
-      ..write(obj.memberId)
-      ..writeByte(7)
-      ..write(obj.status)
-      ..writeByte(8)
-      ..write(obj.isManualOverride)
-      ..writeByte(9)
-      ..write(obj.overrideBy);
+      ..write(obj.compositeKey);
   }
 
   @override

@@ -358,27 +358,6 @@ Future<void> seedDefaultAccount() async {
       currentUser.value = _memberFromMap(userDoc);
       debugPrint('[Auth][login] success role=${currentUser.value?.role}');
 
-      try {
-        final fcmToken = await FcmService.instance.getFcmToken();
-        if (fcmToken != null && fcmToken.isNotEmpty) {
-          final updatedUser = userDoc;
-          updatedUser['fcmToken'] = fcmToken;
-          
-          final nimStorageKey = (updatedUser['nim'] ?? normalizedNim).toString().trim();
-          final storageKey = nimStorageKey.isNotEmpty ? nimStorageKey : normalizedNim;
-          await HiveService.members.put(storageKey, _memberFromMap(updatedUser));
-          
-          // Background sync FCM token to cloud
-          unawaited(_syncUpsertUserInBackground(nim: storageKey, userDoc: updatedUser));
-          
-          debugPrint('[Auth][login] FCM token updated: ${fcmToken.substring(0, 20)}...');
-        }
-      } catch (e) {
-        debugPrint('[Auth][login] FCM token update failed (non-critical): $e');
-      }
-
-      currentUser.value = _memberFromMap(userDoc);
-
       _navigateByRole(context, currentUser.value?.role ?? '');
       return true;
     } catch (e, st) {
