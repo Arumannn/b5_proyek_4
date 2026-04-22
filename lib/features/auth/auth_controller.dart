@@ -321,6 +321,9 @@ Future<void> seedDefaultAccount() async {
     errorMessage.value = null;
 
     try {
+      // Pastikan akun default selalu tersedia dan data login lokal ter-repair.
+      await seedDefaultAccount();
+
       final normalizedNim = nim.trim();
       debugPrint('[Auth][login] start nim=$normalizedNim');
 
@@ -715,15 +718,16 @@ Future<void> seedDefaultAccount() async {
 
   String _hashPassword(String password) {
     // FNV-1a 64-bit style hashing + app pepper untuk menghindari plain text.
-    const int offsetBasis = 0xcbf29ce484222325;
-    const int prime = 0x100000001b3;
+    final offsetBasis = BigInt.parse('cbf29ce484222325', radix: 16);
+    final prime = BigInt.parse('100000001b3', radix: 16);
+    final mask64 = BigInt.parse('ffffffffffffffff', radix: 16);
     const String pepper = 'PRASASTI_AUTH_V1';
 
-    int hash = offsetBasis;
+    BigInt hash = offsetBasis;
     final bytes = utf8.encode('$pepper:$password');
     for (final b in bytes) {
-      hash ^= b;
-      hash = (hash * prime) & 0xFFFFFFFFFFFFFFFF;
+      hash = (hash ^ BigInt.from(b));
+      hash = (hash * prime) & mask64;
     }
 
     return 'h1:${hash.toRadixString(16).padLeft(16, '0')}';

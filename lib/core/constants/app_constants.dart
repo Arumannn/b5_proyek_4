@@ -50,7 +50,7 @@ class AppConstants {
   ];
 
   // ─── Default Admin Seeding ───────────────────────
-  static const String defaultAdminNim = '241511038';
+  static const String defaultAdminNim = '8';
   static const String defaultAdminPassword = 'admin123';
   static const String defaultAdminName = 'Admin Utama';
   static const String defaultAdminDivision = 'Core';
