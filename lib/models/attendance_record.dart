@@ -3,97 +3,97 @@ import '../core/constants/app_constants.dart';
 
 part 'attendance_record.g.dart';
 
-/// Model untuk record absensi anggota di sebuah event.
-///
-/// KUNCI ANTI-DUPLIKASI — [compositeKey]:
-/// - Format: '${eventId}_${nim}'
-/// - Dijadikan unique index di MongoDB Atlas (setup di Week 11)
-/// - Dicek di Hive lokal SEBELUM menyimpan untuk cegah double scan
-/// - Jika dua perangkat scan anggota yang sama secara offline,
-///   SyncManager akan handle gracefully saat sync (error 11000 = duplikat)
-///
-/// ALUR STATUS:
-///   Scan QR → isSynced=false (simpan ke Hive)
-///   → Internet tersedia → SyncManager upload → isSynced=true
-@HiveType(typeId: AppConstants.attendanceTypeId) // typeId: 2
+@HiveType(typeId: AppConstants.attendanceTypeId)
 class AttendanceRecord extends HiveObject {
   @HiveField(0)
-  final String recordId; // UUID unik per record
+  final String recordId;
 
   @HiveField(1)
   final String eventId;
 
   @HiveField(2)
-  final String nim;
+  final String memberId; // memberId (= nim) anggota
 
   @HiveField(3)
-  final DateTime timestamp; // Waktu scan dilakukan
+  final DateTime timestamp;
 
   @HiveField(4)
-  bool isSynced; // false = pending upload ke cloud
+  String status; // 'Hadir', 'Terlambat', 'Izin', 'Sakit', 'Alpha'
 
-  /// Composite key = '${eventId}_${nim}'
-  /// WAJIB unik per kombinasi event-member.
-  /// Dijadikan unique index di MongoDB Atlas untuk anti-duplikasi multi-perangkat.
   @HiveField(5)
-  final String compositeKey;
+  bool isManualOverride; // true jika diubah paksa Admin/Manager
+
+  @HiveField(6)
+  String? overrideBy; // memberId yang melakukan override
+
+  @HiveField(7)
+  bool isSynced;
+
+  @HiveField(8)
+  final String compositeKey; // '${eventId}_${memberId}' — ANTI-DUPLIKAT
 
   AttendanceRecord({
     required this.recordId,
     required this.eventId,
-    required this.nim,
+    required this.memberId,
     required this.timestamp,
+    this.status = 'Hadir',
+    this.isManualOverride = false,
+    this.overrideBy,
     this.isSynced = false,
     required this.compositeKey,
   });
 
-  // ─── Factory constructor (cara standar membuat record baru) ──
-  /// Buat AttendanceRecord baru dari hasil scan QR.
-  /// compositeKey di-generate otomatis dari eventId + nim.
   factory AttendanceRecord.create({
     required String recordId,
     required String eventId,
-    required String nim,
+    required String memberId,
+    String status = 'Hadir',
   }) {
     return AttendanceRecord(
       recordId: recordId,
       eventId: eventId,
-      nim: nim,
+      memberId: memberId,
       timestamp: DateTime.now(),
+      status: status,
+      isManualOverride: false,
       isSynced: false,
-      compositeKey: '${eventId}_$nim',
+      compositeKey: '${eventId}_$memberId',
     );
   }
 
-  // ─── Konversi ke Map untuk MongoDB Atlas ────────────────────
   Map<String, dynamic> toMap() {
     return {
       'recordId': recordId,
       'eventId': eventId,
-      'nim': nim,
+      'memberId': memberId,
       'timestamp': timestamp.toIso8601String(),
-      'compositeKey': compositeKey, // Dipakai untuk unique index di Atlas
+      'status': status,
+      'isManualOverride': isManualOverride,
+      'overrideBy': overrideBy,
+      'compositeKey': compositeKey,
     };
   }
 
-  // ─── Parse dari response MongoDB Atlas ──────────────────────
   factory AttendanceRecord.fromMap(Map<String, dynamic> map) {
     return AttendanceRecord(
       recordId: map['recordId']?.toString() ?? '',
       eventId: map['eventId']?.toString() ?? '',
-        nim: map['nim']?.toString() ?? '',
+      memberId: map['memberId']?.toString() ?? map['nim']?.toString() ?? '',
       timestamp: map['timestamp'] != null
           ? DateTime.parse(map['timestamp'].toString())
           : DateTime.now(),
+      status: map['status']?.toString() ?? 'Hadir',
+      isManualOverride: map['isManualOverride'] == true,
+      overrideBy: map['overrideBy']?.toString(),
       isSynced: true,
       compositeKey: map['compositeKey']?.toString() ??
-          '${map['eventId']}_${map['nim']}',
+          '${map['eventId']}_${map['memberId'] ?? map['nim']}',
     );
   }
 
   @override
-  String toString() {
-    return 'AttendanceRecord(recordId: $recordId, eventId: $eventId, '
-        'nim: $nim, isSynced: $isSynced, compositeKey: $compositeKey)';
-  }
+  String toString() =>
+      'AttendanceRecord(recordId: $recordId, memberId: $memberId, '
+      'status: $status, compositeKey: $compositeKey)';
 }

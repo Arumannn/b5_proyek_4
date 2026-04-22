@@ -85,7 +85,8 @@ Future<void> seedDefaultAccount() async {
         'divisi': divisi,
         'role': role,
         'password': hashedDefaultPassword,
-        'qrData': QrService.generateQrData(normalizedNim),
+        'qrCodeValue': QrService.generateQrData(normalizedNim),
+        'memberId': normalizedNim,
         'isSynced': false,
         'createdAt': (existing?['createdAt'] ?? nowIso).toString(),
         'updatedAt': nowIso,
@@ -176,7 +177,8 @@ Future<void> seedDefaultAccount() async {
         'divisi': divisi.trim(),
         'role': normalizedRole,
         'password': _hashPassword(password),
-        'qrData': QrService.generateQrData(normalizedNim),
+        'qrCodeValue': QrService.generateQrData(normalizedNim),
+        'memberId': normalizedNim,
         'isSynced': false,
         'createdAt': nowIso,
         'updatedAt': nowIso,
@@ -622,12 +624,12 @@ Future<void> seedDefaultAccount() async {
 
   Map<String, dynamic> _toCloudPayload(Map<String, dynamic> doc) {
     return <String, dynamic>{
+      'memberId': doc['memberId'] ?? doc['nim'],
       'nama': doc['nama'],
       'nim': doc['nim'],
       'divisi': doc['divisi'],
       'role': doc['role'],
-      'password': doc['password'],
-      'qrData': doc['qrData'],
+      'qrCodeValue': doc['qrCodeValue'] ?? doc['qrData'],
       'createdAt': doc['createdAt'],
       'updatedAt': doc['updatedAt'],
     };
@@ -657,38 +659,36 @@ Future<void> seedDefaultAccount() async {
   }
 
   MemberModel _memberFromMap(Map<String, dynamic> doc) {
+    final nim = (doc['nim'] ?? '').toString().trim();
     return MemberModel(
-      nim: (doc['nim'] ?? '').toString(),
+      memberId: (doc['memberId'] ?? nim).toString().trim(),
+      nim: nim,
       nama: (doc['nama'] ?? '').toString(),
       divisi: (doc['divisi'] ?? '').toString(),
       role: _normalizeRole((doc['role'] ?? AppConstants.roleMember).toString()),
       password: (doc['password'] ?? '').toString(),
-      qrData: (doc['qrData'] ?? '').toString(),
+      qrCodeValue: (doc['qrCodeValue'] ?? doc['qrData'] ?? '').toString(),
+      fcmToken: doc['fcmToken']?.toString(),
     );
   }
 
+
   Map<String, dynamic>? _toMap(dynamic raw) {
     if (raw == null) return null;
-
-    if (raw is Map<String, dynamic>) {
-      return Map<String, dynamic>.from(raw);
-    }
-    if (raw is Map) {
-      return raw.map(
-        (key, value) => MapEntry(key.toString(), value),
-      );
-    }
+    if (raw is Map<String, dynamic>) return Map<String, dynamic>.from(raw);
+    if (raw is Map) return raw.map((k, v) => MapEntry(k.toString(), v));
     if (raw is MemberModel) {
       return <String, dynamic>{
+        'memberId': raw.memberId,
         'nama': raw.nama,
         'nim': raw.nim,
         'divisi': raw.divisi,
         'role': raw.role,
         'password': raw.password,
-        'qrData': raw.qrData,
+        'qrCodeValue': raw.qrCodeValue,
+        'fcmToken': raw.fcmToken,
       };
     }
-
     return null;
   }
 
@@ -760,6 +760,36 @@ Future<void> seedDefaultAccount() async {
   Future<bool> _isOnline() async {
     final connectivityResult = await Connectivity().checkConnectivity();
     return connectivityResult.any((r) => r != ConnectivityResult.none);
+  }
+
+  /// Verifikasi credentials tanpa navigasi — HANYA untuk unit test
+  Future<bool> verifyCredentials({
+    required String nim,
+    required String password,
+  }) async {
+    isLoading.value = true;
+    errorMessage.value = null;
+    try {
+      final normalizedNim = nim.trim();
+      final userDoc = _findLocalUserByNim(normalizedNim);
+      if (userDoc == null) {
+        errorMessage.value = 'Akun tidak ditemukan.';
+        return false;
+      }
+      userDoc['role'] = _normalizeRole((userDoc['role'] ?? '').toString());
+      final savedPassword = (userDoc['password'] ?? '').toString();
+      if (!_verifyPassword(password, savedPassword)) {
+        errorMessage.value = 'Password salah.';
+        return false;
+      }
+      currentUser.value = _memberFromMap(userDoc);
+      return true;
+    } catch (e) {
+      errorMessage.value = 'Verifikasi gagal.';
+      return false;
+    } finally {
+      isLoading.value = false;
+    }
   }
 
   void dispose() {

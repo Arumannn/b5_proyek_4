@@ -14,12 +14,14 @@ class AppConstants {
   static const String memberBox = 'member_box';
   static const String eventBox = 'event_box';
   static const String attendanceBox = 'attendance_box';
+  static const String permissionBox = 'permission_box';
 
   // ─── Hive TypeId Registry ────────────────────────
   // Setiap model Hive harus punya typeId unik. Jangan ubah nilai ini!
   static const int memberTypeId = 0;
   static const int eventTypeId = 1;
   static const int attendanceTypeId = 2;
+  static const int permissionTypeId = 3;
 
   // ─── MongoDB Collections ─────────────────────────
   static const String usersCollection = 'users';

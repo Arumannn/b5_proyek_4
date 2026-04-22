@@ -3,89 +3,95 @@ import '../core/constants/app_constants.dart';
 
 part 'member_model.g.dart';
 
-/// Model data untuk anggota organisasi PRASASTI.
-///
-/// ATURAN KEAMANAN:
-/// - Field [password] HANYA disimpan di Hive lokal — TIDAK pernah dikirim ke cloud.
-/// - Gunakan [toMap()] untuk sync ke MongoDB — password otomatis dikecualikan.
-/// - [qrData] adalah string yang di-encode ke QR Code, formatnya: "PRASASTI:{nim}"
-@HiveType(typeId: AppConstants.memberTypeId) // typeId: 0
+@HiveType(typeId: AppConstants.memberTypeId)
 class MemberModel extends HiveObject {
   @HiveField(0)
-  final String nim; // Identifier unik akun
+  final String memberId; // UUID unik (saat ini = nim)
 
   @HiveField(1)
   final String nama;
 
   @HiveField(2)
-  final String divisi;
+  final String nim;
 
   @HiveField(3)
-  final String role; // Gunakan AppConstants.roleAdmin atau AppConstants.roleMember
+  final String divisi;
 
   @HiveField(4)
-  final String password; // Disimpan lokal saja — TIDAK dikirim ke cloud
+  final String role;
 
   @HiveField(5)
-  final String qrData; // Format: "PRASASTI:{nim}"
+  final String password; // TIDAK dikirim ke cloud
+
+  @HiveField(6)
+  final String qrCodeValue; // nilai QR Code pada lanyard
+
+  @HiveField(7)
+  String? fcmToken; // token FCM perangkat aktif
 
   MemberModel({
-    required this.nim,
+    required this.memberId,
     required this.nama,
+    required this.nim,
     required this.divisi,
     required this.role,
     required this.password,
-    required this.qrData,
+    required this.qrCodeValue,
+    this.fcmToken,
   });
 
-  // ─── Konversi ke Map untuk MongoDB Atlas ────────────────────
-  // PENTING: password TIDAK dimasukkan — hanya disimpan lokal di Hive.
   Map<String, dynamic> toMap() {
     return {
+      'memberId': memberId,
       'nama': nama,
       'nim': nim,
       'divisi': divisi,
       'role': role,
-      'qrData': qrData,
+      'qrCodeValue': qrCodeValue,
+      'fcmToken': fcmToken,
+      // password TIDAK disertakan
     };
   }
 
-  // ─── Parse dari response MongoDB Atlas ──────────────────────
-  // Digunakan saat fallback login dari cloud (Week 8 Auth).
-  // Password dari cloud tidak ada — gunakan string kosong sebagai placeholder.
   factory MemberModel.fromMap(Map<String, dynamic> map) {
+    final nim = map['nim']?.toString() ?? '';
     return MemberModel(
-      nim: map['nim']?.toString() ?? '',
+      memberId: map['memberId']?.toString() ?? nim,
       nama: map['nama']?.toString() ?? '',
+      nim: nim,
       divisi: map['divisi']?.toString() ?? '',
       role: map['role']?.toString() ?? AppConstants.roleMember,
-      password: map['password']?.toString() ?? '', // Kosong jika dari cloud
-      qrData: map['qrData']?.toString() ?? '',
+      password: map['password']?.toString() ?? '',
+      // support nama field lama 'qrData' untuk backward compat
+      qrCodeValue: map['qrCodeValue']?.toString() ??
+          map['qrData']?.toString() ?? '',
+      fcmToken: map['fcmToken']?.toString(),
     );
   }
 
-  // ─── CopyWith (berguna saat update data member) ──────────────
   MemberModel copyWith({
-    String? nim,
+    String? memberId,
     String? nama,
+    String? nim,
     String? divisi,
     String? role,
     String? password,
-    String? qrData,
+    String? qrCodeValue,
+    String? fcmToken,
   }) {
     return MemberModel(
-      nim: nim ?? this.nim,
+      memberId: memberId ?? this.memberId,
       nama: nama ?? this.nama,
+      nim: nim ?? this.nim,
       divisi: divisi ?? this.divisi,
       role: role ?? this.role,
       password: password ?? this.password,
-      qrData: qrData ?? this.qrData,
+      qrCodeValue: qrCodeValue ?? this.qrCodeValue,
+      fcmToken: fcmToken ?? this.fcmToken,
     );
   }
 
   @override
-  String toString() {
-    return 'MemberModel(nim: $nim, nama: $nama, '
-        'divisi: $divisi, role: $role)';
-  }
+  String toString() =>
+      'MemberModel(memberId: $memberId, nim: $nim, nama: $nama, role: $role)';
 }
