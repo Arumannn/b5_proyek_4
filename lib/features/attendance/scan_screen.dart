@@ -3,6 +3,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'attendance_controller.dart';
 
 
+
 // TODO: Jangan lupa sesuaikan path import ini jika sudah ada controller aslinya
 // import 'package:b5_proyek_4/features/attendance/attendance_controller.dart';
 // import 'package:b5_proyek_4/widgets/custom_snackbar.dart';
@@ -12,7 +13,7 @@ class ScanScreen extends StatefulWidget {
 
   const ScanScreen({super.key, required this.eventId});
 
-  // Meskipun dilarang pakai setState untuk logika bisnis, StatefulWidget 
+  // Meskipun dilarang  setState untuk logika bisnis, StatefulWidget 
   // tetap wajib digunakan di sini HANYA untuk me-manage memori kamera (dispose).
   @override
   State<ScanScreen> createState() => _ScanScreenState();
@@ -36,7 +37,6 @@ class _ScanScreenState extends State<ScanScreen> {
   }
 
   Future<void> _handleDetect(BarcodeCapture capture) async {
-    // Jika sedang memproses data sebelumnya, abaikan scan baru
     if (_isProcessing.value) return;
 
     final List<Barcode> barcodes = capture.barcodes;
@@ -44,67 +44,45 @@ class _ScanScreenState extends State<ScanScreen> {
 
     final String? qrData = barcodes.first.rawValue;
     if (qrData == null) {
-      _showSnackbar('Format QR Tidak Valid atau Rusak', Colors.red);
+      _showSnackbar('Format QR Tidak Terbaca', Colors.red);
       return;
     }
 
-    // 1. Kunci state kamera agar berhenti scan sesaat
     _isProcessing.value = true;
 
     try {
-      // 2. TODO: Panggil AttendanceController buatan tim Backend kamu di sini
-      // Asumsi fungsi recordAttendance mengembalikan sebuah status String/Enum
-      /*
-      final String status = await AttendanceController.instance.recordAttendance(
-        eventId: widget.eventId,
-        memberId: qrData, // Isi dari QR code
-      );
-      
-      // 3. Handle Snackbar berdasarkan response
-      if (status == 'SUCCESS_HADIR') {
-        _showSnackbar('Berhasil: Hadir', Colors.green);
-      } else if (status == 'SUCCESS_TERLAMBAT') {
-        _showSnackbar('Berhasil: Terlambat', Colors.orange);
-      } else if (status == 'DUPLICATE') {
-        _showSnackbar('Ditolak: Anggota ini sudah absen!', Colors.red);
-      } else {
-        _showSnackbar('QR Tidak Dikenal di Event ini', Colors.grey);
-      }
-      */
-
       final result = await AttendanceController.instance.recordAttendance(
         eventId: widget.eventId,
         scannedQrValue: qrData,
       );
+      // Mengambil nama member untuk ditampilkan di Snackbar
+      final namaMember = AttendanceController.instance.lastScannedName.value ?? 'Anggota';
 
       switch (result) {
         case AttendanceResult.successHadir:
-          final nama = AttendanceController.instance.lastScannedName.value ?? '';
-          _showSnackbar('✅ Hadir: $nama', Colors.green);
+          _showSnackbar('✅ Hadir: $namaMember', Colors.green);
           break;
         case AttendanceResult.successTerlambat:
-          final nama = AttendanceController.instance.lastScannedName.value ?? '';
-          _showSnackbar('⚠️ Terlambat: $nama', Colors.orange);
+          _showSnackbar('⚠️ Terlambat: $namaMember', Colors.orange.shade700);
           break;
         case AttendanceResult.duplicate:
-          _showSnackbar('❌ Sudah absen sebelumnya!', Colors.red);
+          _showSnackbar('❌ Ditolak: $namaMember SUDAH ABSEN!', Colors.red);
           break;
         case AttendanceResult.memberNotFound:
-          _showSnackbar('❌ QR tidak dikenal / bukan anggota', Colors.red);
+          _showSnackbar('❓ QR Tidak Valid / Bukan Anggota', Colors.red.shade900);
           break;
         case AttendanceResult.eventNotFound:
-          _showSnackbar('❌ Event tidak ditemukan', Colors.red);
+          _showSnackbar('Error: Data Event Hilang', Colors.grey);
           break;
         case AttendanceResult.error:
-          _showSnackbar('❌ Terjadi kesalahan, coba lagi', Colors.red);
+        _showSnackbar('Terjadi kesalahan sistem saat menyimpan data', Colors.red);
           break;
       }
 
     } catch (e) {
-      _showSnackbar('Terjadi kesalahan: $e', Colors.red);
+      _showSnackbar('Exception: $e', Colors.red);
     } finally {
-      // 4. Beri jeda 2 detik agar Admin bisa melihat hasil Snackbar, 
-      // lalu buka kembali kunci kamera untuk member berikutnya.
+      // 4. Beri jeda 2 detik agar Admin bisa melihat hasil Snackbar
       await Future.delayed(const Duration(seconds: 2));
       if (mounted) {
         _isProcessing.value = false;
@@ -268,7 +246,7 @@ class QrScannerOverlayShape extends ShapeBorder {
     final height = rect.height;
     final borderOffset = borderWidth / 2;
     final _borderLength = borderLength > cutOutSize / 2 + borderWidthSize ? cutOutSize / 2 + borderOffset : borderLength;
-    final _cutOutSize = cutOutSize != null && cutOutSize < width ? cutOutSize : width;
+    final _cutOutSize = cutOutSize < width ? cutOutSize : width;
 
     final backgroundPaint = Paint()
       ..color = overlayColor

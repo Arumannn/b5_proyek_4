@@ -125,6 +125,77 @@ class AttendanceController {
       ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
   }
 
+  /// Fitur override manual oleh Admin / Manager
+  Future<bool> overrideAttendanceStatus({
+    required String recordId,
+    required String newStatus,
+    required String overrideById,
+  }) async {
+    try {
+      // Cari record absensi berdasarkan recordId di Hive
+      final record = HiveService.attendance.values.firstWhere(
+        (r) => r.recordId == recordId,
+        orElse: () => throw Exception('Record tidak ditemukan'),
+      );
+
+      // Update atribut sesuai aturan brief Tahap 2
+      record.status = newStatus;
+      record.isManualOverride = true;
+      record.overrideBy = overrideById;
+      record.isSynced = false;
+
+      // Simpan perubahan
+      await record.save();
+      debugPrint('[Attendance] Override sukses: Record $recordId menjadi $newStatus oleh $overrideById');
+      return true;
+    } catch (e) {
+      debugPrint('[Attendance] Error override status: $e');
+      return false;
+    }
+  }
+
+  /// Fitur auto-generate "Alpha" di akhir acara
+  Future<void> generateAlphaRecords(String eventId) async {
+    try {
+      // Ambil data event
+      final event = HiveService.events.get(eventId);
+      if (event == null) {
+        debugPrint('[Attendance] Error generate Alpha: Event tidak ditemukan');
+        return;
+      }
+
+      // Ambil list ID member yang SUDAH ABSEN di event ini (termasuk Izin/Sakit)
+      final existingRecords = getAttendanceByEvent(eventId);
+      final existingMemberIds = existingRecords.map((r) => r.memberId).toSet();
+
+      // Jika targetPeserta kosong, asumsikan ditargetkan untuk semua member.
+      Iterable<MemberModel> targetMembers = HiveService.members.values;
+      if (event.targetPeserta.isNotEmpty) {
+        targetMembers = targetMembers.where((m) => event.targetPeserta.contains(m.divisi));
+      }
+
+      final uuid = const Uuid();
+      int alphaCount = 0;
+
+      for (final member in targetMembers) {
+        if (!existingMemberIds.contains(member.memberId)) {
+          final alphaRecord = AttendanceRecord.create(
+            recordId: uuid.v4(),
+            eventId: eventId,
+            memberId: member.memberId,
+            status: 'Alpha',
+          );
+          await HiveService.attendance.add(alphaRecord);
+          alphaCount++;
+        }
+      }
+
+      debugPrint('[Attendance] Generate Alpha sukses: $alphaCount member ditandai Alpha untuk event $eventId');
+    } catch (e) {
+      debugPrint('[Attendance] Error generate Alpha: $e');
+    }
+  }
+
   void dispose() {
     isProcessing.dispose();
     lastResult.dispose();
