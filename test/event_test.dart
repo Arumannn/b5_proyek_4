@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:b5_proyek_4/core/constants/app_constants.dart';
@@ -7,15 +10,26 @@ import 'package:b5_proyek_4/models/event_model.dart';
 
 void main() {
 	TestWidgetsFlutterBinding.ensureInitialized();
+	const pathProviderChannel = MethodChannel('plugins.flutter.io/path_provider');
 
 	final controller = EventController.instance;
 
 	setUpAll(() async {
+		TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+				.setMockMethodCallHandler(pathProviderChannel, (methodCall) async {
+			if (methodCall.method == 'getApplicationDocumentsDirectory') {
+				return Directory.systemTemp.path;
+			}
+			return Directory.systemTemp.path;
+		});
+
 		await HiveService.init();
 	});
 
 	tearDownAll(() async {
 		await HiveService.closeAll();
+		TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+				.setMockMethodCallHandler(pathProviderChannel, null);
 	});
 
 	setUp(() async {
@@ -23,6 +37,7 @@ void main() {
 		controller.events.value = <EventModel>[];
 		controller.errorMessage.value = null;
 		controller.isLoading.value = false;
+		await controller.loadEvents(force: true);
 	});
 
 	group('EventController.loadEvents', () {
@@ -136,7 +151,8 @@ void main() {
 				tanggal: DateTime.now().add(const Duration(days: 1)),
 				createdBy: 'admin',
 			);
-			controller.events.value = <EventModel>[parent];
+			await HiveService.events.put(parent.eventId, parent);
+			await controller.loadEvents(force: true);
 
 			final ok = await controller.createEvent(
 				nama: 'Sub Event',
@@ -222,8 +238,8 @@ void main() {
 				createdBy: 'admin',
 				isSynced: true,
 			);
-			controller.events.value = <EventModel>[existing];
 			await HiveService.events.put(existing.eventId, existing);
+				await controller.loadEvents(force: true);
 
 			final updatedInput = existing.copyWith(
 				nama: '  Nama Baru  ',
@@ -271,10 +287,10 @@ void main() {
 				createdBy: 'admin',
 			);
 
-			controller.events.value = <EventModel>[root, child, other];
 			await HiveService.events.put(root.eventId, root);
 			await HiveService.events.put(child.eventId, child);
 			await HiveService.events.put(other.eventId, other);
+				await controller.loadEvents(force: true);
 
 			final ok = await controller.deleteEvent('root-1');
 

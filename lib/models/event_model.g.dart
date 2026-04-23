@@ -16,17 +16,25 @@ class EventModelAdapter extends TypeAdapter<EventModel> {
       return [];
     }
 
+    DateTime parseDate(dynamic raw) {
+      if (raw is DateTime) return raw;
+      if (raw is String) {
+        return DateTime.tryParse(raw) ?? DateTime.now();
+      }
+      return DateTime.now();
+    }
+
     return EventModel(
       eventId: (fields[0] ?? '').toString(),
       parentEventId: fields[1]?.toString(),
       nama: (fields[2] ?? '').toString(),
       jenis: (fields[3] ?? 'Kegiatan').toString(),
-      tanggal: fields[4] as DateTime? ?? DateTime.now(),
+      tanggal: parseDate(fields[4]),
       deskripsi: fields[5]?.toString(),
       targetPeserta: parsePeserta(fields[6]),
       createdBy: (fields[7] ?? 'system').toString(),
       isSynced: fields[8] as bool? ?? false,
-      createdAt: fields[9] as DateTime? ?? DateTime.now(),
+      createdAt: parseDate(fields[9]),
     );
   }
 

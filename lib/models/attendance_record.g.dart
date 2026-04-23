@@ -11,11 +11,20 @@ class AttendanceRecordAdapter extends TypeAdapter<AttendanceRecord> {
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
+
+    DateTime parseDate(dynamic raw) {
+      if (raw is DateTime) return raw;
+      if (raw is String) {
+        return DateTime.tryParse(raw) ?? DateTime.now();
+      }
+      return DateTime.now();
+    }
+
     return AttendanceRecord(
       recordId: (fields[0] ?? '').toString(),
       eventId: (fields[1] ?? '').toString(),
       memberId: (fields[2] ?? '').toString(),
-      timestamp: fields[3] as DateTime? ?? DateTime.now(),
+      timestamp: parseDate(fields[3]),
       status: (fields[4] ?? 'Hadir').toString(),
       isManualOverride: fields[5] as bool? ?? false,
       overrideBy: fields[6]?.toString(),

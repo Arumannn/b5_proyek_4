@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:b5_proyek_4/core/constants/app_constants.dart';
 import 'package:b5_proyek_4/core/services/hive_service.dart';
@@ -5,16 +8,27 @@ import 'package:b5_proyek_4/features/auth/auth_controller.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  const pathProviderChannel = MethodChannel('plugins.flutter.io/path_provider');
 
   final auth = AuthController.instance;
 
   setUpAll(() async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(pathProviderChannel, (methodCall) async {
+      if (methodCall.method == 'getApplicationDocumentsDirectory') {
+        return Directory.systemTemp.path;
+      }
+      return Directory.systemTemp.path;
+    });
+
     await HiveService.init();
     await auth.initializeAuth(); // seed default accounts
   });
 
   tearDownAll(() async {
     await HiveService.closeAll();
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(pathProviderChannel, null);
   });
 
   setUp(() {
