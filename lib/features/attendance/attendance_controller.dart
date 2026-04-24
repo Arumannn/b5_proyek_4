@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
-import '../../core/constants/app_constants.dart';
+
 import '../../core/services/hive_service.dart';
 import '../../core/utils/qr_service.dart';
 import '../../models/attendance_record.dart';
@@ -16,8 +16,7 @@ enum AttendanceResult {
 }
 
 class AttendanceController {
-  static final AttendanceController instance =
-      AttendanceController._internal();
+  static final AttendanceController instance = AttendanceController._internal();
   AttendanceController._internal();
 
   final ValueNotifier<bool> isProcessing = ValueNotifier(false);
@@ -67,18 +66,21 @@ class AttendanceController {
 
       // 4. Buat compositeKey & cek duplikasi di Hive
       final compositeKey = '${eventId}_${member.memberId}';
-      final isDuplicate = HiveService.attendance.values
-          .any((r) => r.compositeKey == compositeKey);
+      final isDuplicate = HiveService.attendance.values.any(
+        (r) => r.compositeKey == compositeKey,
+      );
       if (isDuplicate) {
         lastResult.value = AttendanceResult.duplicate;
         return AttendanceResult.duplicate;
       }
 
       // 5. Tentukan status: Hadir atau Terlambat
-      //    Batas: 15 menit setelah hari & jam event (pakai tengah malam hari event)
       final now = DateTime.now();
-      final eventDay =
-          DateTime(event.tanggal.year, event.tanggal.month, event.tanggal.day);
+      final eventDay = DateTime(
+        event.tanggal.year,
+        event.tanggal.month,
+        event.tanggal.day,
+      );
       final lateThreshold = eventDay.add(const Duration(minutes: 15));
       final isLate = now.isAfter(lateThreshold);
       final status = isLate ? 'Terlambat' : 'Hadir';
@@ -98,7 +100,8 @@ class AttendanceController {
           : AttendanceResult.successHadir;
       lastResult.value = result;
       debugPrint(
-          '[Attendance] ✅ ${member.nama} — $status (compositeKey: $compositeKey)');
+        '[Attendance] ${member.nama} - $status (compositeKey: $compositeKey)',
+      );
       return result;
     } catch (e, st) {
       debugPrint('[Attendance] Error: $e\n$st');
@@ -132,21 +135,20 @@ class AttendanceController {
     required String overrideById,
   }) async {
     try {
-      // Cari record absensi berdasarkan recordId di Hive
       final record = HiveService.attendance.values.firstWhere(
         (r) => r.recordId == recordId,
         orElse: () => throw Exception('Record tidak ditemukan'),
       );
 
-      // Update atribut sesuai aturan brief Tahap 2
       record.status = newStatus;
       record.isManualOverride = true;
       record.overrideBy = overrideById;
       record.isSynced = false;
 
-      // Simpan perubahan
       await record.save();
-      debugPrint('[Attendance] Override sukses: Record $recordId menjadi $newStatus oleh $overrideById');
+      debugPrint(
+        '[Attendance] Override sukses: Record $recordId menjadi $newStatus oleh $overrideById',
+      );
       return true;
     } catch (e) {
       debugPrint('[Attendance] Error override status: $e');
@@ -157,21 +159,20 @@ class AttendanceController {
   /// Fitur auto-generate "Alpha" di akhir acara
   Future<void> generateAlphaRecords(String eventId) async {
     try {
-      // Ambil data event
       final event = HiveService.events.get(eventId);
       if (event == null) {
         debugPrint('[Attendance] Error generate Alpha: Event tidak ditemukan');
         return;
       }
 
-      // Ambil list ID member yang SUDAH ABSEN di event ini (termasuk Izin/Sakit)
       final existingRecords = getAttendanceByEvent(eventId);
       final existingMemberIds = existingRecords.map((r) => r.memberId).toSet();
 
-      // Jika targetPeserta kosong, asumsikan ditargetkan untuk semua member.
       Iterable<MemberModel> targetMembers = HiveService.members.values;
       if (event.targetPeserta.isNotEmpty) {
-        targetMembers = targetMembers.where((m) => event.targetPeserta.contains(m.divisi));
+        targetMembers = targetMembers.where(
+          (m) => event.targetPeserta.contains(m.divisi),
+        );
       }
 
       final uuid = const Uuid();
@@ -190,9 +191,61 @@ class AttendanceController {
         }
       }
 
-      debugPrint('[Attendance] Generate Alpha sukses: $alphaCount member ditandai Alpha untuk event $eventId');
+      debugPrint(
+        '[Attendance] Generate Alpha sukses: $alphaCount member ditandai Alpha untuk event $eventId',
+      );
     } catch (e) {
       debugPrint('[Attendance] Error generate Alpha: $e');
+    }
+  }
+
+  /// Tambah absensi manual (contoh: input oleh Manager saat dibutuhkan).
+  /// Tetap menerapkan validasi anti-duplikasi 1 user per event.
+  Future<bool> addManualAttendance({
+    required String eventId,
+    required String memberId,
+    required String status,
+  }) async {
+    try {
+      final event = HiveService.events.get(eventId);
+      if (event == null) return false;
+
+      final memberExists = HiveService.members.values.any(
+        (m) => m.memberId == memberId,
+      );
+      if (!memberExists) return false;
+
+      final compositeKey = '${eventId}_$memberId';
+      final isDuplicate = HiveService.attendance.values.any(
+        (r) => r.compositeKey == compositeKey,
+      );
+      if (isDuplicate) return false;
+
+      final record = AttendanceRecord.create(
+        recordId: const Uuid().v4(),
+        eventId: eventId,
+        memberId: memberId,
+        status: status,
+      );
+
+      await HiveService.attendance.add(record);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Hapus record absensi berdasarkan recordId.
+  Future<bool> deleteAttendanceRecord(String recordId) async {
+    try {
+      final target = HiveService.attendance.values.firstWhere(
+        (r) => r.recordId == recordId,
+        orElse: () => throw Exception('Record tidak ditemukan'),
+      );
+      await target.delete();
+      return true;
+    } catch (_) {
+      return false;
     }
   }
 
