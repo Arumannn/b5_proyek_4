@@ -45,11 +45,108 @@ class _ManagerSubEventManagementViewState
         .toList(growable: false);
   }
 
-  List<EventModel> get _subEvents {
-    return _allEvents
-        .where((e) => e.parentEventId != null)
-        .toList(growable: false);
+  String _formatDate(DateTime value) {
+    final dd = value.day.toString().padLeft(2, '0');
+    final mm = value.month.toString().padLeft(2, '0');
+    final yyyy = value.year.toString();
+    final hh = value.hour.toString().padLeft(2, '0');
+    final min = value.minute.toString().padLeft(2, '0');
+    return '$dd/$mm/$yyyy $hh:$min';
   }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Pilih Main Event'),
+        actions: [
+          IconButton(
+            tooltip: 'Refresh',
+            onPressed: _refresh,
+            icon: const Icon(Icons.refresh),
+          ),
+        ],
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: _refresh,
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  const Text(
+                    'Pilih Main Event (parent) untuk melihat dan mengelola Sub-Event (child).',
+                  ),
+                  if (_mainEvents.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 8),
+                      child: Text(
+                        'Belum ada Main Event. Sub-Event tidak dapat dibuat tanpa parent.',
+                        style: TextStyle(
+                          color: Colors.orange,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 12),
+                  if (_mainEvents.isEmpty)
+                    const Card(
+                      child: Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Text('Tidak ada Main Event yang bisa dipilih.'),
+                      ),
+                    )
+                  else
+                    ..._mainEvents.map((mainEvent) {
+                      final subCount = _allEvents
+                          .where((e) => e.parentEventId == mainEvent.eventId)
+                          .length;
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        child: ListTile(
+                          leading: const Icon(Icons.event_note_outlined),
+                          title: Text(mainEvent.nama),
+                          subtitle: Text(
+                            '${_formatDate(mainEvent.tanggal)} • $subCount Sub-Event',
+                          ),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () async {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute<void>(
+                                builder: (_) => _MainEventDetailSubEventView(
+                                  mainEvent: mainEvent,
+                                ),
+                              ),
+                            );
+
+                            if (!mounted) return;
+                            await _refresh();
+                          },
+                        ),
+                      );
+                    }),
+                ],
+              ),
+            ),
+    );
+  }
+}
+
+class _MainEventDetailSubEventView extends StatefulWidget {
+  const _MainEventDetailSubEventView({required this.mainEvent});
+
+  final EventModel mainEvent;
+
+  @override
+  State<_MainEventDetailSubEventView> createState() =>
+      _MainEventDetailSubEventViewState();
+}
+
+class _MainEventDetailSubEventViewState
+    extends State<_MainEventDetailSubEventView> {
+  bool _isLoading = true;
+  List<EventModel> _subEvents = const [];
 
   String _formatDate(DateTime value) {
     final dd = value.day.toString().padLeft(2, '0');
@@ -60,12 +157,28 @@ class _ManagerSubEventManagementViewState
     return '$dd/$mm/$yyyy $hh:$min';
   }
 
-  String _mainEventName(String? parentId) {
-    if (parentId == null) return '-';
-    for (final e in _mainEvents) {
-      if (e.eventId == parentId) return e.nama;
-    }
-    return '-';
+  @override
+  void initState() {
+    super.initState();
+    _refresh();
+  }
+
+  Future<void> _refresh() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    final subEvents =
+        HiveService.events.values
+            .where((e) => e.parentEventId == widget.mainEvent.eventId)
+            .toList(growable: false)
+          ..sort((a, b) => a.tanggal.compareTo(b.tanggal));
+
+    if (!mounted) return;
+    setState(() {
+      _subEvents = subEvents;
+      _isLoading = false;
+    });
   }
 
   Future<void> _showSubEventForm({EventModel? existing}) async {
@@ -80,20 +193,6 @@ class _ManagerSubEventManagementViewState
     DateTime selectedDate =
         existing?.tanggal ?? DateTime.now().add(const Duration(days: 1));
     String selectedJenis = existing?.jenis ?? AppConstants.eventTypes.first;
-
-    String? selectedParentId = existing?.parentEventId;
-    if (selectedParentId == null && _mainEvents.isNotEmpty) {
-      selectedParentId = _mainEvents.first.eventId;
-    }
-
-    if (_mainEvents.isEmpty) {
-      if (!mounted) return;
-      CustomSnackbar.showWarning(
-        context,
-        'Belum ada event utama. Buat event utama terlebih dahulu oleh Admin.',
-      );
-      return;
-    }
 
     final saved = await showDialog<bool>(
       context: context,
@@ -122,9 +221,7 @@ class _ManagerSubEventManagementViewState
 
             Future<void> submit() async {
               if (!(formKey.currentState?.validate() ?? false)) return;
-              if (selectedParentId == null) return;
 
-              final nowIso = DateTime.now();
               final normalizedName = nameController.text.trim();
               final normalizedDesc = descController.text.trim();
 
@@ -132,7 +229,7 @@ class _ManagerSubEventManagementViewState
                 final updated = existing.copyWith(
                   nama: normalizedName,
                   tanggal: selectedDate,
-                  parentEventId: selectedParentId,
+                  parentEventId: widget.mainEvent.eventId,
                   jenis: selectedJenis,
                   deskripsi: normalizedDesc.isEmpty ? null : normalizedDesc,
                   isSynced: false,
@@ -140,8 +237,8 @@ class _ManagerSubEventManagementViewState
                 await HiveService.events.put(updated.eventId, updated);
               } else {
                 final created = EventModel(
-                  eventId: nowIso.microsecondsSinceEpoch.toString(),
-                  parentEventId: selectedParentId,
+                  eventId: DateTime.now().microsecondsSinceEpoch.toString(),
+                  parentEventId: widget.mainEvent.eventId,
                   nama: normalizedName,
                   jenis: selectedJenis,
                   tanggal: selectedDate,
@@ -167,6 +264,15 @@ class _ManagerSubEventManagementViewState
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         TextFormField(
+                          initialValue: widget.mainEvent.nama,
+                          enabled: false,
+                          decoration: const InputDecoration(
+                            labelText: 'Main Event (Parent)',
+                            prefixIcon: Icon(Icons.account_tree_outlined),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
                           controller: nameController,
                           decoration: const InputDecoration(
                             labelText: 'Nama Sub-Event',
@@ -181,45 +287,18 @@ class _ManagerSubEventManagementViewState
                         ),
                         const SizedBox(height: 12),
                         DropdownButtonFormField<String>(
-                          value: selectedParentId,
-                          decoration: const InputDecoration(
-                            labelText: 'Event Utama',
-                            prefixIcon: Icon(Icons.account_tree_outlined),
-                          ),
-                          items: _mainEvents
-                              .map((e) {
-                                return DropdownMenuItem<String>(
-                                  value: e.eventId,
-                                  child: Text(e.nama),
-                                );
-                              })
-                              .toList(growable: false),
-                          onChanged: (value) {
-                            setDialogState(() {
-                              selectedParentId = value;
-                            });
-                          },
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Event utama wajib dipilih.';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 12),
-                        DropdownButtonFormField<String>(
                           value: selectedJenis,
                           decoration: const InputDecoration(
                             labelText: 'Jenis',
                             prefixIcon: Icon(Icons.category_outlined),
                           ),
                           items: AppConstants.eventTypes
-                              .map((jenis) {
-                                return DropdownMenuItem<String>(
+                              .map(
+                                (jenis) => DropdownMenuItem<String>(
                                   value: jenis,
                                   child: Text(jenis),
-                                );
-                              })
+                                ),
+                              )
                               .toList(growable: false),
                           onChanged: (value) {
                             if (value == null) return;
@@ -315,7 +394,7 @@ class _ManagerSubEventManagementViewState
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Kelola Sub-Event (CRUD)'),
+        title: Text('Main Event: ${widget.mainEvent.nama}'),
         actions: [
           IconButton(
             tooltip: 'Refresh',
@@ -336,10 +415,29 @@ class _ManagerSubEventManagementViewState
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  const Text(
-                    'Manager memiliki akses penuh CRUD khusus untuk sub-event.',
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Detail Main Event',
+                            style: TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(height: 8),
+                          Text('Nama: ${widget.mainEvent.nama}'),
+                          Text(
+                            'Tanggal: ${_formatDate(widget.mainEvent.tanggal)}',
+                          ),
+                          Text('Jenis: ${widget.mainEvent.jenis}'),
+                        ],
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 12),
+                  const Text('Daftar Sub-Event (child) dalam Main Event ini'),
+                  const SizedBox(height: 8),
                   Card(
                     child: Padding(
                       padding: const EdgeInsets.all(12),
@@ -347,7 +445,9 @@ class _ManagerSubEventManagementViewState
                           ? const Padding(
                               padding: EdgeInsets.symmetric(vertical: 24),
                               child: Center(
-                                child: Text('Belum ada sub-event.'),
+                                child: Text(
+                                  'Belum ada sub-event pada main event ini.',
+                                ),
                               ),
                             )
                           : SingleChildScrollView(
@@ -356,22 +456,16 @@ class _ManagerSubEventManagementViewState
                                 columns: const [
                                   DataColumn(label: Text('Nama Sub-Event')),
                                   DataColumn(label: Text('Tanggal')),
-                                  DataColumn(label: Text('Event Utama')),
                                   DataColumn(label: Text('Deskripsi')),
                                   DataColumn(label: Text('Action')),
                                 ],
                                 rows: _subEvents
-                                    .map((sub) {
-                                      return DataRow(
+                                    .map(
+                                      (sub) => DataRow(
                                         cells: [
                                           DataCell(Text(sub.nama)),
                                           DataCell(
                                             Text(_formatDate(sub.tanggal)),
-                                          ),
-                                          DataCell(
-                                            Text(
-                                              _mainEventName(sub.parentEventId),
-                                            ),
                                           ),
                                           DataCell(
                                             SizedBox(
@@ -405,8 +499,8 @@ class _ManagerSubEventManagementViewState
                                             ),
                                           ),
                                         ],
-                                      );
-                                    })
+                                      ),
+                                    )
                                     .toList(growable: false),
                               ),
                             ),

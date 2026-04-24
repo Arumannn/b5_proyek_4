@@ -9,6 +9,8 @@ import '../../models/event_model.dart';
 import '../../models/member_model.dart';
 import '../../widgets/custom_snackbar.dart';
 
+enum RecapMode { byMainEvent, bySubEvent, aggregateByMainEvent, global }
+
 class ManagerAttendanceManagementView extends StatefulWidget {
   const ManagerAttendanceManagementView({super.key});
 
@@ -23,7 +25,12 @@ class _ManagerAttendanceManagementViewState
   List<EventModel> _events = const [];
   List<AttendanceRecord> _records = const [];
   Map<String, MemberModel> _memberById = const {};
-  String? _selectedEventId;
+  Map<String, EventModel> _eventById = const {};
+  Map<String, List<String>> _subEventIdsByMain = const {};
+
+  RecapMode _recapMode = RecapMode.byMainEvent;
+  String? _selectedMainEventId;
+  String? _selectedSubEventId;
 
   @override
   void initState() {
@@ -45,12 +52,41 @@ class _ManagerAttendanceManagementViewState
     final members = HiveService.members.values.toList(growable: false);
     final map = <String, MemberModel>{for (final m in members) m.memberId: m};
 
-    String? selected = _selectedEventId;
-    if (selected == null && events.isNotEmpty) {
-      selected = events.first.eventId;
+    final eventById = <String, EventModel>{
+      for (final e in events) e.eventId: e,
+    };
+    final mainEvents = events.where((e) => e.parentEventId == null).toList();
+
+    final subEventIdsByMain = <String, List<String>>{};
+    for (final main in mainEvents) {
+      subEventIdsByMain[main.eventId] = <String>[];
     }
-    if (selected != null && !events.any((e) => e.eventId == selected)) {
-      selected = events.isNotEmpty ? events.first.eventId : null;
+    for (final e in events) {
+      final parentId = e.parentEventId;
+      if (parentId != null && subEventIdsByMain.containsKey(parentId)) {
+        subEventIdsByMain[parentId]!.add(e.eventId);
+      }
+    }
+
+    String? selectedMain = _selectedMainEventId;
+    if (selectedMain == null && mainEvents.isNotEmpty) {
+      selectedMain = mainEvents.first.eventId;
+    }
+    if (selectedMain != null &&
+        !mainEvents.any((e) => e.eventId == selectedMain)) {
+      selectedMain = mainEvents.isNotEmpty ? mainEvents.first.eventId : null;
+    }
+
+    final subEvents = selectedMain == null
+        ? const <String>[]
+        : (subEventIdsByMain[selectedMain] ?? const <String>[]);
+
+    String? selectedSub = _selectedSubEventId;
+    if (selectedSub == null && subEvents.isNotEmpty) {
+      selectedSub = subEvents.first;
+    }
+    if (selectedSub != null && !subEvents.contains(selectedSub)) {
+      selectedSub = subEvents.isNotEmpty ? subEvents.first : null;
     }
 
     if (!mounted) return;
@@ -58,9 +94,28 @@ class _ManagerAttendanceManagementViewState
       _events = events;
       _records = records;
       _memberById = map;
-      _selectedEventId = selected;
+      _eventById = eventById;
+      _subEventIdsByMain = subEventIdsByMain;
+      _selectedMainEventId = selectedMain;
+      _selectedSubEventId = selectedSub;
       _isLoading = false;
     });
+  }
+
+  List<EventModel> get _mainEvents {
+    return _events
+        .where((e) => e.parentEventId == null)
+        .toList(growable: false);
+  }
+
+  List<EventModel> get _subEventsForSelectedMain {
+    final mainId = _selectedMainEventId;
+    if (mainId == null) return const [];
+    final ids = _subEventIdsByMain[mainId] ?? const [];
+    return ids
+        .map((id) => _eventById[id])
+        .whereType<EventModel>()
+        .toList(growable: false);
   }
 
   String _formatDate(DateTime value) {
@@ -73,34 +128,83 @@ class _ManagerAttendanceManagementViewState
   }
 
   String _eventLabel(String eventId) {
-    final event = _events.where((e) => e.eventId == eventId).toList();
-    if (event.isEmpty) return eventId;
-    final e = event.first;
+    final e = _eventById[eventId];
+    if (e == null) return eventId;
     if (e.parentEventId == null) {
       return 'Event Utama - ${e.nama}';
     }
-    final parent = _events.where((x) => x.eventId == e.parentEventId).toList();
-    final parentName = parent.isEmpty ? 'Unknown' : parent.first.nama;
+    final parentName = _eventById[e.parentEventId]?.nama ?? 'Unknown';
     return 'Sub-Event - $parentName / ${e.nama}';
   }
 
+  String? get _currentCrudEventId {
+    switch (_recapMode) {
+      case RecapMode.byMainEvent:
+        return _selectedMainEventId;
+      case RecapMode.bySubEvent:
+        return _selectedSubEventId;
+      case RecapMode.aggregateByMainEvent:
+      case RecapMode.global:
+        return null;
+    }
+  }
+
   List<AttendanceRecord> get _filteredRecords {
-    if (_selectedEventId == null) return const [];
-    return _records
-        .where((r) => r.eventId == _selectedEventId)
-        .toList(growable: false);
+    switch (_recapMode) {
+      case RecapMode.byMainEvent:
+        final mainId = _selectedMainEventId;
+        if (mainId == null) return const [];
+        return _records
+            .where((r) => r.eventId == mainId)
+            .toList(growable: false);
+      case RecapMode.bySubEvent:
+        final subId = _selectedSubEventId;
+        if (subId == null) return const [];
+        return _records
+            .where((r) => r.eventId == subId)
+            .toList(growable: false);
+      case RecapMode.aggregateByMainEvent:
+        final mainId = _selectedMainEventId;
+        if (mainId == null) return const [];
+        final allowedEventIds = <String>{
+          mainId,
+          ...?_subEventIdsByMain[mainId],
+        };
+        return _records
+            .where((r) => allowedEventIds.contains(r.eventId))
+            .toList(growable: false);
+      case RecapMode.global:
+        return List<AttendanceRecord>.from(_records, growable: false);
+    }
+  }
+
+  String _modeLabel(RecapMode mode) {
+    switch (mode) {
+      case RecapMode.byMainEvent:
+        return 'Berdasarkan Main Event';
+      case RecapMode.bySubEvent:
+        return 'Berdasarkan Sub-Event';
+      case RecapMode.aggregateByMainEvent:
+        return 'Rekap Keseluruhan dalam Main Event';
+      case RecapMode.global:
+        return 'Rekap Global';
+    }
   }
 
   Future<void> _openScanQr() async {
-    if (_selectedEventId == null) {
-      CustomSnackbar.showWarning(context, 'Pilih event terlebih dahulu.');
+    final targetEventId = _currentCrudEventId;
+    if (targetEventId == null) {
+      CustomSnackbar.showWarning(
+        context,
+        'Mode rekap saat ini tidak menunjuk 1 event spesifik. Gunakan mode Main Event atau Sub-Event untuk scan.',
+      );
       return;
     }
 
     await Navigator.push(
       context,
       MaterialPageRoute<void>(
-        builder: (_) => ScanScreen(eventId: _selectedEventId!),
+        builder: (_) => ScanScreen(eventId: targetEventId),
       ),
     );
 
@@ -108,8 +212,12 @@ class _ManagerAttendanceManagementViewState
   }
 
   Future<void> _addManualAttendance() async {
-    if (_selectedEventId == null) {
-      CustomSnackbar.showWarning(context, 'Pilih event terlebih dahulu.');
+    final targetEventId = _currentCrudEventId;
+    if (targetEventId == null) {
+      CustomSnackbar.showWarning(
+        context,
+        'Tambah manual hanya tersedia pada mode Main Event atau Sub-Event.',
+      );
       return;
     }
 
@@ -198,7 +306,7 @@ class _ManagerAttendanceManagementViewState
     if (saved != true || selectedMemberId == null) return;
 
     final ok = await AttendanceController.instance.addManualAttendance(
-      eventId: _selectedEventId!,
+      eventId: targetEventId,
       memberId: selectedMemberId!,
       status: selectedStatus,
     );
@@ -345,27 +453,111 @@ class _ManagerAttendanceManagementViewState
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  DropdownButtonFormField<String>(
-                    value: _selectedEventId,
+                  DropdownButtonFormField<RecapMode>(
+                    value: _recapMode,
                     decoration: const InputDecoration(
-                      labelText: 'Pilih Event / Sub-Event',
+                      labelText: 'Mode Rekap',
                       border: OutlineInputBorder(),
                     ),
-                    items: _events
-                        .map((e) {
-                          return DropdownMenuItem<String>(
-                            value: e.eventId,
-                            child: Text(_eventLabel(e.eventId)),
+                    items: RecapMode.values
+                        .map((mode) {
+                          return DropdownMenuItem<RecapMode>(
+                            value: mode,
+                            child: Text(_modeLabel(mode)),
                           );
                         })
                         .toList(growable: false),
                     onChanged: (value) {
+                      if (value == null) return;
                       setState(() {
-                        _selectedEventId = value;
+                        _recapMode = value;
                       });
                     },
                   ),
                   const SizedBox(height: 12),
+                  if (_recapMode == RecapMode.byMainEvent ||
+                      _recapMode == RecapMode.aggregateByMainEvent)
+                    DropdownButtonFormField<String>(
+                      value: _selectedMainEventId,
+                      decoration: const InputDecoration(
+                        labelText: 'Pilih Main Event',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: _mainEvents
+                          .map((e) {
+                            return DropdownMenuItem<String>(
+                              value: e.eventId,
+                              child: Text(e.nama),
+                            );
+                          })
+                          .toList(growable: false),
+                      onChanged: (value) {
+                        if (value == null) return;
+                        final subIds =
+                            _subEventIdsByMain[value] ?? const <String>[];
+                        setState(() {
+                          _selectedMainEventId = value;
+                          _selectedSubEventId = subIds.isEmpty
+                              ? null
+                              : subIds.first;
+                        });
+                      },
+                    ),
+                  if (_recapMode == RecapMode.bySubEvent) ...[
+                    DropdownButtonFormField<String>(
+                      value: _selectedMainEventId,
+                      decoration: const InputDecoration(
+                        labelText: 'Pilih Main Event',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: _mainEvents
+                          .map((e) {
+                            return DropdownMenuItem<String>(
+                              value: e.eventId,
+                              child: Text(e.nama),
+                            );
+                          })
+                          .toList(growable: false),
+                      onChanged: (value) {
+                        if (value == null) return;
+                        final subIds =
+                            _subEventIdsByMain[value] ?? const <String>[];
+                        setState(() {
+                          _selectedMainEventId = value;
+                          _selectedSubEventId = subIds.isEmpty
+                              ? null
+                              : subIds.first;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      value: _selectedSubEventId,
+                      decoration: const InputDecoration(
+                        labelText: 'Pilih Sub-Event',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: _subEventsForSelectedMain
+                          .map((e) {
+                            return DropdownMenuItem<String>(
+                              value: e.eventId,
+                              child: Text(e.nama),
+                            );
+                          })
+                          .toList(growable: false),
+                      onChanged: (value) {
+                        setState(() {
+                          _selectedSubEventId = value;
+                        });
+                      },
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                  Text(
+                    'Total record terfilter: ${_filteredRecords.length}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,

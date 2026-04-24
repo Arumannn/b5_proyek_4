@@ -63,7 +63,7 @@ class AppConstants {
     'Departemen Keilmuan dan Keprofesian',
   ];
 
-  static const List<String> bureauDbuOptions = [
+  static const List<String> biroDbuOptions = [
     'Biro Kewirausahaan dan Keuangan',
     'Biro Administrasi dan Kesekretariatan',
   ];
@@ -72,7 +72,7 @@ class AppConstants {
 
   static const List<String> allDbuOptions = [
     ...departmentDbuOptions,
-    ...bureauDbuOptions,
+    ...biroDbuOptions,
     ...unitDbuOptions,
   ];
 
@@ -112,3 +112,4 @@ class AppConstants {
     'Lainnya',
   ];
 }
+

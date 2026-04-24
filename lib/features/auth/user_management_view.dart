@@ -73,7 +73,7 @@ class _UserManagementViewState extends State<UserManagementView> {
         value: '__header_biro__',
         child: Text('Biro', style: headerStyle),
       ),
-      ...AppConstants.bureauDbuOptions.map(
+      ...AppConstants.biroDbuOptions.map(
         (value) => DropdownMenuItem<String>(value: value, child: Text(value)),
       ),
       const DropdownMenuItem<String>(
