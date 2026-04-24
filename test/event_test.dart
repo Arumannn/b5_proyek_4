@@ -9,40 +9,40 @@ import 'package:b5_proyek_4/features/event/event_controller.dart';
 import 'package:b5_proyek_4/models/event_model.dart';
 
 void main() {
-	TestWidgetsFlutterBinding.ensureInitialized();
-	const pathProviderChannel = MethodChannel('plugins.flutter.io/path_provider');
+  TestWidgetsFlutterBinding.ensureInitialized();
+  const pathProviderChannel = MethodChannel('plugins.flutter.io/path_provider');
 
   final controller = EventController.instance;
 
-	setUpAll(() async {
-		TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-				.setMockMethodCallHandler(pathProviderChannel, (methodCall) async {
-			if (methodCall.method == 'getApplicationDocumentsDirectory') {
-				return Directory.systemTemp.path;
-			}
-			return Directory.systemTemp.path;
-		});
+  setUpAll(() async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(pathProviderChannel, (methodCall) async {
+      if (methodCall.method == 'getApplicationDocumentsDirectory') {
+        return Directory.systemTemp.path;
+      }
+      return Directory.systemTemp.path;
+    });
 
-		await HiveService.init();
-	});
+    await HiveService.init();
+  });
 
-	tearDownAll(() async {
-		await HiveService.closeAll();
-		TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-				.setMockMethodCallHandler(pathProviderChannel, null);
-	});
+  tearDownAll(() async {
+    await HiveService.closeAll();
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(pathProviderChannel, null);
+  });
 
-	setUp(() async {
-		await HiveService.events.clear();
-		controller.events.value = <EventModel>[];
-		controller.errorMessage.value = null;
-		controller.isLoading.value = false;
-		await controller.loadEvents(force: true);
-	});
+  setUp(() async {
+    await HiveService.events.clear();
+    controller.events.value = <EventModel>[];
+    controller.errorMessage.value = null;
+    controller.isLoading.value = false;
+    await controller.loadEvents(force: true);
+  });
 
   group('EventController.loadEvents', () {
     test('memuat event dari Hive dan mengurutkan tanggal ascending', () async {
-      final later  = DateTime.now().add(const Duration(days: 2));
+      final later = DateTime.now().add(const Duration(days: 2));
       final earlier = DateTime.now().add(const Duration(days: 1));
 
       await HiveService.events.put('e2', EventModel(
@@ -133,8 +133,6 @@ void main() {
       expect(saved!.nama, 'Rapat Besar');
     });
 
-    // ← FIX: sekarang parent event dimasukkan ke Hive dulu,
-    //   lalu loadEvents agar _allEvents terisi sebelum createSubEvent
     test('berhasil membuat sub event jika parent ada di Hive', () async {
       final parent = EventModel(
         eventId: 'parent-1',
@@ -144,7 +142,7 @@ void main() {
         createdBy: 'admin',
       );
       await HiveService.events.put(parent.eventId, parent);
-      await controller.loadEvents(force: true); // ← sync _allEvents
+      await controller.loadEvents(force: true);
 
       final ok = await controller.createEvent(
         nama: 'Sub Event',
@@ -174,17 +172,6 @@ void main() {
       expect(controller.errorMessage.value, 'Nama event wajib diisi.');
     });
 
-		test('berhasil membuat sub event jika parent ada di state', () async {
-			final parent = EventModel(
-				eventId: 'parent-1',
-				nama: 'Parent',
-				jenis: 'Kegiatan',
-				tanggal: DateTime.now().add(const Duration(days: 1)),
-				createdBy: 'admin',
-			);
-			await HiveService.events.put(parent.eventId, parent);
-			await controller.loadEvents(force: true);
-
     test('gagal jika tanggal masa lalu', () async {
       final model = EventModel(
         eventId: 'e1',
@@ -199,7 +186,6 @@ void main() {
     });
 
     test('gagal jika event tidak ditemukan di _allEvents', () async {
-      // setUp sudah clear, jadi _allEvents kosong
       final model = EventModel(
         eventId: 'not-found',
         nama: 'Event',
@@ -212,7 +198,6 @@ void main() {
       expect(controller.errorMessage.value, 'Event tidak ditemukan.');
     });
 
-    // ← FIX: masukkan ke Hive + loadEvents agar _allEvents terisi
     test('berhasil update event, trim nama, dan set isSynced=false', () async {
       final existing = EventModel(
         eventId: 'e1',
@@ -223,7 +208,7 @@ void main() {
         isSynced: true,
       );
       await HiveService.events.put(existing.eventId, existing);
-      await controller.loadEvents(force: true); // ← sync _allEvents
+      await controller.loadEvents(force: true);
 
       final updatedInput = existing.copyWith(nama: '  Nama Baru  ', isSynced: true);
       final ok = await controller.updateEvent(updatedInput);
@@ -243,7 +228,6 @@ void main() {
   });
 
   group('EventController.deleteEvent', () {
-    // ← FIX: masukkan ke Hive + loadEvents agar _allEvents terisi
     test('menghapus root event beserta sub event-nya', () async {
       final root = EventModel(
         eventId: 'root-1', nama: 'Root', jenis: 'Rapat',
@@ -262,7 +246,7 @@ void main() {
       await HiveService.events.put(root.eventId, root);
       await HiveService.events.put(child.eventId, child);
       await HiveService.events.put(other.eventId, other);
-      await controller.loadEvents(force: true); // ← sync _allEvents
+      await controller.loadEvents(force: true);
 
       final ok = await controller.deleteEvent('root-1');
 
@@ -276,7 +260,6 @@ void main() {
   });
 
   group('EventController.getRootEvents', () {
-    // ← FIX: pakai Hive + loadEvents untuk konsistensi
     test('hanya mengembalikan event dengan parentEventId null', () async {
       await HiveService.events.put('root-1', EventModel(
         eventId: 'root-1', nama: 'Root A', jenis: 'Rapat',
@@ -289,109 +272,9 @@ void main() {
       ));
       await controller.loadEvents(force: true);
 
-			final ok = await controller.updateEvent(model);
-
-			expect(ok, isFalse);
-			expect(controller.errorMessage.value, 'Event tidak ditemukan.');
-		});
-
-		test('berhasil update event, trim nama, dan set isSynced=false', () async {
-			final existing = EventModel(
-				eventId: 'e1',
-				nama: 'Nama Lama',
-				jenis: 'Rapat',
-				tanggal: DateTime.now().add(const Duration(days: 1)),
-				createdBy: 'admin',
-				isSynced: true,
-			);
-			await HiveService.events.put(existing.eventId, existing);
-				await controller.loadEvents(force: true);
-
-			final updatedInput = existing.copyWith(
-				nama: '  Nama Baru  ',
-				isSynced: true,
-			);
-
-			final ok = await controller.updateEvent(updatedInput);
-
-			expect(ok, isTrue);
-			expect(controller.errorMessage.value, isNull);
-
-			final updated = controller.events.value.first;
-			expect(updated.nama, 'Nama Baru');
-			expect(updated.isSynced, isFalse);
-
-			final saved = HiveService.events.get('e1');
-			expect(saved, isNotNull);
-			expect(saved!.nama, 'Nama Baru');
-			expect(saved.isSynced, isFalse);
-		});
-	});
-
-	group('EventController.deleteEvent', () {
-		test('menghapus root event beserta sub event-nya', () async {
-			final root = EventModel(
-				eventId: 'root-1',
-				nama: 'Root',
-				jenis: 'Rapat',
-				tanggal: DateTime.now().add(const Duration(days: 1)),
-				createdBy: 'admin',
-			);
-			final child = EventModel(
-				eventId: 'child-1',
-				nama: 'Child',
-				jenis: 'Rapat',
-				tanggal: DateTime.now().add(const Duration(days: 1)),
-				createdBy: 'admin',
-				parentEventId: 'root-1',
-			);
-			final other = EventModel(
-				eventId: 'other-1',
-				nama: 'Other',
-				jenis: 'Rapat',
-				tanggal: DateTime.now().add(const Duration(days: 2)),
-				createdBy: 'admin',
-			);
-
-			await HiveService.events.put(root.eventId, root);
-			await HiveService.events.put(child.eventId, child);
-			await HiveService.events.put(other.eventId, other);
-				await controller.loadEvents(force: true);
-
-			final ok = await controller.deleteEvent('root-1');
-
-			expect(ok, isTrue);
-			expect(controller.events.value.length, 1);
-			expect(controller.events.value.single.eventId, 'other-1');
-			expect(HiveService.events.containsKey('root-1'), isFalse);
-			expect(HiveService.events.containsKey('child-1'), isFalse);
-			expect(HiveService.events.containsKey('other-1'), isTrue);
-		});
-	});
-
-	group('EventController.getRootEvents', () {
-		test('hanya mengembalikan event dengan parentEventId null', () {
-			controller.events.value = <EventModel>[
-				EventModel(
-					eventId: 'root-1',
-					nama: 'Root A',
-					jenis: 'Rapat',
-					tanggal: DateTime.now().add(const Duration(days: 1)),
-					createdBy: 'admin',
-				),
-				EventModel(
-					eventId: 'child-1',
-					nama: 'Child A',
-					jenis: 'Rapat',
-					tanggal: DateTime.now().add(const Duration(days: 1)),
-					createdBy: 'admin',
-					parentEventId: 'root-1',
-				),
-			];
-
-			final roots = controller.getRootEvents();
-			expect(roots.length, 1);
-			expect(roots.single.eventId, 'root-1');
-		});
-	});
+      final roots = controller.getRootEvents();
+      expect(roots.length, 1);
+      expect(roots.single.eventId, 'root-1');
+    });
+  });
 }
