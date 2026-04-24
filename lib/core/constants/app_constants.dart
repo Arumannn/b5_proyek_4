@@ -15,6 +15,8 @@ class AppConstants {
   static const String eventBox = 'event_box';
   static const String attendanceBox = 'attendance_box';
   static const String permissionBox = 'permission_box';
+  static const String pendingUserUpsertBox = 'pending_user_upsert_box';
+  static const String pendingUserDeleteBox = 'pending_user_delete_box';
 
   // ─── Hive TypeId Registry ────────────────────────
   // Setiap model Hive harus punya typeId unik. Jangan ubah nilai ini!
@@ -51,14 +53,36 @@ class AppConstants {
     roleMember,
   ];
 
+  // DBU options for user management form (Admin only)
+  static const List<String> departmentDbuOptions = [
+    'Departemen Komunikasi dan Informasi',
+    'Departemen Luar Himpunan',
+    'Departemen Pengembangan Sumber Daya Himpunan',
+    'Departemen Seni dan Olahraga',
+    'Departemen Keilmuan dan Keprofesian',
+  ];
+
+  static const List<String> bureauDbuOptions = [
+    'Biro Kewirausahaan dan Keuangan',
+    'Biro Administrasi dan Kesekretariatan',
+  ];
+
+  static const List<String> unitDbuOptions = ['Unit Teknologi'];
+
+  static const List<String> allDbuOptions = [
+    ...departmentDbuOptions,
+    ...bureauDbuOptions,
+    ...unitDbuOptions,
+  ];
+
   // ─── Default Admin Seeding ───────────────────────
   static const String defaultAdminNim = '8';
   static const String defaultAdminPassword = 'admin123';
   static const String defaultAdminName = 'Admin Utama';
-  static const String defaultAdminDivision = 'Core';
+  static const String defaultAdminDivision = 'HEXA';
   static const String adminSeedFlagKey = '__seed_admin_done__';
 
-    // ─── Default Member Seeding ───────────────────────
+  // ─── Default Member Seeding ───────────────────────
   static const String defaultMemberNim = '241511039';
   static const String defaultMemberPassword = 'member123';
   static const String defaultMemberName = 'Member Biasa';
@@ -77,9 +101,13 @@ class AppConstants {
   static const String defaultManagerPassword = 'manager123';
   static const String defaultManagerName = 'Manager Biasa';
   static const String defaultManagerDivision = 'Kadep & Wakadep';
-  static const String managerSeedFlagKey = '__seed_manager_done__'; 
-
+  static const String managerSeedFlagKey = '__seed_manager_done__';
 
   // ─── Event Types ─────────────────────────────────
-  static const List<String> eventTypes = ['Rapat', 'Acara', 'Kegiatan', 'Lainnya'];
+  static const List<String> eventTypes = [
+    'Rapat',
+    'Acara',
+    'Kegiatan',
+    'Lainnya',
+  ];
 }

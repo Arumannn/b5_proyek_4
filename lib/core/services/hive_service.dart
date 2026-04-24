@@ -13,14 +13,16 @@ class HiveService {
 
   static Future<void> init() async {
     if (_initialized) {
-      debugPrint('⚠️ HiveService.init() dipanggil lebih dari sekali — diabaikan.');
+      debugPrint(
+        '⚠️ HiveService.init() dipanggil lebih dari sekali — diabaikan.',
+      );
       return;
     }
 
     await Hive.initFlutter();
 
-    Hive.registerAdapter(MemberModelAdapter());      // typeId: 0
-    Hive.registerAdapter(EventModelAdapter());        // typeId: 1
+    Hive.registerAdapter(MemberModelAdapter()); // typeId: 0
+    Hive.registerAdapter(EventModelAdapter()); // typeId: 1
     Hive.registerAdapter(AttendanceRecordAdapter()); // typeId: 2
     Hive.registerAdapter(PermissionRecordAdapter()); // typeId: 3
 
@@ -28,6 +30,8 @@ class HiveService {
     await Hive.openBox<EventModel>(AppConstants.eventBox);
     await Hive.openBox<AttendanceRecord>(AppConstants.attendanceBox);
     await Hive.openBox<PermissionRecord>(AppConstants.permissionBox);
+    await Hive.openBox<String>(AppConstants.pendingUserUpsertBox);
+    await Hive.openBox<String>(AppConstants.pendingUserDeleteBox);
 
     _initialized = true;
     debugPrint('✅ HiveService initialized — 4 boxes open');
@@ -51,6 +55,16 @@ class HiveService {
   static Box<PermissionRecord> get permissions {
     _assertInitialized();
     return Hive.box<PermissionRecord>(AppConstants.permissionBox);
+  }
+
+  static Box<String> get pendingUserUpserts {
+    _assertInitialized();
+    return Hive.box<String>(AppConstants.pendingUserUpsertBox);
+  }
+
+  static Box<String> get pendingUserDeletes {
+    _assertInitialized();
+    return Hive.box<String>(AppConstants.pendingUserDeleteBox);
   }
 
   static void _assertInitialized() {

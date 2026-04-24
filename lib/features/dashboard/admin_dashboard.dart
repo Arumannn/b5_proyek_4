@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../attendance/attendance_recap_view.dart';
 import '../attendance/scan_screen.dart';
 import '../auth/auth_controller.dart';
+import '../auth/user_management_view.dart';
 import '../event/event_list_view.dart';
 
 /// Dashboard Admin — Implementasi penuh: Week 12
@@ -58,7 +59,9 @@ class AdminDashboard extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 24,
-                backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
+                backgroundColor: Theme.of(
+                  context,
+                ).colorScheme.primary.withValues(alpha: 0.12),
                 child: Icon(icon, color: Theme.of(context).colorScheme.primary),
               ),
               const SizedBox(width: 12),
@@ -66,10 +69,7 @@ class AdminDashboard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      title,
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
+                    Text(title, style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 2),
                     Text(
                       subtitle,
@@ -104,10 +104,7 @@ class AdminDashboard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Menu Admin',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
+            Text('Menu Admin', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             _buildMenuCard(
               context: context,
@@ -119,6 +116,20 @@ class AdminDashboard extends StatelessWidget {
                   context,
                   MaterialPageRoute<void>(
                     builder: (_) => const EventListView(),
+                  ),
+                );
+              },
+            ),
+            _buildMenuCard(
+              context: context,
+              icon: Icons.groups_2_outlined,
+              title: 'Manajemen Anggota',
+              subtitle: 'CRUD akun Admin, Manager, Organizer, dan Member',
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (_) => const UserManagementView(),
                   ),
                 );
               },
@@ -146,7 +157,8 @@ class AdminDashboard extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute<void>(
-                    builder: (_) => const AttendanceRecapView(eventId: 'ev-001'),
+                    builder: (_) =>
+                        const AttendanceRecapView(eventId: 'ev-001'),
                   ),
                 );
               },
