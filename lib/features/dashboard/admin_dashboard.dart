@@ -215,8 +215,7 @@ class AdminDashboard extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute<void>(
-                    builder: (_) =>
-                        const AttendanceRecapView(eventId: 'ev-001'),
+                    builder: (_) => const AttendanceRecapView(),
                   ),
                 );
               },
