@@ -8,6 +8,7 @@ import 'core/services/mongo_service.dart';
 import 'core/utils/network_status_controller.dart';
 import 'core/services/fcm_service.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'core/services/sync_manager.dart';
 
 
   Future<void> main() async {
@@ -42,6 +43,10 @@ import 'package:firebase_core/firebase_core.dart';
 
     // Step 7: FCM — stub untuk sekarang, implementasi penuh Week 11
     await FcmService.instance.init();
+
+    // Step 8: Start SyncManager — auto-sync saat koneksi tersedia
+    SyncManager.instance.startListening();
+    debugPrint('✅ Step 8: SyncManager listening aktif');
 
     debugPrint('🚀 PRASASTI App starting...');
     runApp(const PRASASTIApp());
