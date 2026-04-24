@@ -29,6 +29,7 @@ class AppConstants {
   static const String usersCollection = 'users';
   static const String eventsCollection = 'events';
   static const String attendanceCollection = 'attendance';
+  static const String permissionsCollection = 'permissions';
 
   // ─── QR Code Format ──────────────────────────────
   // Format QR: "PRASASTI:{nim}"
@@ -76,29 +77,29 @@ class AppConstants {
   ];
 
   // ─── Default Admin Seeding ───────────────────────
-  static const String defaultAdminNim = '8';
-  static const String defaultAdminPassword = 'admin123';
+  static const String defaultAdminNim = '38';
+  static const String defaultAdminPassword = '123';
   static const String defaultAdminName = 'Admin Utama';
   static const String defaultAdminDivision = 'HEXA';
   static const String adminSeedFlagKey = '__seed_admin_done__';
 
-  // ─── Default Member Seeding ───────────────────────
-  static const String defaultMemberNim = '241511039';
-  static const String defaultMemberPassword = 'member123';
+    // ─── Default Member Seeding ───────────────────────
+  static const String defaultMemberNim = '39';
+  static const String defaultMemberPassword = '123';
   static const String defaultMemberName = 'Member Biasa';
   static const String defaultMemberDivision = 'Anggota';
   static const String memberSeedFlagKey = '__seed_member_done__';
 
   // ─── Default Organizer Seeding ───────────────────────
-  static const String defaultOrganizerNim = '241511040';
-  static const String defaultOrganizerPassword = 'organizer123';
+  static const String defaultOrganizerNim = '40';
+  static const String defaultOrganizerPassword = '123';
   static const String defaultOrganizerName = 'Organizer Biasa';
   static const String defaultOrganizerDivision = 'Kadep & Wakadep';
   static const String organizerSeedFlagKey = '__seed_organizer_done__';
 
   // Default Manager Seeding ──────────────────────────────────────
-  static const String defaultManagerNim = '241511041';
-  static const String defaultManagerPassword = 'manager123';
+  static const String defaultManagerNim = '41';
+  static const String defaultManagerPassword = '123';
   static const String defaultManagerName = 'Manager Biasa';
   static const String defaultManagerDivision = 'Kadep & Wakadep';
   static const String managerSeedFlagKey = '__seed_manager_done__';
