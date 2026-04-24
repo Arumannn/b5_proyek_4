@@ -359,7 +359,7 @@ class _EventListViewState extends State<EventListView> {
               Icon(Icons.calendar_today, size: 14, color: Colors.grey.shade600),
               const SizedBox(width: 4),
               Text(
-                _formatDate(subEvent.tanggal),
+                _formatDateTime(subEvent.tanggal),
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ],
@@ -458,7 +458,7 @@ class _EventListViewState extends State<EventListView> {
                                  color: Colors.grey.shade600),
                             const SizedBox(width: 4),
                             Text(
-                              _formatDate(event.tanggal),
+                              _formatDateTime(event.tanggal),
                               style: Theme.of(context).textTheme.bodySmall,
                             ),
                             const SizedBox(width: 12),
@@ -526,18 +526,19 @@ class _EventListViewState extends State<EventListView> {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute<void>(
-                          builder: (_) => ScanScreen(eventId: event.eventId),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.qr_code_scanner),
-                    label: const Text('Scan Absensi'),
-                  ),
+                  if (!hasSubEvents)
+                    OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute<void>(
+                            builder: (_) => ScanScreen(eventId: event.eventId),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.qr_code_scanner),
+                      label: const Text('Scan Absensi'),
+                    ),
                   OutlinedButton.icon(
                     onPressed: () => _editEvent(event),
                     icon: const Icon(Icons.edit_outlined),
@@ -622,6 +623,13 @@ class _EventListViewState extends State<EventListView> {
     final mm = date.month.toString().padLeft(2, '0');
     final yyyy = date.year.toString();
     return '$dd/$mm/$yyyy';
+  }
+
+  String _formatDateTime(DateTime date) {
+    final datePart = _formatDate(date);
+    final hh = date.hour.toString().padLeft(2, '0');
+    final mm = date.minute.toString().padLeft(2, '0');
+    return '$datePart $hh:$mm';
   }
 
   Color _getJenisColor(String jenis) {

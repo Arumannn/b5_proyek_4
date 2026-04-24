@@ -116,7 +116,37 @@ class _EventFormViewState extends State<EventFormView> {
     );
     if (picked != null) {
       setState(() {
-        _selectedDate = picked;
+        _selectedDate = DateTime(
+          picked.year,
+          picked.month,
+          picked.day,
+          _selectedDate.hour,
+          _selectedDate.minute,
+        );
+      });
+    }
+  }
+
+  Future<void> _pickTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(
+        hour: _selectedDate.hour,
+        minute: _selectedDate.minute,
+      ),
+      helpText: 'Pilih Waktu Dimulai',
+      cancelText: 'Batal',
+      confirmText: 'OK',
+    );
+    if (picked != null) {
+      setState(() {
+        _selectedDate = DateTime(
+          _selectedDate.year,
+          _selectedDate.month,
+          _selectedDate.day,
+          picked.hour,
+          picked.minute,
+        );
       });
     }
   }
@@ -216,6 +246,12 @@ class _EventFormViewState extends State<EventFormView> {
     final mm = date.month.toString().padLeft(2, '0');
     final yyyy = date.year.toString();
     return '$dd/$mm/$yyyy';
+  }
+
+  String _formatTime(DateTime date) {
+    final hh = date.hour.toString().padLeft(2, '0');
+    final mm = date.minute.toString().padLeft(2, '0');
+    return '$hh:$mm';
   }
 
   String _getSelectedDivisiText() {
@@ -354,6 +390,24 @@ class _EventFormViewState extends State<EventFormView> {
                 leading: const Icon(Icons.calendar_today_outlined),
                 trailing: const Icon(Icons.edit_calendar_outlined),
                 onTap: _pickDate,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  side: BorderSide(color: Colors.grey.shade300),
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Waktu Dimulai *'),
+                subtitle: Text(
+                  _formatTime(_selectedDate),
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                leading: const Icon(Icons.schedule_outlined),
+                trailing: const Icon(Icons.edit_outlined),
+                onTap: _pickTime,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                   side: BorderSide(color: Colors.grey.shade300),

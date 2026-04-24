@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+
+import '../../core/utils/qr_service.dart';
 import 'attendance_controller.dart';
 
 
@@ -19,6 +21,20 @@ class ScanScreen extends StatefulWidget {
   State<ScanScreen> createState() => _ScanScreenState();
 }
 
+class ScanSuccessPayload {
+  final String eventId;
+  final String nama;
+  final String identifier;
+  final String status;
+
+  const ScanSuccessPayload({
+    required this.eventId,
+    required this.nama,
+    required this.identifier,
+    required this.status,
+  });
+}
+
 class _ScanScreenState extends State<ScanScreen> {
   // Inisialisasi controller scanner
   final MobileScannerController _scannerController = MobileScannerController(
@@ -28,6 +44,7 @@ class _ScanScreenState extends State<ScanScreen> {
 
   // ValueNotifier untuk mengunci scanner agar tidak spam hit ke lokal/cloud
   final ValueNotifier<bool> _isProcessing = ValueNotifier<bool>(false);
+  bool _isClosingAfterSuccess = false;
 
   @override
   void initState() {
@@ -43,7 +60,7 @@ class _ScanScreenState extends State<ScanScreen> {
   }
 
   Future<void> _handleDetect(BarcodeCapture capture) async {
-    if (_isProcessing.value) return;
+    if (_isProcessing.value || _isClosingAfterSuccess) return;
 
     final List<Barcode> barcodes = capture.barcodes;
     if (barcodes.isEmpty) return;
@@ -55,6 +72,8 @@ class _ScanScreenState extends State<ScanScreen> {
     }
 
     _isProcessing.value = true;
+    var shouldAutoClose = false;
+    String? successStatus;
 
     try {
       final result = await AttendanceController.instance.recordAttendance(
@@ -67,9 +86,13 @@ class _ScanScreenState extends State<ScanScreen> {
       switch (result) {
         case AttendanceResult.successHadir:
           _showSnackbar('✅ Hadir: $namaMember', Colors.green);
+          shouldAutoClose = true;
+          successStatus = 'Hadir';
           break;
         case AttendanceResult.successTerlambat:
           _showSnackbar('⚠️ Terlambat: $namaMember', Colors.orange.shade700);
+          shouldAutoClose = true;
+          successStatus = 'Terlambat';
           break;
         case AttendanceResult.duplicate:
           _showSnackbar('❌ Ditolak: $namaMember SUDAH ABSEN!', Colors.red);
@@ -94,6 +117,29 @@ class _ScanScreenState extends State<ScanScreen> {
     } catch (e) {
       _showSnackbar('Exception: $e', Colors.red);
     } finally {
+      if (shouldAutoClose) {
+        _isClosingAfterSuccess = true;
+        try {
+          await _scannerController.stop();
+        } catch (_) {
+          // Abaikan error stop kamera agar flow kembali tetap lanjut.
+        }
+
+        if (mounted) {
+          final identifier = QrService.parseNim(qrData) ?? qrData.trim();
+          Navigator.of(context).pop(
+            ScanSuccessPayload(
+              eventId: widget.eventId,
+              nama: AttendanceController.instance.lastScannedName.value ??
+                  'Anggota',
+              identifier: identifier,
+              status: successStatus ?? 'Hadir',
+            ),
+          );
+        }
+        return;
+      }
+
       // 4. Beri jeda 2 detik agar Admin bisa melihat hasil Snackbar
       await Future.delayed(const Duration(seconds: 2));
       if (mounted) {

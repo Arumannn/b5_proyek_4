@@ -97,6 +97,12 @@ class _ManagerAttendanceManagementViewState
       return;
     }
 
+    final hasSubEvents = _events.any((e) => e.parentEventId == _selectedEventId);
+    if (hasSubEvents) {
+      CustomSnackbar.showWarning(context, 'Pilih sub-event untuk absensi karena event utama ini memiliki sub-event.');
+      return;
+    }
+
     await Navigator.push(
       context,
       MaterialPageRoute<void>(

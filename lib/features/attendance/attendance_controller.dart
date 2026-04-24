@@ -100,14 +100,10 @@ class AttendanceController {
         return AttendanceResult.duplicate;
       }
 
-      // 5. Tentukan status: Hadir atau Terlambat
+      // 5. Tentukan status: Hadir atau Terlambat berdasarkan waktu mulai event
       final now = DateTime.now();
-      final eventDay = DateTime(
-        event.tanggal.year,
-        event.tanggal.month,
-        event.tanggal.day,
-      );
-      final lateThreshold = eventDay.add(const Duration(minutes: 15));
+      final baseTime = event.jamMulai ?? event.tanggal;
+      final lateThreshold = baseTime.add(const Duration(minutes: 15));
       final isLate = now.isAfter(lateThreshold);
       final status = isLate ? 'Terlambat' : 'Hadir';
 

@@ -120,6 +120,26 @@ class _ManagerSubEventManagementViewState
               });
             }
 
+            Future<void> pickTime() async {
+              final picked = await showTimePicker(
+                context: context,
+                initialTime: TimeOfDay(
+                  hour: selectedDate.hour,
+                  minute: selectedDate.minute,
+                ),
+              );
+              if (picked == null) return;
+              setDialogState(() {
+                selectedDate = DateTime(
+                  selectedDate.year,
+                  selectedDate.month,
+                  selectedDate.day,
+                  picked.hour,
+                  picked.minute,
+                );
+              });
+            }
+
             Future<void> submit() async {
               if (!(formKey.currentState?.validate() ?? false)) return;
               if (selectedParentId == null) return;
@@ -245,6 +265,17 @@ class _ManagerSubEventManagementViewState
                           subtitle: Text(_formatDate(selectedDate)),
                           trailing: const Icon(Icons.edit_calendar_outlined),
                           onTap: pickDate,
+                        ),
+                        const SizedBox(height: 8),
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: const Icon(Icons.schedule_outlined),
+                          title: const Text('Waktu Dimulai'),
+                          subtitle: Text(
+                            '${selectedDate.hour.toString().padLeft(2, '0')}:${selectedDate.minute.toString().padLeft(2, '0')}',
+                          ),
+                          trailing: const Icon(Icons.edit_outlined),
+                          onTap: pickTime,
                         ),
                       ],
                     ),

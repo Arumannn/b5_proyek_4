@@ -1,5 +1,10 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
+
 part of 'member_model.dart';
+
+// **************************************************************************
+// TypeAdapterGenerator
+// **************************************************************************
 
 class MemberModelAdapter extends TypeAdapter<MemberModel> {
   @override
@@ -11,17 +16,15 @@ class MemberModelAdapter extends TypeAdapter<MemberModel> {
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    final memberId = (fields[0] ?? '').toString();
-    final nim = fields[2] != null ? fields[2].toString() : memberId;
     return MemberModel(
-      memberId: memberId,
-      nama: (fields[1] ?? '').toString(),
-      nim: nim,
-      divisi: (fields[3] ?? '').toString(),
-      role: (fields[4] ?? '').toString(),
-      password: (fields[5] ?? '').toString(),
-      qrCodeValue: (fields[6] ?? '').toString(),
-      fcmToken: fields[7]?.toString(),
+      memberId: fields[0] as String,
+      nama: fields[1] as String,
+      nim: fields[2] as String,
+      divisi: fields[3] as String,
+      role: fields[4] as String,
+      password: fields[5] as String,
+      qrCodeValue: fields[6] as String,
+      fcmToken: fields[7] as String?,
     );
   }
 

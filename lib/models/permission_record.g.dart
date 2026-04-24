@@ -1,5 +1,10 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
+
 part of 'permission_record.dart';
+
+// **************************************************************************
+// TypeAdapterGenerator
+// **************************************************************************
 
 class PermissionRecordAdapter extends TypeAdapter<PermissionRecord> {
   @override
@@ -12,23 +17,25 @@ class PermissionRecordAdapter extends TypeAdapter<PermissionRecord> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return PermissionRecord(
-      permissionId: (fields[0] ?? '').toString(),
-      eventId: (fields[1] ?? '').toString(),
-      memberId: (fields[2] ?? '').toString(),
-      jenisIzin: (fields[3] ?? 'Izin').toString(),
-      alasan: (fields[4] ?? '').toString(),
-      buktiFotoPath: fields[5]?.toString(),
-      buktiFotoUrl: fields[6]?.toString(),
-      status: (fields[7] ?? 'Pending').toString(),
-      validatedBy: fields[8]?.toString(),
-      isSynced: fields[9] as bool? ?? false,
+      permissionId: fields[0] as String,
+      eventId: fields[1] as String,
+      memberId: fields[2] as String,
+      jenisIzin: fields[3] as String,
+      alasan: fields[4] as String,
+      buktiFotoPath: fields[5] as String?,
+      buktiFotoUrl: fields[6] as String?,
+      status: fields[7] as String,
+      validatedBy: fields[8] as String?,
+      isSynced: fields[9] as bool,
+      createdAt: fields[10] as DateTime?,
+      updatedAt: fields[11] as DateTime?,
     );
   }
 
   @override
   void write(BinaryWriter writer, PermissionRecord obj) {
     writer
-      ..writeByte(10)
+      ..writeByte(12)
       ..writeByte(0)
       ..write(obj.permissionId)
       ..writeByte(1)
@@ -48,7 +55,11 @@ class PermissionRecordAdapter extends TypeAdapter<PermissionRecord> {
       ..writeByte(8)
       ..write(obj.validatedBy)
       ..writeByte(9)
-      ..write(obj.isSynced);
+      ..write(obj.isSynced)
+      ..writeByte(10)
+      ..write(obj.createdAt)
+      ..writeByte(11)
+      ..write(obj.updatedAt);
   }
 
   @override

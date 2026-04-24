@@ -18,7 +18,12 @@ class AdminDashboard extends StatelessWidget {
   const AdminDashboard({super.key});
 
   Future<void> _openScanForSelectedEvent(BuildContext context) async {
-    final events = HiveService.events.values.toList()
+    final allEvents = HiveService.events.values.toList();
+    final events = allEvents.where((e) {
+      bool isMain = e.parentEventId == null;
+      bool hasSub = allEvents.any((sub) => sub.parentEventId == e.eventId);
+      return !(isMain && hasSub);
+    }).toList()
       ..sort((a, b) => b.tanggal.compareTo(a.tanggal));
 
     if (events.isEmpty) {
