@@ -75,7 +75,13 @@ class _ScanScreenState extends State<ScanScreen> {
           _showSnackbar('❌ Ditolak: $namaMember SUDAH ABSEN!', Colors.red);
           break;
         case AttendanceResult.memberNotFound:
-          _showSnackbar('❓ QR Tidak Valid / Bukan Anggota', Colors.red.shade900);
+          final reason = AttendanceController.instance.lastFailureReason.value;
+          _showSnackbar(
+            reason == null || reason.isEmpty
+                ? '❓ QR Tidak Valid / Bukan Anggota'
+                : '❓ QR Tidak Valid / Bukan Anggota\n$reason',
+            Colors.red.shade900,
+          );
           break;
         case AttendanceResult.eventNotFound:
           _showSnackbar('Error: Data Event Hilang', Colors.grey);

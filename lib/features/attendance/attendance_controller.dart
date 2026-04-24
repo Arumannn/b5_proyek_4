@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:uuid/uuid.dart';
 
@@ -26,6 +27,8 @@ class AttendanceController {
   final ValueNotifier<AttendanceResult?> lastResult = ValueNotifier(null);
   // Nama member yang terakhir berhasil scan — untuk ditampilkan di UI
   final ValueNotifier<String?> lastScannedName = ValueNotifier(null);
+  // Menyimpan alasan gagal terakhir agar mudah ditampilkan di UI/debug.
+  final ValueNotifier<String?> lastFailureReason = ValueNotifier(null);
 
   bool _isPreloadingMembers = false;
 
@@ -40,21 +43,39 @@ class AttendanceController {
     if (isProcessing.value) return AttendanceResult.error;
     isProcessing.value = true;
     lastResult.value = null;
+    lastFailureReason.value = null;
 
     try {
-      // 1. Validasi format QR (harus diawali "PRASASTI:")
-      final nim = QrService.parseNim(scannedQrValue);
-      if (nim == null) {
+      final normalizedScan = scannedQrValue.trim();
+      if (normalizedScan.isEmpty) {
+        lastFailureReason.value = 'QR kosong atau tidak terbaca';
+        lastResult.value = AttendanceResult.memberNotFound;
+        return AttendanceResult.memberNotFound;
+      }
+
+      // 1. Ambil identifier dari QR secara toleran:
+      // - format utama: PRASASTI:{nim}
+      // - format lama: plain nim/memberId
+      final nim = _extractIdentifierFromScan(normalizedScan);
+      if (nim.isEmpty) {
+        lastFailureReason.value = 'Identifier QR tidak dapat diparse';
         lastResult.value = AttendanceResult.memberNotFound;
         return AttendanceResult.memberNotFound;
       }
 
       // 2. Cari member di Hive, fallback ke cloud lalu cache ke Hive.
       final member = await _resolveMemberForScan(
-        scannedQrValue: scannedQrValue,
+        scannedQrValue: normalizedScan,
         nimFromQr: nim,
       );
       if (member == null) {
+        if (_isLegacyDummyIdentifier(nim)) {
+          lastFailureReason.value =
+              'QR ini berasal dari data dummy lama ($nim). Gunakan QR dari akun member yang tersimpan di sistem saat ini.';
+        } else {
+          lastFailureReason.value =
+              'Member tidak ditemukan di Hive maupun cloud untuk QR: $normalizedScan';
+        }
         lastResult.value = AttendanceResult.memberNotFound;
         return AttendanceResult.memberNotFound;
       }
@@ -62,6 +83,7 @@ class AttendanceController {
       // 3. Cek event ada
       final event = HiveService.events.get(eventId);
       if (event == null) {
+        lastFailureReason.value = 'Event tidak ditemukan: $eventId';
         lastResult.value = AttendanceResult.eventNotFound;
         return AttendanceResult.eventNotFound;
       }
@@ -72,6 +94,8 @@ class AttendanceController {
         (r) => r.compositeKey == compositeKey,
       );
       if (isDuplicate) {
+        lastFailureReason.value =
+            'Duplikat absensi untuk member ${member.memberId} pada event $eventId';
         lastResult.value = AttendanceResult.duplicate;
         return AttendanceResult.duplicate;
       }
@@ -107,6 +131,7 @@ class AttendanceController {
       return result;
     } catch (e, st) {
       debugPrint('[Attendance] Error: $e\n$st');
+      lastFailureReason.value = 'Exception: $e';
       lastResult.value = AttendanceResult.error;
       return AttendanceResult.error;
     } finally {
@@ -134,22 +159,39 @@ class AttendanceController {
     required String scannedQrValue,
     required String nimFromQr,
   }) async {
+    final normalizedScan = scannedQrValue.trim();
+    final normalizedIdentifier = _normalizeIdentifier(nimFromQr);
+
     // Priority 1: exact QR match di Hive.
     for (final m in HiveService.members.values) {
-      if (m.qrCodeValue == scannedQrValue) {
+      if (_normalizeIdentifier(m.qrCodeValue) == _normalizeIdentifier(normalizedScan)) {
         return m;
       }
     }
 
     // Priority 2: fallback by NIM di Hive (untuk data lama tanpa qrCodeValue konsisten).
-    final localByNim = HiveService.members.get(nimFromQr);
+    final localByNim = HiveService.members.get(nimFromQr) ??
+        HiveService.members.get(normalizedIdentifier);
     if (localByNim != null) {
-      if (localByNim.qrCodeValue != scannedQrValue) {
-        final repaired = localByNim.copyWith(qrCodeValue: scannedQrValue);
-        await HiveService.members.put(nimFromQr, repaired);
+      if (_normalizeIdentifier(localByNim.qrCodeValue) !=
+          _normalizeIdentifier(normalizedScan)) {
+        final repaired = localByNim.copyWith(qrCodeValue: normalizedScan);
+        await HiveService.members.put(localByNim.nim, repaired);
         return repaired;
       }
       return localByNim;
+    }
+
+    // Priority 2b: fallback by memberId di Hive.
+    for (final m in HiveService.members.values) {
+      if (_normalizeIdentifier(m.memberId) == normalizedIdentifier) {
+        if (_normalizeIdentifier(m.qrCodeValue) != _normalizeIdentifier(normalizedScan)) {
+          final repaired = m.copyWith(qrCodeValue: normalizedScan);
+          await HiveService.members.put(m.nim, repaired);
+          return repaired;
+        }
+        return m;
+      }
     }
 
     // Priority 3: ambil dari cloud jika online, lalu cache ke Hive agar bisa offline berikutnya.
@@ -162,9 +204,25 @@ class AttendanceController {
       if (!connected) return null;
     }
 
-    final cloudDoc = await MongoService.instance.findOne(
+    var cloudDoc = await MongoService.instance.findOne(
       collectionName: AppConstants.usersCollection,
       filter: {'nim': nimFromQr},
+    );
+    cloudDoc ??= await MongoService.instance.findOne(
+      collectionName: AppConstants.usersCollection,
+      filter: {'nim': normalizedIdentifier},
+    );
+    cloudDoc ??= await MongoService.instance.findOne(
+      collectionName: AppConstants.usersCollection,
+      filter: {'memberId': nimFromQr},
+    );
+    cloudDoc ??= await MongoService.instance.findOne(
+      collectionName: AppConstants.usersCollection,
+      filter: {'memberId': normalizedIdentifier},
+    );
+    cloudDoc ??= await MongoService.instance.findOne(
+      collectionName: AppConstants.usersCollection,
+      filter: {'qrCodeValue': normalizedScan},
     );
     if (cloudDoc == null) return null;
 
@@ -173,13 +231,37 @@ class AttendanceController {
       ..['memberId'] = (cloudDoc['memberId'] ?? cloudDoc['nim'] ?? nimFromQr)
           .toString()
           .trim()
-      ..['qrCodeValue'] = (cloudDoc['qrCodeValue'] ?? scannedQrValue).toString();
+      ..['qrCodeValue'] = (cloudDoc['qrCodeValue'] ?? normalizedScan).toString();
 
     final cached = MemberModel.fromMap(merged);
     await HiveService.members.put(cached.nim, cached);
 
     debugPrint('[Attendance] member cloud hit -> cached nim=${cached.nim}');
     return cached;
+  }
+
+  String _extractIdentifierFromScan(String rawScan) {
+    final parsed = QrService.parseNim(rawScan);
+    if (parsed != null && parsed.trim().isNotEmpty) {
+      return parsed.trim();
+    }
+
+    // Legacy tolerance: terima plain nim/memberId, dan prefix tanpa case-sensitive.
+    final upperScan = rawScan.toUpperCase();
+    final upperPrefix = AppConstants.qrPrefix.toUpperCase();
+    if (upperScan.startsWith(upperPrefix)) {
+      return rawScan.substring(AppConstants.qrPrefix.length).trim();
+    }
+
+    return rawScan.trim();
+  }
+
+  String _normalizeIdentifier(String value) {
+    return value.trim().toUpperCase();
+  }
+
+  bool _isLegacyDummyIdentifier(String identifier) {
+    return _normalizeIdentifier(identifier).startsWith('MEMBER-PRASASTI-');
   }
 
   Future<void> preloadMembersFromCloudToHive() async {
@@ -234,8 +316,15 @@ class AttendanceController {
   }
 
   Future<bool> _isOnline() async {
-    final connectivityResult = await Connectivity().checkConnectivity();
-    return connectivityResult.any((r) => r != ConnectivityResult.none);
+    try {
+      final connectivityResult = await Connectivity().checkConnectivity();
+      return connectivityResult.any((r) => r != ConnectivityResult.none);
+    } on MissingPluginException {
+      // Unit test / environment tertentu tidak memiliki plugin binding.
+      return false;
+    } catch (_) {
+      return false;
+    }
   }
 
   /// Fitur override manual oleh Admin / Manager
@@ -363,5 +452,6 @@ class AttendanceController {
     isProcessing.dispose();
     lastResult.dispose();
     lastScannedName.dispose();
+    lastFailureReason.dispose();
   }
 }
