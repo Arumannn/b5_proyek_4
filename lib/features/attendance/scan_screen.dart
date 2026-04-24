@@ -30,6 +30,12 @@ class _ScanScreenState extends State<ScanScreen> {
   final ValueNotifier<bool> _isProcessing = ValueNotifier<bool>(false);
 
   @override
+  void initState() {
+    super.initState();
+    AttendanceController.instance.preloadMembersFromCloudToHive();
+  }
+
+  @override
   void dispose() {
     _scannerController.dispose();
     _isProcessing.dispose();

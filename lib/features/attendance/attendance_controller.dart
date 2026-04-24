@@ -1,7 +1,9 @@
 import 'package:flutter/foundation.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:uuid/uuid.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/services/hive_service.dart';
+import '../../core/services/mongo_service.dart';
 import '../../core/utils/qr_service.dart';
 import '../../models/attendance_record.dart';
 import '../../models/member_model.dart';
@@ -25,6 +27,8 @@ class AttendanceController {
   // Nama member yang terakhir berhasil scan — untuk ditampilkan di UI
   final ValueNotifier<String?> lastScannedName = ValueNotifier(null);
 
+  bool _isPreloadingMembers = false;
+
   /// Merekam absensi dari hasil scan QR.
   ///
   /// [eventId] — ID event yang sedang berjalan.
@@ -45,14 +49,11 @@ class AttendanceController {
         return AttendanceResult.memberNotFound;
       }
 
-      // 2. Cari member berdasarkan qrCodeValue di Hive
-      MemberModel? member;
-      for (final m in HiveService.members.values) {
-        if (m.qrCodeValue == scannedQrValue) {
-          member = m;
-          break;
-        }
-      }
+      // 2. Cari member di Hive, fallback ke cloud lalu cache ke Hive.
+      final member = await _resolveMemberForScan(
+        scannedQrValue: scannedQrValue,
+        nimFromQr: nim,
+      );
       if (member == null) {
         lastResult.value = AttendanceResult.memberNotFound;
         return AttendanceResult.memberNotFound;
@@ -123,6 +124,114 @@ class AttendanceController {
         .where((r) => r.memberId == memberId)
         .toList()
       ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+  }
+
+  Future<MemberModel?> _resolveMemberForScan({
+    required String scannedQrValue,
+    required String nimFromQr,
+  }) async {
+    // Priority 1: exact QR match di Hive.
+    for (final m in HiveService.members.values) {
+      if (m.qrCodeValue == scannedQrValue) {
+        return m;
+      }
+    }
+
+    // Priority 2: fallback by NIM di Hive (untuk data lama tanpa qrCodeValue konsisten).
+    final localByNim = HiveService.members.get(nimFromQr);
+    if (localByNim != null) {
+      if (localByNim.qrCodeValue != scannedQrValue) {
+        final repaired = localByNim.copyWith(qrCodeValue: scannedQrValue);
+        await HiveService.members.put(nimFromQr, repaired);
+        return repaired;
+      }
+      return localByNim;
+    }
+
+    // Priority 3: ambil dari cloud jika online, lalu cache ke Hive agar bisa offline berikutnya.
+    if (!await _isOnline()) {
+      return null;
+    }
+
+    if (!MongoService.instance.isConnected) {
+      final connected = await MongoService.instance.ensureConnected();
+      if (!connected) return null;
+    }
+
+    final cloudDoc = await MongoService.instance.findOne(
+      collectionName: AppConstants.usersCollection,
+      filter: {'nim': nimFromQr},
+    );
+    if (cloudDoc == null) return null;
+
+    final merged = Map<String, dynamic>.from(cloudDoc)
+      ..['nim'] = (cloudDoc['nim'] ?? nimFromQr).toString().trim()
+      ..['memberId'] = (cloudDoc['memberId'] ?? cloudDoc['nim'] ?? nimFromQr)
+          .toString()
+          .trim()
+      ..['qrCodeValue'] = (cloudDoc['qrCodeValue'] ?? scannedQrValue).toString();
+
+    final cached = MemberModel.fromMap(merged);
+    await HiveService.members.put(cached.nim, cached);
+
+    debugPrint('[Attendance] member cloud hit -> cached nim=${cached.nim}');
+    return cached;
+  }
+
+  Future<void> preloadMembersFromCloudToHive() async {
+    if (_isPreloadingMembers) return;
+
+    _isPreloadingMembers = true;
+    try {
+      if (!await _isOnline()) {
+        debugPrint('[Attendance] preload member skipped: offline');
+        return;
+      }
+
+      if (!MongoService.instance.isConnected) {
+        final connected = await MongoService.instance.ensureConnected();
+        if (!connected) {
+          debugPrint('[Attendance] preload member skipped: MongoDB not connected');
+          return;
+        }
+      }
+
+      final cloudUsers = await MongoService.instance.findMany(
+        collectionName: AppConstants.usersCollection,
+      );
+
+      if (cloudUsers.isEmpty) {
+        debugPrint('[Attendance] preload member: no users in cloud');
+        return;
+      }
+
+      var insertedOrUpdated = 0;
+      for (final raw in cloudUsers) {
+        final merged = Map<String, dynamic>.from(raw);
+        final nim = (merged['nim'] ?? '').toString().trim();
+        if (nim.isEmpty) continue;
+
+        merged['nim'] = nim;
+        merged['memberId'] = (merged['memberId'] ?? nim).toString().trim();
+        merged['qrCodeValue'] =
+            (merged['qrCodeValue'] ?? QrService.generateQrData(nim)).toString();
+
+        final model = MemberModel.fromMap(merged);
+        await HiveService.members.put(model.nim, model);
+        insertedOrUpdated++;
+      }
+
+      debugPrint('[Attendance] preload member done: $insertedOrUpdated cached to Hive');
+    } catch (e) {
+      debugPrint('[Attendance] preload member error: $e');
+    } finally {
+      _isPreloadingMembers = false;
+    }
+  }
+
+  Future<bool> _isOnline() async {
+    final connectivityResult = await Connectivity().checkConnectivity();
+    return connectivityResult.any((r) => r != ConnectivityResult.none);
   }
 
   /// Fitur override manual oleh Admin / Manager

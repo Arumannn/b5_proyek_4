@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../core/services/hive_service.dart';
+import '../../models/event_model.dart';
 import '../attendance/attendance_recap_view.dart';
 import '../attendance/scan_screen.dart';
 import '../auth/auth_controller.dart';
@@ -13,6 +15,64 @@ import '../event/event_list_view.dart';
 /// - NetworkStatusBanner untuk indikator online/offline
 class AdminDashboard extends StatelessWidget {
   const AdminDashboard({super.key});
+
+  Future<void> _openScanForSelectedEvent(BuildContext context) async {
+    final events = HiveService.events.values.toList()
+      ..sort((a, b) => b.tanggal.compareTo(a.tanggal));
+
+    if (events.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Belum ada event. Silakan buat event terlebih dahulu.'),
+        ),
+      );
+      return;
+    }
+
+    final selected = await showModalBottomSheet<EventModel>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const ListTile(
+                title: Text('Pilih Event untuk Scan'),
+                subtitle: Text('QR anggota akan dicatat ke event ini.'),
+              ),
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: events.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  itemBuilder: (itemContext, index) {
+                    final event = events[index];
+                    return ListTile(
+                      title: Text(event.nama),
+                      subtitle: Text(
+                        '${event.jenis} • ${event.tanggal.toLocal()}',
+                      ),
+                      onTap: () => Navigator.of(sheetContext).pop(event),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (selected == null || !context.mounted) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => ScanScreen(eventId: selected.eventId),
+      ),
+    );
+  }
 
   Future<void> _confirmAndLogout(BuildContext context) async {
     final confirmed = await showDialog<bool>(
@@ -127,15 +187,8 @@ class AdminDashboard extends StatelessWidget {
               context: context,
               icon: Icons.qr_code_scanner_outlined,
               title: 'Scan Absensi',
-              subtitle: 'Buka scanner QR untuk proses kehadiran',
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute<void>(
-                    builder: (_) => const ScanScreen(eventId: 'manual-scan'),
-                  ),
-                );
-              },
+              subtitle: 'Pilih event lalu scan QR anggota',
+              onTap: () => _openScanForSelectedEvent(context),
             ),
             _buildMenuCard(
               context: context,
