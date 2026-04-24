@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/utils/qr_service.dart';
 import '../auth/auth_controller.dart';
 import '../member/member_profile_view.dart';
 import '../member/qr_display_view.dart';
@@ -79,8 +80,9 @@ class MemberDashboard extends StatelessWidget {
               onPressed: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (_) => const QrDisplayView(
+                    builder: (_) => QrDisplayView(
                       nim: _dummyMemberId,
+                      qrData: QrService.generateQrData(_dummyMemberId),
                     ),
                   ),
                 );
