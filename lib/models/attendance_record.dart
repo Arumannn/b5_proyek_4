@@ -32,6 +32,15 @@ class AttendanceRecord extends HiveObject {
   @HiveField(8)
   final String compositeKey; // '${eventId}_${memberId}' — ANTI-DUPLIKAT
 
+  @HiveField(9)
+  String? permissionId; // ID izin terkait jika status = 'Izin' atau 'Sakit'
+
+  @HiveField(10)
+  final DateTime createdAt;
+
+  @HiveField(11)
+  DateTime updatedAt;
+
   AttendanceRecord({
     required this.recordId,
     required this.eventId,
@@ -42,7 +51,11 @@ class AttendanceRecord extends HiveObject {
     this.overrideBy,
     this.isSynced = false,
     required this.compositeKey,
-  });
+    this.permissionId,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  })  : createdAt = createdAt ?? DateTime.now(),
+        updatedAt = updatedAt ?? DateTime.now();
 
   factory AttendanceRecord.create({
     required String recordId,

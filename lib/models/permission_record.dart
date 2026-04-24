@@ -18,22 +18,28 @@ class PermissionRecord extends HiveObject {
   final String jenisIzin; // 'Sakit' atau 'Izin'
 
   @HiveField(4)
-  final String alasan;
+  final String alasan; // Pastikan backend menambah ini di DBML!
 
   @HiveField(5)
-  String? buktiFotoPath; // path file lokal (sebelum sync)
+  String? buktiFotoPath;
 
   @HiveField(6)
-  String? buktiFotoUrl; // URL Firebase Storage (setelah sync)
+  String? buktiFotoUrl;
 
   @HiveField(7)
-  String status; // 'Pending', 'Approved', 'Rejected'
+  String status;
 
   @HiveField(8)
-  String? validatedBy; // memberId Admin/Manager yang validasi
+  String? validatedBy;
 
   @HiveField(9)
   bool isSynced;
+
+  @HiveField(10)
+  DateTime createdAt;
+
+  @HiveField(11)
+  DateTime updatedAt;
 
   PermissionRecord({
     required this.permissionId,
@@ -46,7 +52,10 @@ class PermissionRecord extends HiveObject {
     this.status = 'Pending',
     this.validatedBy,
     this.isSynced = false,
-  });
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  })  : createdAt = createdAt ?? DateTime.now(),
+        updatedAt = updatedAt ?? DateTime.now();
 
   Map<String, dynamic> toMap() {
     return {
@@ -58,6 +67,8 @@ class PermissionRecord extends HiveObject {
       'buktiFotoUrl': buktiFotoUrl,
       'status': status,
       'validatedBy': validatedBy,
+      'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt.toIso8601String(),
     };
   }
 
@@ -72,6 +83,8 @@ class PermissionRecord extends HiveObject {
       status: map['status']?.toString() ?? 'Pending',
       validatedBy: map['validatedBy']?.toString(),
       isSynced: true,
+      createdAt: map['createdAt'] != null ? DateTime.parse(map['createdAt'].toString()) : DateTime.now(),
+      updatedAt: map['updatedAt'] != null ? DateTime.parse(map['updatedAt'].toString()) : DateTime.now(),
     );
   }
 }
