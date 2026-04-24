@@ -4,6 +4,7 @@ import '../../core/services/hive_service.dart';
 import '../../features/attendance/attendance_controller.dart';
 import '../../features/attendance/scan_screen.dart';
 import '../../features/auth/auth_controller.dart';
+import '../../features/event/event_controller.dart';
 import '../../models/attendance_record.dart';
 import '../../models/event_model.dart';
 import '../../models/member_model.dart';
@@ -35,6 +36,9 @@ class _ManagerAttendanceManagementViewState
     setState(() {
       _isLoading = true;
     });
+
+    await AttendanceController.instance.loadData();
+    await EventController.instance.loadEvents(force: true);
 
     final events = HiveService.events.values.toList(growable: false)
       ..sort((a, b) => a.tanggal.compareTo(b.tanggal));

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/services/hive_service.dart';
+import '../../features/event/event_controller.dart';
 import '../../models/attendance_record.dart';
 import '../../models/event_model.dart';
 import '../../models/member_model.dart';
@@ -26,10 +27,12 @@ class _AttendanceRecapViewState extends State<AttendanceRecapView> {
     _refresh();
   }
 
-  void _refresh() {
+  void _refresh() async {
     setState(() {
       _isLoading = true;
     });
+
+    await EventController.instance.loadEvents(force: true);
 
     final events = HiveService.events.values.toList(growable: false)
       ..sort((a, b) => a.tanggal.compareTo(b.tanggal));

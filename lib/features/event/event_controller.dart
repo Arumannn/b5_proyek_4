@@ -129,14 +129,13 @@ class EventController {
           // Nanti SyncManager yang akan push ke cloud
           continue;
         } else {
-          // Event sudah synced — cek apakah versi cloud lebih baru
-          // (gunakan createdAt sebagai penanda, karena belum ada updatedAt)
+          // Event sudah synced — lokal tidak ada perubahan pending.
+          // Timpa saja dengan data dari cloud agar selalu up-to-date
+          // (karena admin lain mungkin telah mengubah event ini).
           final cloudEvent = EventModel.fromMap(cleanDoc);
-          if (cloudEvent.createdAt.isAfter(existingLocal.createdAt)) {
-            final synced = cloudEvent.copyWith(isSynced: true);
-            await HiveService.events.put(synced.eventId, synced);
-            updatedCount++;
-          }
+          final synced = cloudEvent.copyWith(isSynced: true);
+          await HiveService.events.put(synced.eventId, synced);
+          updatedCount++;
         }
       }
 

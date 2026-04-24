@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/services/hive_service.dart';
+import '../../features/event/event_controller.dart';
 import '../../models/event_model.dart';
 
 class OrganizerEventOverviewView extends StatefulWidget {
@@ -26,6 +27,8 @@ class _OrganizerEventOverviewViewState
     setState(() {
       _isLoading = true;
     });
+
+    await EventController.instance.loadEvents(force: true);
 
     final events = HiveService.events.values.toList(growable: false)
       ..sort((a, b) => a.tanggal.compareTo(b.tanggal));
