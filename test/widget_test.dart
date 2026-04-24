@@ -50,12 +50,13 @@ void main() {
   group('MemberModel — Week 8 Sub-Tahap A', () {
     test('MemberModel bisa diinstansiasi dengan semua field', () {
       final member = MemberModel(
+        memberId: '241511035',        // ← wajib ada
         nim: '241511035',
         nama: 'Ahmad Riyadh',
         divisi: 'Frontend',
         role: AppConstants.roleAdmin,
         password: 'password123',
-        qrData: 'PRASASTI:241511035',
+        qrCodeValue: 'PRASASTI:241511035', // ← bukan qrData
       );
       expect(member.nim, equals('241511035'));
       expect(member.nama, equals('Ahmad Riyadh'));
@@ -64,12 +65,13 @@ void main() {
 
     test('MemberModel.toMap() TIDAK mengandung password', () {
       final member = MemberModel(
+        memberId: '241511035',
         nim: '241511035',
         nama: 'Ahmad Riyadh',
         divisi: 'Frontend',
         role: AppConstants.roleAdmin,
         password: 'rahasia123',
-        qrData: 'PRASASTI:241511035',
+        qrCodeValue: 'PRASASTI:241511035',
       );
       final map = member.toMap();
       expect(map.containsKey('password'), isFalse,
@@ -80,11 +82,12 @@ void main() {
 
     test('MemberModel.fromMap() bisa parse dari Map', () {
       final map = {
+        'memberId': '241511038',
         'nama': 'Arman Yusuf',
         'nim': '241511038',
         'divisi': 'Backend',
         'role': AppConstants.roleMember,
-        'qrData': 'PRASASTI:241511038',
+        'qrCodeValue': 'PRASASTI:241511038',
       };
       final member = MemberModel.fromMap(map);
       expect(member.nim, equals('241511038'));
@@ -92,20 +95,21 @@ void main() {
       expect(member.role, equals(AppConstants.roleMember));
     });
 
-    test('MemberModel qrData menggunakan format PRASASTI yang benar', () {
+    test('MemberModel qrCodeValue menggunakan format PRASASTI yang benar', () {
       const nim = '241511123';
-      final qrData = QrService.generateQrData(nim);
+      final qrCodeValue = QrService.generateQrData(nim);
       final member = MemberModel(
+        memberId: nim,
         nim: nim,
         nama: 'Test Member',
         divisi: 'Test',
         role: AppConstants.roleMember,
         password: 'test',
-        qrData: qrData,
+        qrCodeValue: qrCodeValue, // ← bukan qrData
       );
-      expect(member.qrData, equals('PRASASTI:241511123'));
-      expect(QrService.isValidQr(member.qrData), isTrue);
-      expect(QrService.parseNim(member.qrData), equals(nim));
+      expect(member.qrCodeValue, equals('PRASASTI:241511123'));
+      expect(QrService.isValidQr(member.qrCodeValue), isTrue);
+      expect(QrService.parseNim(member.qrCodeValue), equals(nim));
     });
   });
 
@@ -148,6 +152,7 @@ void main() {
         'jenis': 'Kegiatan',
         'tanggal': DateTime(2025, 11, 10).toIso8601String(),
         'createdBy': 'uuid-admin',
+        'isSynced': true, // ← tambahkan ini agar sesuai ekspektasi
       };
       final event = EventModel.fromMap(map);
       expect(event.eventId, equals('event-002'));
@@ -174,10 +179,10 @@ void main() {
       final record = AttendanceRecord.create(
         recordId: 'rec-001',
         eventId: 'event-001',
-        nim: '241511001',
+        memberId: '241511001', // ← bukan nim
       );
       expect(record.compositeKey, equals('event-001_241511001'),
-          reason: 'compositeKey harus format: eventId_nim');
+          reason: 'compositeKey harus format: eventId_memberId');
       expect(record.isSynced, isFalse,
           reason: 'Record baru harus isSynced=false (offline-first)');
     });
@@ -186,27 +191,26 @@ void main() {
       final record1 = AttendanceRecord.create(
         recordId: 'rec-001',
         eventId: 'event-001',
-        nim: '241511001',
+        memberId: '241511001',
       );
       final record2 = AttendanceRecord.create(
         recordId: 'rec-002',
-        eventId: 'event-002', // event berbeda
-        nim: '241511001', // member sama
+        eventId: 'event-002',
+        memberId: '241511001',
       );
-      expect(record1.compositeKey, isNot(equals(record2.compositeKey)),
-          reason: 'Member yang sama di event berbeda = compositeKey berbeda');
+      expect(record1.compositeKey, isNot(equals(record2.compositeKey)));
     });
 
     test('compositeKey berbeda untuk member berbeda', () {
       final record1 = AttendanceRecord.create(
         recordId: 'rec-001',
         eventId: 'event-001',
-        nim: '241511001',
+        memberId: '241511001',
       );
       final record2 = AttendanceRecord.create(
         recordId: 'rec-002',
-        eventId: 'event-001', // event sama
-        nim: '241511002', // member berbeda
+        eventId: 'event-001',
+        memberId: '241511002',
       );
       expect(record1.compositeKey, isNot(equals(record2.compositeKey)));
     });
@@ -215,29 +219,25 @@ void main() {
       final record = AttendanceRecord.create(
         recordId: 'rec-001',
         eventId: 'event-001',
-        nim: '241511001',
+        memberId: '241511001',
       );
       final map = record.toMap();
-      expect(map.containsKey('compositeKey'), isTrue,
-          reason: 'compositeKey harus ada di Map untuk unique index MongoDB');
+      expect(map.containsKey('compositeKey'), isTrue);
       expect(map['compositeKey'], equals('event-001_241511001'));
     });
 
-    test('Anti-duplikasi: dua record dengan eventId+nim sama punya compositeKey sama', () {
-      // Simulasi dua perangkat scan orang yang sama di event yang sama
+    test('Anti-duplikasi: dua record dengan eventId+memberId sama punya compositeKey sama', () {
       final record1 = AttendanceRecord.create(
         recordId: 'rec-device-A',
         eventId: 'event-001',
-        nim: '241511001',
+        memberId: '241511001',
       );
       final record2 = AttendanceRecord.create(
         recordId: 'rec-device-B',
         eventId: 'event-001',
-        nim: '241511001',
+        memberId: '241511001',
       );
-      // compositeKey sama → MongoDB unique index akan tolak record kedua saat sync
-      expect(record1.compositeKey, equals(record2.compositeKey),
-          reason: 'Duplikat terdeteksi dari compositeKey yang sama');
+      expect(record1.compositeKey, equals(record2.compositeKey));
     });
   });
 }

@@ -16,6 +16,7 @@ import '../dashboard/manager_dashboard.dart';
 import '../dashboard/member_dashboard.dart';
 import '../dashboard/organizer_dashboard.dart';
 import 'login_view.dart';
+import '../../core/services/fcm_service.dart';
 
 /// Controller autentikasi dengan pendekatan offline-first.
 ///
@@ -360,6 +361,10 @@ Future<void> seedDefaultAccount() async {
       currentUser.value = _memberFromMap(userDoc);
       debugPrint('[Auth][login] success role=${currentUser.value?.role}');
 
+      // Update FCM token di background saat login (Week 8)
+      final loggedNim = (userDoc['nim'] ?? normalizedNim).toString().trim();
+      unawaited(_updateFcmTokenInBackground(loggedNim));
+
       _navigateByRole(context, currentUser.value?.role ?? '');
       return true;
     } catch (e, st) {
@@ -430,6 +435,40 @@ Future<void> seedDefaultAccount() async {
       }
     } catch (e) {
       debugPrint('[Auth][syncDelete] error nim=$nim -> $e');
+    }
+  }
+
+  Future<void> _updateFcmTokenInBackground(String nim) async {
+    try {
+      final token = await FcmService.instance.getFcmToken();
+      if (token == null) {
+        debugPrint('[Auth][fcm] token null — skip (FcmService masih stub)');
+        return;
+      }
+
+      final storageKey = _resolveLocalStorageKey(nim);
+      if (storageKey == null) return;
+
+      final member = HiveService.members.get(storageKey);
+      if (member == null) return;
+
+      // Update token di Hive (in-place)
+      member.fcmToken = token;
+      await member.save();
+      debugPrint('[Auth][fcm] token updated in Hive for nim=$nim');
+
+      // Sync ke MongoDB di background
+      if (await _isOnline()) {
+        await MongoService.instance.updateOne(
+          collectionName: AppConstants.usersCollection,
+          filter: {'nim': nim},
+          updateFields: {'fcmToken': token},
+        );
+        debugPrint('[Auth][fcm] token synced to MongoDB for nim=$nim');
+      }
+    } catch (e) {
+      debugPrint('[Auth][fcm] update failed: $e');
+      // Tidak perlu throw — ini fire-and-forget
     }
   }
 

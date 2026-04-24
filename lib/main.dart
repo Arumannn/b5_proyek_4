@@ -10,93 +10,42 @@ import 'core/services/fcm_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 
 
-Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  Future<void> main() async {
+    WidgetsFlutterBinding.ensureInitialized();
 
-  // ── Step 1: Load .env ──────────────────────────────────────────
-  await dotenv.load(fileName: '.env');
-  debugPrint('✅ Step 1: Environment variables loaded');
+    // Step 1: Load environment variables
+    await dotenv.load(fileName: '.env');
+    debugPrint('✅ Step 1: .env loaded');
 
-  await Firebase.initializeApp();
-  debugPrint('✅ Firebase initialized');
+    // Step 2: Initialize Firebase
+    await Firebase.initializeApp();
+    debugPrint('✅ Step 2: Firebase initialized');
 
-  await HiveService.init();
-  await NetworkStatusController.instance.startListening();
-  await AuthController.instance.initializeAuth();
+    // Step 3: Initialize Hive (local database)
+    await HiveService.init();
+    debugPrint('✅ Step 3: HiveService initialized — 4 boxes open');
 
-  // FcmService init (stub — implementasi Week 11)
-  await FcmService.instance.init();
+    // Step 4: Connect MongoDB Atlas (background, non-blocking agar app tetap jalan offline)
+    MongoService.instance.init().then((connected) {
+      debugPrint(connected
+          ? '✅ Step 4: MongoDB connected to Atlas'
+          : '⚠️ Step 4: MongoDB offline — app tetap berjalan (Hive mode)');
+    });
 
-  // ── Step 2: Inisialisasi Hive ──────────────────────────────────
-  await HiveService.init();
-  debugPrint('✅ Step 2: HiveService initialized');
+    // Step 5: Start network monitoring
+    await NetworkStatusController.instance.startListening();
+    debugPrint('✅ Step 5: Network monitoring started');
 
-  // ── Step 3: Koneksi MongoDB Atlas ──────────────────────────────
-  // Jalankan init() tapi tidak await — biar app tetap bisa jalan
-  // meski internet mati (offline-first). Koneksi dicoba di background.
-  MongoService.instance.init().then((connected) {
-    if (connected) {
-      debugPrint('✅ Step 3: MongoService connected to Atlas');
-    } else {
-      debugPrint('⚠️ Step 3: MongoService offline — app tetap berjalan (Hive mode)');
-    }
-  });
+    // Step 6: Seed default accounts (admin, member, organizer, manager)
+    await AuthController.instance.initializeAuth();
+    debugPrint('✅ Step 6: Default accounts seeded');
 
-  // ── Step 4: Start network monitoring ──────────────────────────
-  await NetworkStatusController.instance.startListening();
-  debugPrint('✅ Step 4: NetworkStatusController started');
+    // Step 7: FCM — stub untuk sekarang, implementasi penuh Week 11
+    await FcmService.instance.init();
 
-  // ── Step 5: Seed default admin (first run only) ───────────────
-  await AuthController.instance.initializeAuth();
-  debugPrint('✅ Step 5: Auth seeding initialized');
-
-  debugPrint('🚀 PRASASTI App starting...');
-  runApp(const PRASASTIApp());
-}
-
-class PRASASTIApp extends StatelessWidget {
-  const PRASASTIApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: AppConstants.appName,
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF1B3A6B),
-          brightness: Brightness.light,
-        ),
-        useMaterial3: true,
-        fontFamily: 'Roboto',
-        appBarTheme: const AppBarTheme(
-          centerTitle: true,
-          elevation: 0,
-          backgroundColor: Color(0xFF1B3A6B),
-          foregroundColor: Colors.white,
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            minimumSize: const Size(double.infinity, 48),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-        ),
-        inputDecorationTheme: InputDecorationTheme(
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 14,
-          ),
-        ),
-      ),
-      home: const LoginView(),
-    );
+    debugPrint('🚀 PRASASTI App starting...');
+    runApp(const PRASASTIApp());
   }
-}
 
 // ──────────────────────────────────────────────────────────────────
 // HALAMAN VERIFIKASI SETUP WEEK 7
@@ -339,6 +288,50 @@ class _ChecklistItem extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class PRASASTIApp extends StatelessWidget {
+  const PRASASTIApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: AppConstants.appName,
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF1B3A6B),
+          brightness: Brightness.light,
+        ),
+        useMaterial3: true,
+        fontFamily: 'Roboto',
+        appBarTheme: const AppBarTheme(
+          centerTitle: true,
+          elevation: 0,
+          backgroundColor: Color(0xFF1B3A6B),
+          foregroundColor: Colors.white,
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            minimumSize: const Size(double.infinity, 48),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
+        ),
+      ),
+      home: const LoginView(),
     );
   }
 }
