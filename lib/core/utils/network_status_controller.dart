@@ -1,5 +1,7 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
+import 'package:b5_proyek_4/core/services/sync_manager.dart';
+
 
 /// Controller untuk memantau status jaringan secara real-time.
 ///
@@ -41,8 +43,11 @@ class NetworkStatusController {
         isOnline.value = online;
         debugPrint('🌐 Network status berubah: ${online ? "ONLINE" : "OFFLINE"}');
 
-        // TODO Week 11: Trigger SyncManager saat kembali online
-        // if (online) SyncManager.instance.syncPendingRecords();
+        // Week 11: Trigger SyncManager saat kembali online
+      if (online) {
+        debugPrint('🌐 [NetworkStatus] online → trigger SyncManager');
+        SyncManager.instance.syncAll();
+      }
       }
     });
 
