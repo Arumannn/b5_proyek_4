@@ -39,7 +39,7 @@ class AppConstants {
   static const Duration snackbarDuration = Duration(seconds: 3);
   static const Duration networkTimeout = Duration(seconds: 15);
   static const int maxSyncRetries = 3;
-  static const Duration syncRetryDelay = Duration(seconds: 5);
+  static Duration syncRetryDelay = const Duration(seconds: 5);
 
   // ─── Role Definitions ────────────────────────────
   static const String roleAdmin = 'admin';
