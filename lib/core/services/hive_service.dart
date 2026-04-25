@@ -26,15 +26,25 @@ class HiveService {
     Hive.registerAdapter(AttendanceRecordAdapter()); // typeId: 2
     Hive.registerAdapter(PermissionRecordAdapter()); // typeId: 3
 
-    await Hive.openBox<MemberModel>(AppConstants.memberBox);
-    await Hive.openBox<EventModel>(AppConstants.eventBox);
-    await Hive.openBox<AttendanceRecord>(AppConstants.attendanceBox);
-    await Hive.openBox<PermissionRecord>(AppConstants.permissionBox);
-    await Hive.openBox<String>(AppConstants.pendingUserUpsertBox);
-    await Hive.openBox<String>(AppConstants.pendingUserDeleteBox);
+    await _openBoxSafely<MemberModel>(AppConstants.memberBox);
+    await _openBoxSafely<EventModel>(AppConstants.eventBox);
+    await _openBoxSafely<AttendanceRecord>(AppConstants.attendanceBox);
+    await _openBoxSafely<PermissionRecord>(AppConstants.permissionBox);
+    await _openBoxSafely<String>(AppConstants.pendingUserUpsertBox);
+    await _openBoxSafely<String>(AppConstants.pendingUserDeleteBox);
 
     _initialized = true;
     debugPrint('✅ HiveService initialized — 4 boxes open');
+  }
+
+  static Future<Box<T>> _openBoxSafely<T>(String boxName) async {
+    try {
+      return await Hive.openBox<T>(boxName);
+    } catch (e) {
+      debugPrint('⚠️ Error opening Hive box $boxName: $e. Clearing and recreating...');
+      await Hive.deleteBoxFromDisk(boxName);
+      return await Hive.openBox<T>(boxName);
+    }
   }
 
   static Box<MemberModel> get members {

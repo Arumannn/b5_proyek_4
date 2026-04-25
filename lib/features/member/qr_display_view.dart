@@ -3,7 +3,12 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 class QrDisplayView extends StatelessWidget {
   final String nim;
-  const QrDisplayView({super.key, required this.nim});
+  final String qrData;
+  const QrDisplayView({
+    super.key,
+    required this.nim,
+    required this.qrData,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +37,7 @@ class QrDisplayView extends StatelessWidget {
                   maxScale: 4.0,
                   child: Center(
                     child: QrImageView(
-                      data: nim,
+                      data: qrData,
                       version: QrVersions.auto,
                       size: 300.0,
                       gapless: false,
@@ -43,7 +48,7 @@ class QrDisplayView extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               Text(
-                'ID: $nim',
+                'NIM: $nim',
                 style: const TextStyle(color: Colors.grey),
               ),
               const SizedBox(height: 50),

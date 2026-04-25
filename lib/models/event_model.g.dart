@@ -1,5 +1,10 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
+
 part of 'event_model.dart';
+
+// **************************************************************************
+// TypeAdapterGenerator
+// **************************************************************************
 
 class EventModelAdapter extends TypeAdapter<EventModel> {
   @override
@@ -11,37 +16,25 @@ class EventModelAdapter extends TypeAdapter<EventModel> {
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    List<String> parsePeserta(dynamic raw) {
-      if (raw is List) return raw.map((e) => e.toString()).toList();
-      return [];
-    }
-
-    DateTime parseDate(dynamic raw) {
-      if (raw is DateTime) return raw;
-      if (raw is String) {
-        return DateTime.tryParse(raw) ?? DateTime.now();
-      }
-      return DateTime.now();
-    }
-
     return EventModel(
-      eventId: (fields[0] ?? '').toString(),
-      parentEventId: fields[1]?.toString(),
-      nama: (fields[2] ?? '').toString(),
-      jenis: (fields[3] ?? 'Kegiatan').toString(),
-      tanggal: parseDate(fields[4]),
-      deskripsi: fields[5]?.toString(),
-      targetPeserta: parsePeserta(fields[6]),
-      createdBy: (fields[7] ?? 'system').toString(),
-      isSynced: fields[8] as bool? ?? false,
-      createdAt: parseDate(fields[9]),
+      eventId: fields[0] as String,
+      parentEventId: fields[1] as String?,
+      nama: fields[2] as String,
+      jenis: fields[3] as String,
+      tanggal: fields[4] as DateTime,
+      deskripsi: fields[5] as String?,
+      targetPeserta: (fields[6] as List?)?.cast<String>(),
+      createdBy: fields[7] as String,
+      isSynced: fields[8] as bool,
+      createdAt: fields[9] as DateTime?,
+      jamMulai: fields[10] as DateTime?,
     );
   }
 
   @override
   void write(BinaryWriter writer, EventModel obj) {
     writer
-      ..writeByte(10)
+      ..writeByte(11)
       ..writeByte(0)
       ..write(obj.eventId)
       ..writeByte(1)
@@ -61,7 +54,9 @@ class EventModelAdapter extends TypeAdapter<EventModel> {
       ..writeByte(8)
       ..write(obj.isSynced)
       ..writeByte(9)
-      ..write(obj.createdAt);
+      ..write(obj.createdAt)
+      ..writeByte(10)
+      ..write(obj.jamMulai);
   }
 
   @override

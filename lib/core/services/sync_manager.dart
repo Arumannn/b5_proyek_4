@@ -70,6 +70,14 @@ class SyncManager {
 
     // Update pending count awal
     _updatePendingCount();
+
+    // Trigger sync awal jika sudah ada koneksi internet saat app dibuka
+    Connectivity().checkConnectivity().then((results) {
+      if (results.any((r) => r != ConnectivityResult.none)) {
+        debugPrint('[SyncManager] 🌐 koneksi awal tersedia → trigger syncAll()');
+        syncAll();
+      }
+    });
   }
 
   /// Hentikan listener (panggil saat app dispose jika perlu).
