@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/utils/qr_service.dart';
 import '../auth/auth_controller.dart';
+import '../attendance/attendance_history_view.dart';
 import '../member/member_profile_view.dart';
 import '../member/qr_display_view.dart';
 
@@ -12,7 +13,6 @@ import '../member/qr_display_view.dart';
 /// - NetworkStatusBanner
 class MemberDashboard extends StatelessWidget {
   const MemberDashboard({super.key});
-
   Future<void> _confirmAndLogout(BuildContext context) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -33,13 +33,11 @@ class MemberDashboard extends StatelessWidget {
         );
       },
     );
-
     if (confirmed == true) {
       if (!context.mounted) return;
       await AuthController.instance.logout(context);
     }
   }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -63,11 +61,9 @@ class MemberDashboard extends StatelessWidget {
                 child: Text('Data member belum tersedia. Silakan login ulang.'),
               );
             }
-
             final qrData = currentUser.qrCodeValue.isNotEmpty
                 ? currentUser.qrCodeValue
                 : QrService.generateQrData(currentUser.nim);
-
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               mainAxisAlignment: MainAxisAlignment.center,
@@ -114,6 +110,21 @@ class MemberDashboard extends StatelessWidget {
                   },
                   icon: const Icon(Icons.account_circle),
                   label: const Text('Lihat Profil Saya'),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => AttendanceHistoryView(
+                          memberId: currentUser.memberId,
+                          nim: currentUser.nim,
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.history),
+                  label: const Text('Riwayat Kehadiran Saya'),
                 ),
               ],
             );
