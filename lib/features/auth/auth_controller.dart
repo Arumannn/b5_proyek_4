@@ -12,10 +12,7 @@ import '../../core/services/mongo_service.dart';
 import '../../core/utils/network_status_controller.dart';
 import '../../core/utils/qr_service.dart';
 import '../../models/member_model.dart';
-import '../dashboard/admin_dashboard.dart';
-import '../dashboard/manager_dashboard.dart';
-import '../dashboard/member_dashboard.dart';
-import '../dashboard/organizer_dashboard.dart';
+import '../dashboard/dashboard_view.dart';
 import 'login_view.dart';
 import '../../core/services/fcm_service.dart';
 
@@ -418,7 +415,7 @@ class AuthController {
       final loggedNim = (userDoc['nim'] ?? normalizedNim).toString().trim();
       unawaited(_updateFcmTokenInBackground(loggedNim));
 
-      _navigateByRole(context, currentUser.value?.role ?? '');
+      _navigateByRole(context);
       return true;
     } catch (e, st) {
       debugPrint('[Auth][login] error: $e');
@@ -787,27 +784,10 @@ class AuthController {
     return null;
   }
 
-  void _navigateByRole(BuildContext context, String role) {
-    final normalizedRole = _normalizeRole(role);
-    final Widget destination;
-
-    switch (normalizedRole) {
-      case AppConstants.roleAdmin:
-        destination = const AdminDashboard();
-        break;
-      case AppConstants.roleManager:
-        destination = const ManagerDashboard();
-        break;
-      case AppConstants.roleOrganizer:
-        destination = const OrganizerDashboard();
-        break;
-      default:
-        destination = const MemberDashboard();
-    }
-
+  void _navigateByRole(BuildContext context) {
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute<void>(builder: (_) => destination),
+      MaterialPageRoute<void>(builder: (_) => const DashboardView()),
       (route) => false,
     );
   }
