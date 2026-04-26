@@ -107,6 +107,12 @@ class _ScanScreenState extends State<ScanScreen> {
         case AttendanceResult.eventNotFound:
           _showSnackbar('Error: Data Event Hilang', Colors.grey);
           break;
+        case AttendanceResult.mainEventHasSubEvents:
+          _showSnackbar(
+            'Main event ini memiliki sub-event. Scan absensi di sub-event.',
+            Colors.orange.shade800,
+          );
+          break;
         case AttendanceResult.error:
           _showSnackbar(
             'Terjadi kesalahan sistem saat menyimpan data',

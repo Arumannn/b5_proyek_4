@@ -467,7 +467,9 @@ class _EventViewState extends State<EventView> {
 
   Widget _buildActionButtons(EventModel event, {String? forcedParentId}) {
     final isSubEvent = event.parentEventId != null; // RBAC: Tentukan paket izin per scope.
+    final hasSubEvents = !isSubEvent && _controller.getSubEvents(event.eventId).isNotEmpty;
     final canEdit = isSubEvent ? _canUpdateSubEvent : _canUpdateMainEvent; // RBAC: UPDATE berbeda antara main/sub.
+    final canScan = canEdit && (isSubEvent || !hasSubEvents);
     final canDelete = isSubEvent ? _canDeleteSubEvent : _canDeleteMainEvent; // RBAC: DELETE berbeda antara main/sub.
     final canAddSubEvent = !isSubEvent && _canCreateSubEvent; // RBAC: CREATE sub-event boleh Admin/Manager pada parent main event.
 
@@ -475,7 +477,7 @@ class _EventViewState extends State<EventView> {
       spacing: 8,
       runSpacing: 8,
       children: [
-        if (canEdit)
+        if (canScan)
           OutlinedButton.icon(
             onPressed: () {
               Navigator.push(

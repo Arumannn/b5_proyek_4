@@ -211,12 +211,28 @@ class _AttendanceRecapViewState extends State<AttendanceRecapView> {
     }
   }
 
+  bool get _isMainEventCrudBlocked {
+    if (_recapMode != RecapMode.byMainEvent) return false;
+    final mainId = _selectedMainEventId;
+    if (mainId == null) return false;
+    final subIds = _subEventIdsByMain[mainId] ?? const <String>[];
+    return subIds.isNotEmpty;
+  }
+
   Future<void> _openScanQr() async {
     final eventId = _currentCrudEventId;
     if (eventId == null) {
       CustomSnackbar.showWarning(
         context,
         'Gunakan mode Main Event/Sub-Event untuk melakukan scan QR.',
+      );
+      return;
+    }
+
+    if (_isMainEventCrudBlocked) {
+      CustomSnackbar.showWarning(
+        context,
+        'Main event ini punya sub-event. Scan absensi hanya boleh di sub-event.',
       );
       return;
     }
@@ -234,6 +250,14 @@ class _AttendanceRecapViewState extends State<AttendanceRecapView> {
       CustomSnackbar.showWarning(
         context,
         'Tambah manual hanya tersedia pada mode Main Event/Sub-Event.',
+      );
+      return;
+    }
+
+    if (_isMainEventCrudBlocked) {
+      CustomSnackbar.showWarning(
+        context,
+        'Main event ini punya sub-event. Tambah absensi manual hanya di sub-event.',
       );
       return;
     }
@@ -610,6 +634,20 @@ class _AttendanceRecapViewState extends State<AttendanceRecapView> {
           ),
         ],
         const SizedBox(height: 12),
+        if (_isMainEventCrudBlocked)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: Colors.orange.shade50,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.orange.shade200),
+            ),
+            child: const Text(
+              'Main event ini memiliki sub-event, sehingga absensi hanya boleh dicatat pada sub-event.',
+            ),
+          ),
         Wrap(
           spacing: 8,
           runSpacing: 8,

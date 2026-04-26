@@ -8,6 +8,7 @@ import '../../core/services/hive_service.dart';
 import '../../core/services/mongo_service.dart';
 import '../../core/utils/qr_service.dart';
 import '../../models/attendance_record.dart';
+import '../../models/event_model.dart';
 import '../../models/member_model.dart';
 
 enum AttendanceResult {
@@ -16,6 +17,7 @@ enum AttendanceResult {
   duplicate,
   memberNotFound,
   eventNotFound,
+  mainEventHasSubEvents,
   error,
 }
 
@@ -86,6 +88,14 @@ class AttendanceController {
         lastFailureReason.value = 'Event tidak ditemukan: $eventId';
         lastResult.value = AttendanceResult.eventNotFound;
         return AttendanceResult.eventNotFound;
+      }
+
+      // Jika main event memiliki sub-event, absensi wajib dicatat di sub-event.
+      if (_isMainEventWithSubEvents(eventId: eventId, event: event)) {
+        lastFailureReason.value =
+            'Main event memiliki sub-event. Lakukan absensi pada sub-event.';
+        lastResult.value = AttendanceResult.mainEventHasSubEvents;
+        return AttendanceResult.mainEventHasSubEvents;
       }
 
       // 4. Buat compositeKey & cek duplikasi di Hive
@@ -360,6 +370,13 @@ class AttendanceController {
         return;
       }
 
+      if (_isMainEventWithSubEvents(eventId: eventId, event: event)) {
+        debugPrint(
+          '[Attendance] Generate Alpha dibatalkan: event $eventId memiliki sub-event.',
+        );
+        return;
+      }
+
       final existingRecords = getAttendanceByEvent(eventId);
       final existingMemberIds = existingRecords.map((r) => r.memberId).toSet();
 
@@ -405,6 +422,12 @@ class AttendanceController {
       final event = HiveService.events.get(eventId);
       if (event == null) return false;
 
+      if (_isMainEventWithSubEvents(eventId: eventId, event: event)) {
+        lastFailureReason.value =
+            'Main event memiliki sub-event. Tambah absensi manual pada sub-event.';
+        return false;
+      }
+
       final memberExists = HiveService.members.values.any(
         (m) => m.memberId == memberId,
       );
@@ -449,5 +472,15 @@ class AttendanceController {
     lastResult.dispose();
     lastScannedName.dispose();
     lastFailureReason.dispose();
+  }
+
+  bool _isMainEventWithSubEvents({
+    required String eventId,
+    required EventModel event,
+  }) {
+    final isMainEvent = event.parentEventId == null;
+    if (!isMainEvent) return false;
+
+    return HiveService.events.values.any((e) => e.parentEventId == eventId);
   }
 }
