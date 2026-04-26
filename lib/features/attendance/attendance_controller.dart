@@ -8,7 +8,6 @@ import '../../core/services/hive_service.dart';
 import '../../core/services/mongo_service.dart';
 import '../../core/utils/qr_service.dart';
 import '../../models/attendance_record.dart';
-import '../../models/event_model.dart';
 import '../../models/member_model.dart';
 
 enum AttendanceResult {
@@ -142,63 +141,6 @@ class AttendanceController {
         .where((r) => r.eventId == eventId)
         .toList()
       ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
-  }
-
-  /// Ambil kehadiran untuk 1 main event saja (tanpa sub-event).
-  List<AttendanceRecord> getAttendanceByMainEvent(String mainEventId) {
-    return getAttendanceByEvent(mainEventId);
-  }
-
-  /// Ambil kehadiran untuk 1 sub-event tertentu.
-  List<AttendanceRecord> getAttendanceBySubEvent(String subEventId) {
-    return getAttendanceByEvent(subEventId);
-  }
-
-  /// Ambil gabungan kehadiran dari main event + seluruh sub-event di bawahnya.
-  List<AttendanceRecord> getAttendanceAggregateByMainEvent(String mainEventId) {
-    final events = HiveService.events.values.toList(growable: false);
-    final subEventIds = events
-        .where((e) => e.parentEventId == mainEventId)
-        .map((e) => e.eventId)
-        .toSet();
-
-    final allowedIds = <String>{mainEventId, ...subEventIds};
-
-    final records = HiveService.attendance.values
-        .where((r) => allowedIds.contains(r.eventId))
-        .toList();
-    records.sort((a, b) => b.timestamp.compareTo(a.timestamp));
-    return records;
-  }
-
-  /// Ambil seluruh data kehadiran lintas semua event (global recap).
-  List<AttendanceRecord> getGlobalAttendance() {
-    final records = HiveService.attendance.values.toList();
-    records.sort((a, b) => b.timestamp.compareTo(a.timestamp));
-    return records;
-  }
-
-  /// Bangun relasi hierarki event (main -> sub) untuk query/filter efisien di UI.
-  Map<String, List<EventModel>> buildMainToSubEventMap() {
-    final allEvents = HiveService.events.values.toList(growable: false);
-    final map = <String, List<EventModel>>{};
-
-    for (final main in allEvents.where((e) => e.parentEventId == null)) {
-      map[main.eventId] = <EventModel>[];
-    }
-
-    for (final event in allEvents) {
-      final parentId = event.parentEventId;
-      if (parentId != null && map.containsKey(parentId)) {
-        map[parentId]!.add(event);
-      }
-    }
-
-    for (final subList in map.values) {
-      subList.sort((a, b) => a.tanggal.compareTo(b.tanggal));
-    }
-
-    return map;
   }
 
   /// Ambil semua record kehadiran untuk satu member

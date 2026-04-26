@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_constants.dart';
-import '../attendance/attendance_recap_view.dart';
+import '../../core/services/hive_service.dart';
+import '../../core/utils/qr_service.dart';
+import '../../models/event_model.dart';
+import '../../models/member_model.dart';
 import '../attendance/attendance_history_view.dart';
+import '../attendance/attendance_recap_view.dart';
 import '../attendance/scan_screen.dart';
 import '../auth/auth_controller.dart';
 import '../auth/user_management_view.dart';
-import '../event/event_view.dart';
-import '../event/sub_event_view.dart';
+import '../event/event_list_view.dart';
 import '../member/member_profile_view.dart';
-import '../member/permission_form_view.dart';
 import '../member/qr_display_view.dart';
 
 class DashboardView extends StatefulWidget {
@@ -24,14 +26,16 @@ class _DashboardMenuItem {
     required this.title,
     required this.subtitle,
     required this.icon,
-    required this.builder,
+    this.builder,
+    this.onTap,
     this.requireRoles = const <String>[],
-  });
+  }) : assert(builder != null || onTap != null);
 
   final String title;
   final String subtitle;
   final IconData icon;
-  final WidgetBuilder builder;
+  final Widget Function(BuildContext context, MemberModel currentUser)? builder;
+  final void Function(BuildContext context, MemberModel currentUser)? onTap;
   final List<String> requireRoles;
 
   bool canAccess(String role) {
@@ -80,17 +84,17 @@ class _DashboardViewState extends State<DashboardView> {
       ),
       _DashboardMenuItem(
         title: 'Kelola Event',
-        subtitle: 'List, form, dan CRUD event',
+        subtitle: 'Tambah, edit, hapus event dan sub event',
         icon: Icons.event_note_outlined,
         requireRoles: const [AppConstants.roleExecutive, AppConstants.roleManager],
         builder: (_) => const EventView(),
       ),
       _DashboardMenuItem(
-        title: 'Lihat Event',
-        subtitle: 'Read-only daftar event dan detail',
-        icon: Icons.event_available_outlined,
-        requireRoles: const [AppConstants.roleOrganizer, AppConstants.roleMember],
-        builder: (_) => const EventView(),
+        title: 'Manajemen Anggota',
+        subtitle: 'CRUD akun Admin, Manager, Organizer, dan Member',
+        icon: Icons.groups_2_outlined,
+        requireRoles: const [AppConstants.roleExecutive],
+        builder: (_, __) => const UserManagementView(),
       ),
       _DashboardMenuItem(
         title: 'Sub-Event',
@@ -105,7 +109,7 @@ class _DashboardViewState extends State<DashboardView> {
       ),
       _DashboardMenuItem(
         title: 'Rekap Kehadiran',
-        subtitle: 'Akses sesuai role (CRUD/Read)',
+        subtitle: 'Lihat ringkasan kehadiran per event',
         icon: Icons.assignment_outlined,
         requireRoles: const [
           AppConstants.roleExecutive,
@@ -122,45 +126,83 @@ class _DashboardViewState extends State<DashboardView> {
         builder: (_) => const ScanScreen(eventId: 'manual-scan'),
       ),
       _DashboardMenuItem(
-        title: 'QR Pribadi',
-        subtitle: 'Tampilkan QR code pribadi member',
+        title: 'Kelola Rekap Kehadiran',
+        subtitle: 'Lihat, tambah, edit, hapus kehadiran + scan QR',
+        icon: Icons.assignment_turned_in_outlined,
+        requireRoles: const [AppConstants.roleManager],
+        builder: (_, __) => const ManagerAttendanceManagementView(),
+      ),
+
+      // ==========================================
+      // ORGANIZER MENUS
+      // ==========================================
+      _DashboardMenuItem(
+        title: 'Lihat Event Utama & Sub-Event',
+        subtitle: 'Read-only daftar event dan detail tanpa CRUD',
+        icon: Icons.event_note_outlined,
+        requireRoles: const [AppConstants.roleOrganizer],
+        builder: (_, __) => const OrganizerEventOverviewView(),
+      ),
+      _DashboardMenuItem(
+        title: 'Rekap Kehadiran',
+        subtitle: 'Tabel NIM, Nama, Status Kehadiran, Timestamp',
+        icon: Icons.assignment_outlined,
+        requireRoles: const [AppConstants.roleOrganizer],
+        builder: (_, __) => const OrganizerAttendanceRecapView(),
+      ),
+      _DashboardMenuItem(
+        title: 'QR Absensi Saya',
+        subtitle: 'QR unik organizer + status Sudah/Belum Absen',
+        icon: Icons.qr_code_2,
+        requireRoles: const [AppConstants.roleOrganizer],
+        builder: (_, __) => const OrganizerQrView(),
+      ),
+
+      // ==========================================
+      // MEMBER MENUS
+      // ==========================================
+      _DashboardMenuItem(
+        title: 'QR Code Saya',
+        subtitle: 'Gunakan QR ini saat absensi',
         icon: Icons.qr_code_2,
         requireRoles: const [AppConstants.roleMember],
-        builder: (_) => QrDisplayView(nim: currentUser?.memberId ?? ''),
-      ),
-      _DashboardMenuItem(
-        title: 'Riwayat Kehadiran',
-        subtitle: 'Riwayat absensi personal member',
-        icon: Icons.history,
-        requireRoles: const [AppConstants.roleMember],
-        builder: (_) => const AttendanceHistoryView(),
-      ),
-      _DashboardMenuItem(
-        title: 'Pengajuan Izin/Sakit',
-        subtitle: 'Form izin kehadiran untuk member',
-        icon: Icons.medical_information_outlined,
-        requireRoles: const [AppConstants.roleMember],
-        builder: (_) => const PermissionFormView(),
+        builder: (_, currentUser) {
+          final qrData = currentUser.qrCodeValue.isNotEmpty
+              ? currentUser.qrCodeValue
+              : QrService.generateQrData(currentUser.nim);
+          return QrDisplayView(
+            nim: currentUser.nim,
+            qrData: qrData,
+          );
+        },
       ),
       _DashboardMenuItem(
         title: 'Profil Saya',
         subtitle: 'Lihat detail profil pengguna login',
-        icon: Icons.account_circle_outlined,
+        icon: Icons.account_circle,
         requireRoles: const [AppConstants.roleMember],
-        builder: (_) => MemberProfileView(
-          nama: currentUser?.nama ?? '-',
-          nim: currentUser?.nim ?? '-',
-          divisi: currentUser?.divisi ?? '-',
-          memberId: currentUser?.memberId ?? '-',
+        builder: (_, currentUser) => MemberProfileView(
+          nama: currentUser.nama,
+          nim: currentUser.nim,
+          divisi: currentUser.divisi,
+          memberId: currentUser.memberId,
+        ),
+      ),
+      _DashboardMenuItem(
+        title: 'Riwayat Kehadiran Saya',
+        subtitle: 'Riwayat absensi personal',
+        icon: Icons.history,
+        requireRoles: const [AppConstants.roleMember],
+        builder: (_, currentUser) => AttendanceHistoryView(
+          memberId: currentUser.memberId,
+          nim: currentUser.nim,
         ),
       ),
     ];
-
-    return items.where((item) => item.canAccess(role)).toList(growable: false);
   }
 
-  Widget _buildSummaryCard(BuildContext context, String role) {
-    final user = AuthController.instance.currentUser.value;
+  Widget _buildSummaryCard(BuildContext context, MemberModel currentUser) {
+    final role = currentUser.role;
     final roleLabel = role.isEmpty ? '-' : role.toUpperCase();
 
     return Card(
@@ -169,13 +211,13 @@ class _DashboardViewState extends State<DashboardView> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Selamat datang, ${user?.nama ?? 'Pengguna'}'),
+            Text('Halo, ${currentUser.nama}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            Text('Role: $roleLabel'),
+            Text('Role: $roleLabel', style: const TextStyle(fontWeight: FontWeight.w500)),
             const SizedBox(height: 4),
-            Text('NIM: ${user?.nim ?? '-'}'),
+            Text('NIM: ${currentUser.nim}'),
             const SizedBox(height: 4),
-            Text('Divisi: ${user?.divisi ?? '-'}'),
+            Text('Divisi: ${currentUser.divisi}'),
             const SizedBox(height: 12),
             Text(
               'Menu akan ditampilkan sesuai hak akses role.',
@@ -187,22 +229,26 @@ class _DashboardViewState extends State<DashboardView> {
     );
   }
 
-  Widget _buildMenuCard(BuildContext context, _DashboardMenuItem item) {
+  Widget _buildMenuCard(BuildContext context, _DashboardMenuItem item, MemberModel currentUser) {
     return Card(
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute<void>(builder: item.builder),
-          );
+          if (item.onTap != null) {
+            item.onTap!(context, currentUser);
+          } else if (item.builder != null) {
+            Navigator.push(
+              context,
+              MaterialPageRoute<void>(builder: (ctx) => item.builder!(ctx, currentUser)),
+            );
+          }
         },
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
               CircleAvatar(
-                radius: 22,
+                radius: 24,
                 backgroundColor:
                     Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
                 child: Icon(item.icon, color: Theme.of(context).colorScheme.primary),
@@ -228,71 +274,50 @@ class _DashboardViewState extends State<DashboardView> {
 
   @override
   Widget build(BuildContext context) {
-    final role = (AuthController.instance.currentUser.value?.role ??
-            AppConstants.roleMember)
-        .trim()
-        .toLowerCase();
-    final menuItems = _buildMenuItems(role);
+    return ValueListenableBuilder(
+      valueListenable: AuthController.instance.currentUser,
+      builder: (context, currentUser, _) {
+        if (currentUser == null) {
+          return Scaffold(
+            appBar: AppBar(title: const Text('Dashboard PRASASTI')),
+            body: const Center(
+              child: Text('Data pengguna belum tersedia. Silakan login ulang.'),
+            ),
+          );
+        }
 
-    return Scaffold(
-      drawer: Drawer(
-        child: SafeArea(
-          child: Column(
-            children: [
-              ListTile(
-                leading: const Icon(Icons.dashboard_outlined),
-                title: const Text('Dashboard'),
-                subtitle: Text('Role: ${role.toUpperCase()}'),
-              ),
-              const Divider(height: 1),
-              Expanded(
-                child: ListView(
-                  children: menuItems.map((item) {
-                    return ListTile(
-                      leading: Icon(item.icon),
-                      title: Text(item.title),
-                      subtitle: Text(item.subtitle),
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute<void>(builder: item.builder),
-                        );
-                      },
-                    );
-                  }).toList(growable: false),
-                ),
+        final role = currentUser.role.trim().toLowerCase();
+        final menuItems = _buildMenuItems().where((item) => item.canAccess(role)).toList();
+
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Dashboard PRASASTI'),
+            actions: [
+              IconButton(
+                tooltip: 'Logout',
+                icon: const Icon(Icons.logout),
+                onPressed: () => _confirmAndLogout(context),
               ),
             ],
           ),
-        ),
-      ),
-      appBar: AppBar(
-        title: const Text('Dashboard PRASASTI'),
-        actions: [
-          IconButton(
-            tooltip: 'Logout',
-            icon: const Icon(Icons.logout),
-            onPressed: () => _confirmAndLogout(context),
+          body: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              _buildSummaryCard(context, currentUser),
+              const SizedBox(height: 8),
+              if (menuItems.isEmpty)
+                const Card(
+                  child: Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Text('Tidak ada menu yang tersedia untuk role ini.'),
+                  ),
+                )
+              else
+                ...menuItems.map((item) => _buildMenuCard(context, item, currentUser)),
+            ],
           ),
-        ],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          _buildSummaryCard(context, role),
-          const SizedBox(height: 8),
-          if (menuItems.isEmpty)
-            const Card(
-              child: Padding(
-                padding: EdgeInsets.all(16),
-                child: Text('Tidak ada menu yang tersedia untuk role ini.'),
-              ),
-            )
-          else
-            ...menuItems.map((item) => _buildMenuCard(context, item)),
-        ],
-      ),
+        );
+      },
     );
   }
 }

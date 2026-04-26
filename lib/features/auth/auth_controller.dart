@@ -415,10 +415,7 @@ class AuthController {
       final loggedNim = (userDoc['nim'] ?? normalizedNim).toString().trim();
       unawaited(_updateFcmTokenInBackground(loggedNim));
 
-      if (!context.mounted) {
-        return false;
-      }
-      _navigateByRole(context);
+      _navigateByRole(context, currentUser.value?.role ?? '');
       return true;
     } catch (e, st) {
       debugPrint('[Auth][login] error: $e');
@@ -787,7 +784,7 @@ class AuthController {
     return null;
   }
 
-  void _navigateByRole(BuildContext context) {
+  void _navigateByRole(BuildContext context, String role) {
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute<void>(builder: (_) => const DashboardView()),
