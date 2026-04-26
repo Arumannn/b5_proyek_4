@@ -1,16 +1,14 @@
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_constants.dart';
-import '../../core/services/hive_service.dart';
-import '../../core/utils/qr_service.dart';
-import '../../models/event_model.dart';
 import '../../models/member_model.dart';
 import '../attendance/attendance_history_view.dart';
 import '../attendance/attendance_recap_view.dart';
 import '../attendance/scan_screen.dart';
 import '../auth/auth_controller.dart';
 import '../auth/user_management_view.dart';
-import '../event/event_list_view.dart';
+import '../event/event_view.dart';
+import '../event/sub_event_view.dart';
 import '../member/member_profile_view.dart';
 import '../member/qr_display_view.dart';
 
@@ -40,7 +38,9 @@ class _DashboardMenuItem {
 
   bool canAccess(String role) {
     if (requireRoles.isEmpty) return true;
-    return requireRoles.contains(role);
+    // RBAC: role check dibuat case-insensitive agar konsisten dengan source role campuran.
+    final normalizedRole = role.trim().toLowerCase();
+    return requireRoles.any((allowed) => allowed.trim().toLowerCase() == normalizedRole);
   }
 }
 
@@ -71,23 +71,21 @@ class _DashboardViewState extends State<DashboardView> {
     }
   }
 
-  List<_DashboardMenuItem> _buildMenuItems(String role) {
-    final currentUser = AuthController.instance.currentUser.value;
-
+  List<_DashboardMenuItem> _buildMenuItems() {
     final items = <_DashboardMenuItem>[
       _DashboardMenuItem(
         title: 'Kelola Pengguna',
         subtitle: 'CRUD akun pengguna',
         icon: Icons.groups_2_outlined,
         requireRoles: const [AppConstants.roleExecutive],
-        builder: (_) => const UserManagementView(),
+        builder: (_, __) => const UserManagementView(),
       ),
       _DashboardMenuItem(
-        title: 'Kelola Event',
-        subtitle: 'Tambah, edit, hapus event dan sub event',
+        title: 'Kelola Event & Sub-Event',
+        subtitle: 'CRUD main event + sub-event (sesuai role)',
         icon: Icons.event_note_outlined,
         requireRoles: const [AppConstants.roleExecutive, AppConstants.roleManager],
-        builder: (_) => const EventView(),
+        builder: (_, __) => const EventView(),
       ),
       _DashboardMenuItem(
         title: 'Manajemen Anggota',
@@ -95,6 +93,13 @@ class _DashboardViewState extends State<DashboardView> {
         icon: Icons.groups_2_outlined,
         requireRoles: const [AppConstants.roleExecutive],
         builder: (_, __) => const UserManagementView(),
+      ),
+      _DashboardMenuItem(
+        title: 'Lihat Event & Sub-Event',
+        subtitle: 'Akses read-only daftar event',
+        icon: Icons.visibility_outlined,
+        requireRoles: const [AppConstants.roleMember],
+        builder: (_, __) => const EventView(),
       ),
       _DashboardMenuItem(
         title: 'Sub-Event',
@@ -105,7 +110,7 @@ class _DashboardViewState extends State<DashboardView> {
           AppConstants.roleManager,
           AppConstants.roleOrganizer,
         ],
-        builder: (_) => const SubEventView(),
+        builder: (_, __) => const SubEventView(),
       ),
       _DashboardMenuItem(
         title: 'Rekap Kehadiran',
@@ -116,46 +121,46 @@ class _DashboardViewState extends State<DashboardView> {
           AppConstants.roleManager,
           AppConstants.roleOrganizer,
         ],
-        builder: (_) => const AttendanceRecapView(),
+        builder: (_, __) => const AttendanceRecapView(),
       ),
       _DashboardMenuItem(
         title: 'Scan Absensi',
         subtitle: 'Scanner QR untuk absensi event',
         icon: Icons.qr_code_scanner_outlined,
         requireRoles: const [AppConstants.roleExecutive, AppConstants.roleManager],
-        builder: (_) => const ScanScreen(eventId: 'manual-scan'),
+        builder: (_, __) => const ScanScreen(eventId: 'manual-scan'),
       ),
       _DashboardMenuItem(
         title: 'Kelola Rekap Kehadiran',
         subtitle: 'Lihat, tambah, edit, hapus kehadiran + scan QR',
         icon: Icons.assignment_turned_in_outlined,
         requireRoles: const [AppConstants.roleManager],
-        builder: (_, __) => const ManagerAttendanceManagementView(),
+        builder: (_, __) => const SubEventView(), // RBAC: gunakan layar event yang tersedia untuk manager.
       ),
 
       // ==========================================
       // ORGANIZER MENUS
       // ==========================================
       _DashboardMenuItem(
-        title: 'Lihat Event Utama & Sub-Event',
+        title: 'Lihat Event Utama & Sub-Event (Organizer)',
         subtitle: 'Read-only daftar event dan detail tanpa CRUD',
         icon: Icons.event_note_outlined,
         requireRoles: const [AppConstants.roleOrganizer],
-        builder: (_, __) => const OrganizerEventOverviewView(),
+        builder: (_, __) => const EventView(),
       ),
       _DashboardMenuItem(
         title: 'Rekap Kehadiran',
         subtitle: 'Tabel NIM, Nama, Status Kehadiran, Timestamp',
         icon: Icons.assignment_outlined,
         requireRoles: const [AppConstants.roleOrganizer],
-        builder: (_, __) => const OrganizerAttendanceRecapView(),
+        builder: (_, __) => const EventView(), // RBAC: organizer diarahkan ke event read-only yang tersedia.
       ),
       _DashboardMenuItem(
         title: 'QR Absensi Saya',
         subtitle: 'QR unik organizer + status Sudah/Belum Absen',
         icon: Icons.qr_code_2,
         requireRoles: const [AppConstants.roleOrganizer],
-        builder: (_, __) => const OrganizerQrView(),
+        builder: (_, __) => const SubEventView(), // RBAC: fallback ke modul event yang tersedia.
       ),
 
       // ==========================================
@@ -167,12 +172,8 @@ class _DashboardViewState extends State<DashboardView> {
         icon: Icons.qr_code_2,
         requireRoles: const [AppConstants.roleMember],
         builder: (_, currentUser) {
-          final qrData = currentUser.qrCodeValue.isNotEmpty
-              ? currentUser.qrCodeValue
-              : QrService.generateQrData(currentUser.nim);
           return QrDisplayView(
             nim: currentUser.nim,
-            qrData: qrData,
           );
         },
       ),
@@ -199,6 +200,8 @@ class _DashboardViewState extends State<DashboardView> {
         ),
       ),
     ];
+
+    return items;
   }
 
   Widget _buildSummaryCard(BuildContext context, MemberModel currentUser) {

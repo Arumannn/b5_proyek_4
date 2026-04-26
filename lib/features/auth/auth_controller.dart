@@ -77,7 +77,8 @@ class AuthController {
         final needsCreate = existing == null;
         final needsRepair =
             existing != null &&
-            (_normalizeRole((existing['role'] ?? '').toString()) != role ||
+            (_normalizeRole((existing['role'] ?? '').toString()) !=
+                    _normalizeRole(role) ||
                 !_verifyPassword(
                   password,
                   (existing['password'] ?? '').toString(),
@@ -94,7 +95,7 @@ class AuthController {
           'nim': normalizedNim,
           'nama': nama,
           'divisi': divisi,
-          'role': role,
+          'role': _normalizeRole(role),
           'password': hashedDefaultPassword,
           'qrCodeValue': QrService.generateQrData(normalizedNim),
           'memberId': normalizedNim,
@@ -912,7 +913,7 @@ class AuthController {
 
   bool _isCurrentUserExecutive() {
     return _normalizeRole(currentUser.value?.role ?? '') ==
-        AppConstants.roleExecutive;
+      AppConstants.roleExecutive.toLowerCase();
   }
 
   bool _isUserDocument(Map<String, dynamic> doc) {
@@ -921,7 +922,10 @@ class AuthController {
 
   String _normalizeRole(String role) {
     final normalized = role.trim().toLowerCase();
-    if (AppConstants.allowedRoles.contains(normalized)) {
+    final allowed = AppConstants.allowedRoles
+        .map((item) => item.trim().toLowerCase())
+        .toSet();
+    if (allowed.contains(normalized)) {
       return normalized;
     }
     return AppConstants.roleMember;

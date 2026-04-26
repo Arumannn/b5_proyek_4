@@ -5,6 +5,7 @@ import '../../models/event_model.dart';
 import '../../widgets/custom_snackbar.dart';
 import '../auth/auth_controller.dart';
 import 'event_controller.dart';
+import 'event_permission.dart';
 
 class SubEventView extends StatefulWidget {
   const SubEventView({super.key});
@@ -22,8 +23,10 @@ class _SubEventViewState extends State<SubEventView> {
           .trim()
           .toLowerCase();
 
-  bool get _canCrud =>
-      _role == AppConstants.roleExecutive || _role == AppConstants.roleManager;
+  bool get _canCreateSubEvent => EventPermission.canCreateSubEvent(_role); // RBAC: Sub-event CRUD hanya Admin/Manager.
+  bool get _canUpdateSubEvent => EventPermission.canUpdateSubEvent(_role); // RBAC: Sub-event CRUD hanya Admin/Manager.
+  bool get _canDeleteSubEvent => EventPermission.canDeleteSubEvent(_role); // RBAC: Sub-event CRUD hanya Admin/Manager.
+  bool get _canManageSubEvent => _canCreateSubEvent || _canUpdateSubEvent || _canDeleteSubEvent; // RBAC: penentu mode layar.
 
   String _formatDate(DateTime value) {
     final dd = value.day.toString().padLeft(2, '0');
@@ -37,6 +40,11 @@ class _SubEventViewState extends State<SubEventView> {
   }
 
   Future<void> _deleteSubEvent(EventModel subEvent) async {
+    if (!_canDeleteSubEvent) {
+      CustomSnackbar.showError(context, 'Anda tidak memiliki izin menghapus sub-event.'); // RBAC: cegah DELETE tanpa izin.
+      return;
+    }
+
     final ok = await _controller.deleteEvent(subEvent.eventId);
     if (!mounted) return;
 
@@ -51,6 +59,11 @@ class _SubEventViewState extends State<SubEventView> {
   }
 
   Future<void> _editSubEvent(EventModel subEvent) async {
+    if (!_canUpdateSubEvent) {
+      CustomSnackbar.showError(context, 'Anda tidak memiliki izin mengubah sub-event.'); // RBAC: cegah UPDATE tanpa izin.
+      return;
+    }
+
     final nameController = TextEditingController(text: subEvent.nama);
     final descController = TextEditingController(
       text: subEvent.deskripsi ?? '',
@@ -168,7 +181,7 @@ class _SubEventViewState extends State<SubEventView> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_canCrud ? 'Sub-Event (CRUD)' : 'Sub-Event (Read-Only)'),
+        title: Text(_canManageSubEvent ? 'Sub-Event (CRUD)' : 'Sub-Event (Read-Only)'),
         actions: [
           IconButton(
             tooltip: 'Refresh',
@@ -221,7 +234,7 @@ class _SubEventViewState extends State<SubEventView> {
                               subtitle: Text(
                                 '${sub.jenis} • ${_formatDate(sub.tanggal)}',
                               ),
-                              trailing: _canCrud
+                                trailing: _canManageSubEvent
                                   ? Wrap(
                                       spacing: 4,
                                       children: [

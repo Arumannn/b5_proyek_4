@@ -7,6 +7,8 @@ import '../../core/constants/app_constants.dart';
 import '../../core/services/hive_service.dart';
 import '../../core/services/mongo_service.dart';
 import '../../models/event_model.dart';
+import '../auth/auth_controller.dart';
+import 'event_permission.dart';
 
 /// Controller untuk CRUD Event — Offline-First dengan cross-device sync.
 ///
@@ -37,6 +39,20 @@ class EventController {
 
   bool _hasLoaded = false;
   List<EventModel> _allEvents = [];
+
+  // RBAC: Ambil role user login saat ini untuk evaluasi izin di layer logic.
+  String get _currentRole =>
+      AuthController.instance.currentUser.value?.role ?? AppConstants.roleMember;
+
+  // RBAC: createdBy wajib otomatis dari user login agar jejak audit konsisten.
+  String? get _currentMemberId {
+    final raw = AuthController.instance.currentUser.value?.memberId;
+    final normalized = raw?.trim();
+    if (normalized == null || normalized.isEmpty) {
+      return null;
+    }
+    return normalized;
+  }
 
   // ══════════════════════════════════════════════════════════════
   // LOAD EVENTS — Hive + MongoDB merge
@@ -172,6 +188,26 @@ class EventController {
     String? deskripsi,
     List<String>? targetPeserta,
   }) async {
+    // RBAC: Tentukan scope izin berdasarkan apakah data adalah sub-event atau main event.
+    final isSubEvent = parentEventId != null && parentEventId.isNotEmpty;
+    // RBAC: Tolak CREATE jika role tidak punya izin pada scope event terkait.
+    if (isSubEvent && !EventPermission.canCreateSubEvent(_currentRole)) {
+      errorMessage.value = 'Anda tidak memiliki izin membuat sub-event.';
+      return false;
+    }
+    // RBAC: Main event hanya boleh dibuat oleh Admin (mapped ke Executive).
+    if (!isSubEvent && !EventPermission.canCreateMainEvent(_currentRole)) {
+      errorMessage.value = 'Anda tidak memiliki izin membuat main event.';
+      return false;
+    }
+
+    // RBAC: createdBy harus otomatis berasal dari memberId user login.
+    final actorMemberId = _currentMemberId;
+    if (actorMemberId == null) {
+      errorMessage.value = 'User login tidak valid untuk membuat event.';
+      return false;
+    }
+
     // ── Validasi ──────────────────────────────────────────────────
     final trimmed = nama.trim();
     if (trimmed.isEmpty) {
@@ -203,7 +239,7 @@ class EventController {
         nama: trimmed,
         jenis: jenis,
         tanggal: tanggal,
-        createdBy: createdBy,
+        createdBy: actorMemberId,
         parentEventId: parentEventId,
         deskripsi: deskripsi,
         targetPeserta: targetPeserta,
@@ -235,6 +271,19 @@ class EventController {
   // ══════════════════════════════════════════════════════════════
 
   Future<bool> updateEvent(EventModel event) async {
+    // RBAC: Main event dan sub-event memiliki aturan UPDATE yang berbeda.
+    final isSubEvent = event.parentEventId != null && event.parentEventId!.isNotEmpty;
+    // RBAC: Tolak UPDATE sub-event untuk role tanpa hak tulis sub-event.
+    if (isSubEvent && !EventPermission.canUpdateSubEvent(_currentRole)) {
+      errorMessage.value = 'Anda tidak memiliki izin mengubah sub-event.';
+      return false;
+    }
+    // RBAC: Tolak UPDATE main event untuk role non-admin.
+    if (!isSubEvent && !EventPermission.canUpdateMainEvent(_currentRole)) {
+      errorMessage.value = 'Anda tidak memiliki izin mengubah main event.';
+      return false;
+    }
+
     final trimmed = event.nama.trim();
     if (trimmed.isEmpty) {
       errorMessage.value = 'Nama event wajib diisi.';
@@ -284,6 +333,29 @@ class EventController {
   // ══════════════════════════════════════════════════════════════
 
   Future<bool> deleteEvent(String eventId) async {
+    // RBAC: Validasi target delete agar izin dinilai dari tipe event aktual.
+    final target = _allEvents.cast<EventModel?>().firstWhere(
+      (e) => e?.eventId == eventId,
+      orElse: () => null,
+    );
+    if (target == null) {
+      errorMessage.value = 'Event tidak ditemukan.';
+      return false;
+    }
+
+    // RBAC: Main event dan sub-event memiliki aturan DELETE yang berbeda.
+    final isSubEvent = target.parentEventId != null && target.parentEventId!.isNotEmpty;
+    // RBAC: Tolak DELETE sub-event jika role tidak memiliki izin.
+    if (isSubEvent && !EventPermission.canDeleteSubEvent(_currentRole)) {
+      errorMessage.value = 'Anda tidak memiliki izin menghapus sub-event.';
+      return false;
+    }
+    // RBAC: Tolak DELETE main event jika role bukan admin.
+    if (!isSubEvent && !EventPermission.canDeleteMainEvent(_currentRole)) {
+      errorMessage.value = 'Anda tidak memiliki izin menghapus main event.';
+      return false;
+    }
+
     isLoading.value = true;
     errorMessage.value = null;
 

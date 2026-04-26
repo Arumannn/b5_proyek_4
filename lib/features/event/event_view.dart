@@ -6,6 +6,7 @@ import '../../widgets/custom_snackbar.dart';
 import '../attendance/scan_screen.dart';
 import '../auth/auth_controller.dart';
 import 'event_controller.dart';
+import 'event_permission.dart';
 
 class EventView extends StatefulWidget {
   const EventView({super.key});
@@ -25,8 +26,13 @@ class _EventViewState extends State<EventView> {
           .trim()
           .toLowerCase();
 
-  bool get _canCrud =>
-      _role == AppConstants.roleExecutive || _role == AppConstants.roleManager;
+  bool get _canCreateMainEvent => EventPermission.canCreateMainEvent(_role); // RBAC: Main event CREATE hanya Admin.
+  bool get _canUpdateMainEvent => EventPermission.canUpdateMainEvent(_role); // RBAC: Main event UPDATE hanya Admin.
+  bool get _canDeleteMainEvent => EventPermission.canDeleteMainEvent(_role); // RBAC: Main event DELETE hanya Admin.
+  bool get _canCreateSubEvent => EventPermission.canCreateSubEvent(_role); // RBAC: Sub-event CRUD untuk Admin/Manager.
+  bool get _canUpdateSubEvent => EventPermission.canUpdateSubEvent(_role); // RBAC: Sub-event CRUD untuk Admin/Manager.
+  bool get _canDeleteSubEvent => EventPermission.canDeleteSubEvent(_role); // RBAC: Sub-event CRUD untuk Admin/Manager.
+  bool get _hasAnyCrudAccess => _canCreateMainEvent || _canCreateSubEvent; // RBAC: Penanda UI jika ada hak tulis di salah satu scope.
 
   @override
   void initState() {
@@ -113,6 +119,27 @@ class _EventViewState extends State<EventView> {
     EventModel? existing,
     String? forcedParentId,
   }) async {
+    final isCreate = existing == null; // RBAC: Bedakan aksi CREATE vs UPDATE untuk validasi izin.
+    final isSubEvent = // RBAC: Sub-event jika forced parent ada atau target existing punya parent.
+        forcedParentId != null || (existing?.parentEventId != null);
+
+    if (isCreate && !isSubEvent && !_canCreateMainEvent) {
+      CustomSnackbar.showError(context, 'Anda tidak memiliki izin membuat main event.'); // RBAC: Cegah CREATE main event tanpa izin.
+      return;
+    }
+    if (isCreate && isSubEvent && !_canCreateSubEvent) {
+      CustomSnackbar.showError(context, 'Anda tidak memiliki izin membuat sub-event.'); // RBAC: Cegah CREATE sub-event tanpa izin.
+      return;
+    }
+    if (!isCreate && !isSubEvent && !_canUpdateMainEvent) {
+      CustomSnackbar.showError(context, 'Anda tidak memiliki izin mengubah main event.'); // RBAC: Cegah UPDATE main event tanpa izin.
+      return;
+    }
+    if (!isCreate && isSubEvent && !_canUpdateSubEvent) {
+      CustomSnackbar.showError(context, 'Anda tidak memiliki izin mengubah sub-event.'); // RBAC: Cegah UPDATE sub-event tanpa izin.
+      return;
+    }
+
     final form = await _showEventFormDialog(
       title: existing == null
           ? (forcedParentId == null ? 'Tambah Event' : 'Tambah Sub-Event')
@@ -168,6 +195,16 @@ class _EventViewState extends State<EventView> {
   }
 
   Future<void> _deleteEvent(EventModel target) async {
+    final isSubEvent = target.parentEventId != null; // RBAC: Izin DELETE ditentukan dari hirarki event.
+    if (!isSubEvent && !_canDeleteMainEvent) {
+      CustomSnackbar.showError(context, 'Anda tidak memiliki izin menghapus main event.'); // RBAC: Cegah DELETE main event tanpa izin.
+      return;
+    }
+    if (isSubEvent && !_canDeleteSubEvent) {
+      CustomSnackbar.showError(context, 'Anda tidak memiliki izin menghapus sub-event.'); // RBAC: Cegah DELETE sub-event tanpa izin.
+      return;
+    }
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
@@ -429,13 +466,16 @@ class _EventViewState extends State<EventView> {
   }
 
   Widget _buildActionButtons(EventModel event, {String? forcedParentId}) {
-    final showCrud = _canCrud;
+    final isSubEvent = event.parentEventId != null; // RBAC: Tentukan paket izin per scope.
+    final canEdit = isSubEvent ? _canUpdateSubEvent : _canUpdateMainEvent; // RBAC: UPDATE berbeda antara main/sub.
+    final canDelete = isSubEvent ? _canDeleteSubEvent : _canDeleteMainEvent; // RBAC: DELETE berbeda antara main/sub.
+    final canAddSubEvent = !isSubEvent && _canCreateSubEvent; // RBAC: CREATE sub-event boleh Admin/Manager pada parent main event.
 
     return Wrap(
       spacing: 8,
       runSpacing: 8,
       children: [
-        if (showCrud)
+        if (canEdit)
           OutlinedButton.icon(
             onPressed: () {
               Navigator.push(
@@ -448,20 +488,20 @@ class _EventViewState extends State<EventView> {
             icon: const Icon(Icons.qr_code_scanner, size: 18),
             label: const Text('Scan'),
           ),
-        if (showCrud)
+        if (canEdit)
           OutlinedButton.icon(
             onPressed: () => _addOrEditEvent(existing: event),
             icon: const Icon(Icons.edit_outlined, size: 18),
             label: const Text('Edit'),
           ),
-        if (showCrud)
+        if (canDelete)
           OutlinedButton.icon(
             onPressed: () => _deleteEvent(event),
             icon: const Icon(Icons.delete_outline, size: 18),
             label: const Text('Hapus'),
             style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
           ),
-        if (showCrud && event.parentEventId == null)
+        if (canAddSubEvent)
           OutlinedButton.icon(
             onPressed: () => _addOrEditEvent(forcedParentId: event.eventId),
             icon: const Icon(Icons.add_circle_outline, size: 18),
@@ -571,7 +611,7 @@ class _EventViewState extends State<EventView> {
 
   @override
   Widget build(BuildContext context) {
-    final title = _canCrud ? 'Event (CRUD)' : 'Event (Read-Only)';
+    final title = _hasAnyCrudAccess ? 'Event (Partial CRUD)' : 'Event (Read-Only)'; // RBAC: Manager punya CRUD hanya untuk sub-event.
 
     return Scaffold(
       appBar: AppBar(
@@ -582,7 +622,7 @@ class _EventViewState extends State<EventView> {
             onPressed: () => _controller.loadEvents(force: true),
             icon: const Icon(Icons.refresh),
           ),
-          if (_canCrud)
+          if (_canCreateMainEvent)
             IconButton(
               tooltip: 'Tambah Event',
               onPressed: () => _addOrEditEvent(),
@@ -590,7 +630,7 @@ class _EventViewState extends State<EventView> {
             ),
         ],
       ),
-      floatingActionButton: _canCrud
+      floatingActionButton: _canCreateMainEvent
           ? FloatingActionButton.extended(
               onPressed: () => _addOrEditEvent(),
               icon: const Icon(Icons.add),
