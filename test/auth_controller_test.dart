@@ -38,29 +38,29 @@ void main() {
 
   group('AuthController — Week 8 Unit Tests', () {
     // TC-01: Login NIM + password benar → currentUser tidak null, role sesuai
-    test('TC-01: Login admin valid → currentUser tidak null, role = admin',
+    test('TC-01: Login Executive valid → currentUser tidak null, role = Executive',
         () async {
       final ok = await auth.verifyCredentials(
-        nim: AppConstants.defaultAdminNim,
-        password: AppConstants.defaultAdminPassword,
+        nim: AppConstants.defaultExecutiveNim,
+        password: AppConstants.defaultExecutivePassword,
       );
       expect(ok, isTrue, reason: 'Login harus berhasil dengan kredensial benar');
       expect(auth.currentUser.value, isNotNull);
-      expect(auth.currentUser.value!.role, equals(AppConstants.roleAdmin));
+      expect(auth.currentUser.value!.role, equals(AppConstants.roleExecutive));
       expect(auth.errorMessage.value, isNull);
     });
 
-    // TC-02: Admin buat akun member baru → tersimpan di Hive, role benar
-    test('TC-02: Admin createUserByAdmin → tersimpan di Hive dengan role member',
+    // TC-02: Executive buat akun member baru → tersimpan di Hive, role benar
+    test('TC-02: Executive createUserByExecutive → tersimpan di Hive dengan role member',
         () async {
-      // Login sebagai admin dulu
+      // Login sebagai Executive dulu
       await auth.verifyCredentials(
-        nim: AppConstants.defaultAdminNim,
-        password: AppConstants.defaultAdminPassword,
+        nim: AppConstants.defaultExecutiveNim,
+        password: AppConstants.defaultExecutivePassword,
       );
 
       const testNim = '999000099';
-      final ok = await auth.createUserByAdmin(
+      final ok = await auth.createUserByExecutive(
         nama: 'Test Member Baru',
         nim: testNim,
         divisi: 'Test Divisi',
@@ -68,7 +68,7 @@ void main() {
         password: 'test123',
       );
 
-      expect(ok, isTrue, reason: 'Admin harus bisa buat akun member baru');
+      expect(ok, isTrue, reason: 'Executive harus bisa buat akun member baru');
 
       final saved = HiveService.members.get(testNim);
       expect(saved, isNotNull, reason: 'Member harus tersimpan di Hive');
@@ -83,7 +83,7 @@ void main() {
     test('TC-03: Login password salah → gagal + error message tidak null',
         () async {
       final ok = await auth.verifyCredentials(
-        nim: AppConstants.defaultAdminNim,
+        nim: AppConstants.defaultExecutiveNim,
         password: 'passwordsalah_ini_pasti_gagal',
       );
       expect(ok, isFalse, reason: 'Login harus gagal dengan password salah');

@@ -75,14 +75,14 @@ class _DashboardViewState extends State<DashboardView> {
         title: 'Kelola Pengguna',
         subtitle: 'CRUD akun pengguna',
         icon: Icons.groups_2_outlined,
-        requireRoles: const [AppConstants.roleAdmin],
+        requireRoles: const [AppConstants.roleExecutive],
         builder: (_) => const UserManagementView(),
       ),
       _DashboardMenuItem(
         title: 'Kelola Event',
         subtitle: 'List, form, dan CRUD event',
         icon: Icons.event_note_outlined,
-        requireRoles: const [AppConstants.roleAdmin, AppConstants.roleManager],
+        requireRoles: const [AppConstants.roleExecutive, AppConstants.roleManager],
         builder: (_) => const EventView(),
       ),
       _DashboardMenuItem(
@@ -97,7 +97,7 @@ class _DashboardViewState extends State<DashboardView> {
         subtitle: 'Kelola atau lihat sub-event per main event',
         icon: Icons.account_tree_outlined,
         requireRoles: const [
-          AppConstants.roleAdmin,
+          AppConstants.roleExecutive,
           AppConstants.roleManager,
           AppConstants.roleOrganizer,
         ],
@@ -108,7 +108,7 @@ class _DashboardViewState extends State<DashboardView> {
         subtitle: 'Akses sesuai role (CRUD/Read)',
         icon: Icons.assignment_outlined,
         requireRoles: const [
-          AppConstants.roleAdmin,
+          AppConstants.roleExecutive,
           AppConstants.roleManager,
           AppConstants.roleOrganizer,
         ],
@@ -118,7 +118,7 @@ class _DashboardViewState extends State<DashboardView> {
         title: 'Scan Absensi',
         subtitle: 'Scanner QR untuk absensi event',
         icon: Icons.qr_code_scanner_outlined,
-        requireRoles: const [AppConstants.roleAdmin, AppConstants.roleManager],
+        requireRoles: const [AppConstants.roleExecutive, AppConstants.roleManager],
         builder: (_) => const ScanScreen(eventId: 'manual-scan'),
       ),
       _DashboardMenuItem(

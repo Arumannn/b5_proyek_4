@@ -3,10 +3,6 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../core/utils/qr_service.dart';
 import 'attendance_controller.dart';
-
-
-
-// TODO: Jangan lupa sesuaikan path import ini jika sudah ada controller aslinya
 // import 'package:b5_proyek_4/features/attendance/attendance_controller.dart';
 // import 'package:b5_proyek_4/widgets/custom_snackbar.dart';
 
@@ -15,7 +11,7 @@ class ScanScreen extends StatefulWidget {
 
   const ScanScreen({super.key, required this.eventId});
 
-  // Meskipun dilarang  setState untuk logika bisnis, StatefulWidget 
+  // Meskipun dilarang  setState untuk logika bisnis, StatefulWidget
   // tetap wajib digunakan di sini HANYA untuk me-manage memori kamera (dispose).
   @override
   State<ScanScreen> createState() => _ScanScreenState();
@@ -38,7 +34,8 @@ class ScanSuccessPayload {
 class _ScanScreenState extends State<ScanScreen> {
   // Inisialisasi controller scanner
   final MobileScannerController _scannerController = MobileScannerController(
-    detectionSpeed: DetectionSpeed.noDuplicates, // Mencegah scan ganda bawaan library
+    detectionSpeed:
+        DetectionSpeed.noDuplicates, // Mencegah scan ganda bawaan library
     facing: CameraFacing.back,
   );
 
@@ -81,7 +78,8 @@ class _ScanScreenState extends State<ScanScreen> {
         scannedQrValue: qrData,
       );
       // Mengambil nama member untuk ditampilkan di Snackbar
-      final namaMember = AttendanceController.instance.lastScannedName.value ?? 'Anggota';
+      final namaMember =
+          AttendanceController.instance.lastScannedName.value ?? 'Anggota';
 
       switch (result) {
         case AttendanceResult.successHadir:
@@ -110,10 +108,12 @@ class _ScanScreenState extends State<ScanScreen> {
           _showSnackbar('Error: Data Event Hilang', Colors.grey);
           break;
         case AttendanceResult.error:
-        _showSnackbar('Terjadi kesalahan sistem saat menyimpan data', Colors.red);
+          _showSnackbar(
+            'Terjadi kesalahan sistem saat menyimpan data',
+            Colors.red,
+          );
           break;
       }
-
     } catch (e) {
       _showSnackbar('Exception: $e', Colors.red);
     } finally {
@@ -130,20 +130,20 @@ class _ScanScreenState extends State<ScanScreen> {
           Navigator.of(context).pop(
             ScanSuccessPayload(
               eventId: widget.eventId,
-              nama: AttendanceController.instance.lastScannedName.value ??
+              nama:
+                  AttendanceController.instance.lastScannedName.value ??
                   'Anggota',
               identifier: identifier,
               status: successStatus ?? 'Hadir',
             ),
           );
         }
-        return;
-      }
-
-      // 4. Beri jeda 2 detik agar Admin bisa melihat hasil Snackbar
-      await Future.delayed(const Duration(seconds: 2));
-      if (mounted) {
-        _isProcessing.value = false;
+      } else {
+        // 4. Beri jeda 2 detik agar Executive bisa melihat hasil Snackbar
+        await Future.delayed(const Duration(seconds: 2));
+        if (mounted) {
+          _isProcessing.value = false;
+        }
       }
     }
   }
@@ -154,7 +154,10 @@ class _ScanScreenState extends State<ScanScreen> {
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message, style: const TextStyle(fontWeight: FontWeight.bold)),
+        content: Text(
+          message,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
         backgroundColor: color,
         duration: const Duration(seconds: 2),
         behavior: SnackBarBehavior.floating,
@@ -202,13 +205,11 @@ class _ScanScreenState extends State<ScanScreen> {
               if (!isProcessing) return const SizedBox.shrink();
               return Container(
                 color: Colors.black54,
-                child: const Center(
-                  child: CircularProgressIndicator(),
-                ),
+                child: const Center(child: CircularProgressIndicator()),
               );
             },
           ),
-          
+
           // Teks Petunjuk di bawah
           Positioned(
             bottom: 40,
@@ -218,9 +219,9 @@ class _ScanScreenState extends State<ScanScreen> {
               valueListenable: _isProcessing,
               builder: (context, isProcessing, child) {
                 return Text(
-                  isProcessing 
-                    ? 'Memproses data absensi...' 
-                    : 'Arahkan QR Code Anggota ke dalam kotak',
+                  isProcessing
+                      ? 'Memproses data absensi...'
+                      : 'Arahkan QR Code Anggota ke dalam kotak',
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     color: Colors.white,
@@ -239,6 +240,8 @@ class _ScanScreenState extends State<ScanScreen> {
 
 /// Widget tambahan untuk membuat efek visual kotak pembidik scanner
 class QRScannerOverlay extends StatelessWidget {
+  const QRScannerOverlay({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -248,7 +251,8 @@ class QRScannerOverlay extends StatelessWidget {
           borderRadius: 10,
           borderLength: 30,
           borderWidth: 10,
-          cutOutSize: MediaQuery.of(context).size.width * 0.7, // Lebar area scan
+          cutOutSize:
+              MediaQuery.of(context).size.width * 0.7, // Lebar area scan
         ),
       ),
     );
@@ -264,7 +268,7 @@ class QrScannerOverlayShape extends ShapeBorder {
   final double borderLength;
   final double cutOutSize;
 
-  QrScannerOverlayShape({
+  const QrScannerOverlayShape({
     this.borderColor = Colors.white,
     this.borderWidth = 3.0,
     this.overlayColor = const Color.fromRGBO(0, 0, 0, 80),
@@ -285,13 +289,14 @@ class QrScannerOverlayShape extends ShapeBorder {
 
   @override
   Path getOuterPath(Rect rect, {TextDirection? textDirection}) {
-    Path _getLeftTopPath(Rect rect) {
+    Path getLeftTopPath(Rect rect) {
       return Path()
         ..moveTo(rect.left, rect.bottom)
         ..lineTo(rect.left, rect.top)
         ..lineTo(rect.right, rect.top);
     }
-    return _getLeftTopPath(rect)
+
+    return getLeftTopPath(rect)
       ..lineTo(rect.right, rect.bottom)
       ..lineTo(rect.left, rect.bottom)
       ..close();
@@ -303,8 +308,10 @@ class QrScannerOverlayShape extends ShapeBorder {
     final borderWidthSize = width / 2;
     final height = rect.height;
     final borderOffset = borderWidth / 2;
-    final _borderLength = borderLength > cutOutSize / 2 + borderWidthSize ? cutOutSize / 2 + borderOffset : borderLength;
-    final _cutOutSize = cutOutSize < width ? cutOutSize : width;
+    final borderLengthValue = borderLength > cutOutSize / 2 + borderWidthSize
+        ? cutOutSize / 2 + borderOffset
+        : borderLength;
+    final cutOutSizeValue = cutOutSize < width ? cutOutSize : width;
 
     final backgroundPaint = Paint()
       ..color = overlayColor
@@ -321,10 +328,10 @@ class QrScannerOverlayShape extends ShapeBorder {
       ..blendMode = BlendMode.dstOut;
 
     final cutOutRect = Rect.fromLTWH(
-      rect.left + width / 2 - _cutOutSize / 2 + borderOffset,
-      rect.top + height / 2 - _cutOutSize / 2 + borderOffset,
-      _cutOutSize - borderOffset * 2,
-      _cutOutSize - borderOffset * 2,
+      rect.left + width / 2 - cutOutSizeValue / 2 + borderOffset,
+      rect.top + height / 2 - cutOutSizeValue / 2 + borderOffset,
+      cutOutSizeValue - borderOffset * 2,
+      cutOutSizeValue - borderOffset * 2,
     );
 
     canvas
@@ -339,17 +346,49 @@ class QrScannerOverlayShape extends ShapeBorder {
     // Draw borders
     canvas
       // Top left
-      ..drawLine(cutOutRect.topLeft, Offset(cutOutRect.left + _borderLength, cutOutRect.top), borderPaint)
-      ..drawLine(cutOutRect.topLeft, Offset(cutOutRect.left, cutOutRect.top + _borderLength), borderPaint)
+      ..drawLine(
+        cutOutRect.topLeft,
+        Offset(cutOutRect.left + borderLengthValue, cutOutRect.top),
+        borderPaint,
+      )
+      ..drawLine(
+        cutOutRect.topLeft,
+        Offset(cutOutRect.left, cutOutRect.top + borderLengthValue),
+        borderPaint,
+      )
       // Top right
-      ..drawLine(cutOutRect.topRight, Offset(cutOutRect.right - _borderLength, cutOutRect.top), borderPaint)
-      ..drawLine(cutOutRect.topRight, Offset(cutOutRect.right, cutOutRect.top + _borderLength), borderPaint)
+      ..drawLine(
+        cutOutRect.topRight,
+        Offset(cutOutRect.right - borderLengthValue, cutOutRect.top),
+        borderPaint,
+      )
+      ..drawLine(
+        cutOutRect.topRight,
+        Offset(cutOutRect.right, cutOutRect.top + borderLengthValue),
+        borderPaint,
+      )
       // Bottom left
-      ..drawLine(cutOutRect.bottomLeft, Offset(cutOutRect.left + _borderLength, cutOutRect.bottom), borderPaint)
-      ..drawLine(cutOutRect.bottomLeft, Offset(cutOutRect.left, cutOutRect.bottom - _borderLength), borderPaint)
+      ..drawLine(
+        cutOutRect.bottomLeft,
+        Offset(cutOutRect.left + borderLengthValue, cutOutRect.bottom),
+        borderPaint,
+      )
+      ..drawLine(
+        cutOutRect.bottomLeft,
+        Offset(cutOutRect.left, cutOutRect.bottom - borderLengthValue),
+        borderPaint,
+      )
       // Bottom right
-      ..drawLine(cutOutRect.bottomRight, Offset(cutOutRect.right - _borderLength, cutOutRect.bottom), borderPaint)
-      ..drawLine(cutOutRect.bottomRight, Offset(cutOutRect.right, cutOutRect.bottom - _borderLength), borderPaint);
+      ..drawLine(
+        cutOutRect.bottomRight,
+        Offset(cutOutRect.right - borderLengthValue, cutOutRect.bottom),
+        borderPaint,
+      )
+      ..drawLine(
+        cutOutRect.bottomRight,
+        Offset(cutOutRect.right, cutOutRect.bottom - borderLengthValue),
+        borderPaint,
+      );
   }
 
   @override

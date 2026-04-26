@@ -42,8 +42,8 @@ class _UserManagementViewState extends State<UserManagementView> {
 
   String _roleLabel(String role) {
     switch (role.trim().toLowerCase()) {
-      case AppConstants.roleAdmin:
-        return 'Admin';
+      case AppConstants.roleExecutive:
+        return 'Executive';
       case AppConstants.roleManager:
         return 'Manager';
       case AppConstants.roleOrganizer:
@@ -123,7 +123,7 @@ class _UserManagementViewState extends State<UserManagementView> {
               });
 
               final success = isEdit
-                  ? await _authController.updateUserByAdmin(
+                  ? await _authController.updateUserByExecutive(
                       nim: existing.nim,
                       nama: namaController.text,
                       divisi: selectedDbu,
@@ -132,7 +132,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                           ? null
                           : passwordController.text,
                     )
-                  : await _authController.createUserByAdmin(
+                  : await _authController.createUserByExecutive(
                       nama: namaController.text,
                       nim: nimController.text,
                       divisi: selectedDbu,
@@ -140,7 +140,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                       password: passwordController.text,
                     );
 
-              if (!context.mounted) return;
+              if (!dialogContext.mounted) return;
 
               if (success) {
                 Navigator.of(dialogContext).pop(true);
@@ -149,7 +149,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                   isSaving = false;
                 });
                 CustomSnackbar.showError(
-                  this.context,
+                  dialogContext,
                   _authController.errorMessage.value ??
                       'Gagal menyimpan data anggota.',
                 );
@@ -197,7 +197,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                         ),
                         const SizedBox(height: 12),
                         DropdownButtonFormField<String>(
-                          value: selectedRole,
+                          initialValue: selectedRole,
                           decoration: const InputDecoration(
                             labelText: 'Role',
                             prefixIcon: Icon(
@@ -227,7 +227,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                         ),
                         const SizedBox(height: 12),
                         DropdownButtonFormField<String>(
-                          value: selectedDbu,
+                          initialValue: selectedDbu,
                           isExpanded: true,
                           decoration: const InputDecoration(
                             labelText: 'Departemen/Biro/Unit (DBU)',
@@ -339,7 +339,7 @@ class _UserManagementViewState extends State<UserManagementView> {
       return;
     }
 
-    final success = await _authController.deleteUserByAdmin(user.nim);
+    final success = await _authController.deleteUserByExecutive(user.nim);
     if (!mounted) return;
 
     if (!success) {
@@ -436,7 +436,7 @@ class _UserManagementViewState extends State<UserManagementView> {
               padding: const EdgeInsets.all(16),
               children: [
                 Text(
-                  'Admin dapat mengelola seluruh akun: Admin, Manager, Organizer, dan Member.',
+                  'Executive dapat mengelola seluruh akun: Executive, Manager, Organizer, dan Member.',
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
                 const SizedBox(height: 12),

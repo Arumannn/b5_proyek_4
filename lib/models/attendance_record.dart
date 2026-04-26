@@ -21,7 +21,7 @@ class AttendanceRecord extends HiveObject {
   String status; // 'Hadir', 'Terlambat', 'Izin', 'Sakit', 'Alpha'
 
   @HiveField(5)
-  bool isManualOverride; // true jika diubah paksa Admin/Manager
+  bool isManualOverride; // true jika diubah paksa Executive/Manager
 
   @HiveField(6)
   String? overrideBy; // memberId yang melakukan override

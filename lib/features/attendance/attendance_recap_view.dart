@@ -33,12 +33,13 @@ class _AttendanceRecapViewState extends State<AttendanceRecapView> {
   String? _selectedReadOnlyEventId;
 
   String get _role =>
-      (AuthController.instance.currentUser.value?.role ?? AppConstants.roleMember)
+      (AuthController.instance.currentUser.value?.role ??
+              AppConstants.roleMember)
           .trim()
           .toLowerCase();
 
   bool get _canCrud =>
-      _role == AppConstants.roleAdmin || _role == AppConstants.roleManager;
+      _role == AppConstants.roleExecutive || _role == AppConstants.roleManager;
 
   bool get _isReadOnly => _role == AppConstants.roleOrganizer;
 
@@ -60,10 +61,16 @@ class _AttendanceRecapViewState extends State<AttendanceRecapView> {
       ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
     final members = HiveService.members.values.toList(growable: false);
-    final memberById = <String, MemberModel>{for (final m in members) m.memberId: m};
-    final eventById = <String, EventModel>{for (final e in events) e.eventId: e};
+    final memberById = <String, MemberModel>{
+      for (final m in members) m.memberId: m,
+    };
+    final eventById = <String, EventModel>{
+      for (final e in events) e.eventId: e,
+    };
 
-    final mains = events.where((e) => e.parentEventId == null).toList(growable: false);
+    final mains = events
+        .where((e) => e.parentEventId == null)
+        .toList(growable: false);
     final subByMain = <String, List<String>>{};
     for (final main in mains) {
       subByMain[main.eventId] = <String>[];
@@ -76,21 +83,30 @@ class _AttendanceRecapViewState extends State<AttendanceRecapView> {
     }
 
     String? selectedMain = _selectedMainEventId;
-    if (selectedMain == null && mains.isNotEmpty) selectedMain = mains.first.eventId;
+    if (selectedMain == null && mains.isNotEmpty) {
+      selectedMain = mains.first.eventId;
+    }
     if (selectedMain != null && !mains.any((e) => e.eventId == selectedMain)) {
       selectedMain = mains.isNotEmpty ? mains.first.eventId : null;
     }
 
-    final subIds = selectedMain == null ? const <String>[] : (subByMain[selectedMain] ?? const <String>[]);
+    final subIds = selectedMain == null
+        ? const <String>[]
+        : (subByMain[selectedMain] ?? const <String>[]);
     String? selectedSub = _selectedSubEventId;
-    if (selectedSub == null && subIds.isNotEmpty) selectedSub = subIds.first;
+    if (selectedSub == null && subIds.isNotEmpty) {
+      selectedSub = subIds.first;
+    }
     if (selectedSub != null && !subIds.contains(selectedSub)) {
       selectedSub = subIds.isNotEmpty ? subIds.first : null;
     }
 
     String? selectedReadOnly = _selectedReadOnlyEventId;
-    if (selectedReadOnly == null && events.isNotEmpty) selectedReadOnly = events.first.eventId;
-    if (selectedReadOnly != null && !events.any((e) => e.eventId == selectedReadOnly)) {
+    if (selectedReadOnly == null && events.isNotEmpty) {
+      selectedReadOnly = events.first.eventId;
+    }
+    if (selectedReadOnly != null &&
+        !events.any((e) => e.eventId == selectedReadOnly)) {
       selectedReadOnly = events.isNotEmpty ? events.first.eventId : null;
     }
 
@@ -135,16 +151,22 @@ class _AttendanceRecapViewState extends State<AttendanceRecapView> {
       case RecapMode.byMainEvent:
         final mainId = _selectedMainEventId;
         if (mainId == null) return const <AttendanceRecord>[];
-        return _records.where((r) => r.eventId == mainId).toList(growable: false);
+        return _records
+            .where((r) => r.eventId == mainId)
+            .toList(growable: false);
       case RecapMode.bySubEvent:
         final subId = _selectedSubEventId;
         if (subId == null) return const <AttendanceRecord>[];
-        return _records.where((r) => r.eventId == subId).toList(growable: false);
+        return _records
+            .where((r) => r.eventId == subId)
+            .toList(growable: false);
       case RecapMode.aggregateByMainEvent:
         final mainId = _selectedMainEventId;
         if (mainId == null) return const <AttendanceRecord>[];
         final allowed = <String>{mainId, ...?_subEventIdsByMain[mainId]};
-        return _records.where((r) => allowed.contains(r.eventId)).toList(growable: false);
+        return _records
+            .where((r) => allowed.contains(r.eventId))
+            .toList(growable: false);
       case RecapMode.global:
         return List<AttendanceRecord>.from(_records, growable: false);
     }
@@ -237,8 +259,10 @@ class _AttendanceRecapViewState extends State<AttendanceRecapView> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   DropdownButtonFormField<String>(
-                    value: selectedMemberId,
-                    decoration: const InputDecoration(labelText: 'Pilih Anggota'),
+                    initialValue: selectedMemberId,
+                    decoration: const InputDecoration(
+                      labelText: 'Pilih Anggota',
+                    ),
                     items: members
                         .map(
                           (m) => DropdownMenuItem<String>(
@@ -256,11 +280,17 @@ class _AttendanceRecapViewState extends State<AttendanceRecapView> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    value: selectedStatus,
+                    initialValue: selectedStatus,
                     decoration: const InputDecoration(labelText: 'Status'),
                     items: const [
-                      DropdownMenuItem<String>(value: 'Hadir', child: Text('Hadir')),
-                      DropdownMenuItem<String>(value: 'Ditolak', child: Text('Ditolak')),
+                      DropdownMenuItem<String>(
+                        value: 'Hadir',
+                        child: Text('Hadir'),
+                      ),
+                      DropdownMenuItem<String>(
+                        value: 'Ditolak',
+                        child: Text('Ditolak'),
+                      ),
                     ],
                     onChanged: (value) {
                       if (value == null) return;
@@ -320,11 +350,17 @@ class _AttendanceRecapViewState extends State<AttendanceRecapView> {
             return AlertDialog(
               title: const Text('Edit Status Kehadiran'),
               content: DropdownButtonFormField<String>(
-                value: selected,
+                initialValue: selected,
                 decoration: const InputDecoration(labelText: 'Status'),
                 items: const [
-                  DropdownMenuItem<String>(value: 'Hadir', child: Text('Hadir')),
-                  DropdownMenuItem<String>(value: 'Ditolak', child: Text('Ditolak')),
+                  DropdownMenuItem<String>(
+                    value: 'Hadir',
+                    child: Text('Hadir'),
+                  ),
+                  DropdownMenuItem<String>(
+                    value: 'Ditolak',
+                    child: Text('Ditolak'),
+                  ),
                 ],
                 onChanged: (value) {
                   if (value == null) return;
@@ -351,7 +387,8 @@ class _AttendanceRecapViewState extends State<AttendanceRecapView> {
 
     if (confirmed != true) return;
 
-    final managerId = AuthController.instance.currentUser.value?.memberId ?? 'manager';
+    final managerId =
+        AuthController.instance.currentUser.value?.memberId ?? 'manager';
     final ok = await AttendanceController.instance.overrideAttendanceStatus(
       recordId: record.recordId,
       newStatus: selected,
@@ -366,7 +403,10 @@ class _AttendanceRecapViewState extends State<AttendanceRecapView> {
 
     await _refresh();
     if (!mounted) return;
-    CustomSnackbar.showSuccess(context, 'Status kehadiran berhasil diperbarui.');
+    CustomSnackbar.showSuccess(
+      context,
+      'Status kehadiran berhasil diperbarui.',
+    );
   }
 
   Future<void> _deleteRecord(AttendanceRecord record) async {
@@ -392,7 +432,9 @@ class _AttendanceRecapViewState extends State<AttendanceRecapView> {
 
     if (confirmed != true) return;
 
-    final ok = await AttendanceController.instance.deleteAttendanceRecord(record.recordId);
+    final ok = await AttendanceController.instance.deleteAttendanceRecord(
+      record.recordId,
+    );
 
     if (!mounted) return;
     if (!ok) {
@@ -410,7 +452,7 @@ class _AttendanceRecapViewState extends State<AttendanceRecapView> {
       padding: const EdgeInsets.all(16),
       children: [
         DropdownButtonFormField<String>(
-          value: _selectedReadOnlyEventId,
+          initialValue: _selectedReadOnlyEventId,
           decoration: const InputDecoration(
             labelText: 'Pilih Event / Sub-Event',
             border: OutlineInputBorder(),
@@ -436,7 +478,9 @@ class _AttendanceRecapViewState extends State<AttendanceRecapView> {
             child: _readOnlyRecords.isEmpty
                 ? const Padding(
                     padding: EdgeInsets.symmetric(vertical: 24),
-                    child: Center(child: Text('Belum ada data kehadiran pada event ini.')),
+                    child: Center(
+                      child: Text('Belum ada data kehadiran pada event ini.'),
+                    ),
                   )
                 : SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
@@ -473,16 +517,18 @@ class _AttendanceRecapViewState extends State<AttendanceRecapView> {
       padding: const EdgeInsets.all(16),
       children: [
         DropdownButtonFormField<RecapMode>(
-          value: _recapMode,
+          initialValue: _recapMode,
           decoration: const InputDecoration(
             labelText: 'Mode Rekap',
             border: OutlineInputBorder(),
           ),
           items: RecapMode.values
-              .map((mode) => DropdownMenuItem<RecapMode>(
-                    value: mode,
-                    child: Text(_modeLabel(mode)),
-                  ))
+              .map(
+                (mode) => DropdownMenuItem<RecapMode>(
+                  value: mode,
+                  child: Text(_modeLabel(mode)),
+                ),
+              )
               .toList(growable: false),
           onChanged: (value) {
             if (value == null) return;
@@ -492,15 +538,21 @@ class _AttendanceRecapViewState extends State<AttendanceRecapView> {
           },
         ),
         const SizedBox(height: 12),
-        if (_recapMode == RecapMode.byMainEvent || _recapMode == RecapMode.aggregateByMainEvent)
+        if (_recapMode == RecapMode.byMainEvent ||
+            _recapMode == RecapMode.aggregateByMainEvent)
           DropdownButtonFormField<String>(
-            value: _selectedMainEventId,
+            initialValue: _selectedMainEventId,
             decoration: const InputDecoration(
               labelText: 'Pilih Main Event',
               border: OutlineInputBorder(),
             ),
             items: _mainEvents
-                .map((e) => DropdownMenuItem<String>(value: e.eventId, child: Text(e.nama)))
+                .map(
+                  (e) => DropdownMenuItem<String>(
+                    value: e.eventId,
+                    child: Text(e.nama),
+                  ),
+                )
                 .toList(growable: false),
             onChanged: (value) {
               if (value == null) return;
@@ -513,13 +565,18 @@ class _AttendanceRecapViewState extends State<AttendanceRecapView> {
           ),
         if (_recapMode == RecapMode.bySubEvent) ...[
           DropdownButtonFormField<String>(
-            value: _selectedMainEventId,
+            initialValue: _selectedMainEventId,
             decoration: const InputDecoration(
               labelText: 'Pilih Main Event',
               border: OutlineInputBorder(),
             ),
             items: _mainEvents
-                .map((e) => DropdownMenuItem<String>(value: e.eventId, child: Text(e.nama)))
+                .map(
+                  (e) => DropdownMenuItem<String>(
+                    value: e.eventId,
+                    child: Text(e.nama),
+                  ),
+                )
                 .toList(growable: false),
             onChanged: (value) {
               if (value == null) return;
@@ -532,13 +589,18 @@ class _AttendanceRecapViewState extends State<AttendanceRecapView> {
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
-            value: _selectedSubEventId,
+            initialValue: _selectedSubEventId,
             decoration: const InputDecoration(
               labelText: 'Pilih Sub-Event',
               border: OutlineInputBorder(),
             ),
             items: _subEventsForSelectedMain
-                .map((e) => DropdownMenuItem<String>(value: e.eventId, child: Text(e.nama)))
+                .map(
+                  (e) => DropdownMenuItem<String>(
+                    value: e.eventId,
+                    child: Text(e.nama),
+                  ),
+                )
                 .toList(growable: false),
             onChanged: (value) {
               setState(() {
@@ -573,7 +635,9 @@ class _AttendanceRecapViewState extends State<AttendanceRecapView> {
             child: _filteredCrudRecords.isEmpty
                 ? const Padding(
                     padding: EdgeInsets.symmetric(vertical: 24),
-                    child: Center(child: Text('Belum ada data kehadiran pada event ini.')),
+                    child: Center(
+                      child: Text('Belum ada data kehadiran pada event ini.'),
+                    ),
                   )
                 : SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
@@ -593,7 +657,12 @@ class _AttendanceRecapViewState extends State<AttendanceRecapView> {
                               cells: [
                                 DataCell(Text(member?.nim ?? r.memberId)),
                                 DataCell(Text(member?.nama ?? '-')),
-                                DataCell(SizedBox(width: 220, child: Text(_eventLabel(r.eventId)))),
+                                DataCell(
+                                  SizedBox(
+                                    width: 220,
+                                    child: Text(_eventLabel(r.eventId)),
+                                  ),
+                                ),
                                 DataCell(Text(r.status)),
                                 DataCell(Text(_formatDate(r.timestamp))),
                                 DataCell(
@@ -640,7 +709,9 @@ class _AttendanceRecapViewState extends State<AttendanceRecapView> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_canCrud ? 'Rekap Kehadiran (CRUD)' : 'Rekap Kehadiran (Read-Only)'),
+        title: Text(
+          _canCrud ? 'Rekap Kehadiran (CRUD)' : 'Rekap Kehadiran (Read-Only)',
+        ),
         actions: [
           IconButton(
             tooltip: 'Refresh',
@@ -652,11 +723,13 @@ class _AttendanceRecapViewState extends State<AttendanceRecapView> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _events.isEmpty
-              ? const Center(child: Text('Belum ada event/sub-event tersedia.'))
-              : RefreshIndicator(
-                  onRefresh: _refresh,
-                  child: _canCrud ? _buildCrudBody() : _buildReadOnlyOrganizerBody(),
-                ),
+          ? const Center(child: Text('Belum ada event/sub-event tersedia.'))
+          : RefreshIndicator(
+              onRefresh: _refresh,
+              child: _canCrud
+                  ? _buildCrudBody()
+                  : _buildReadOnlyOrganizerBody(),
+            ),
     );
   }
 }

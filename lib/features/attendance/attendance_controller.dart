@@ -381,7 +381,7 @@ class AttendanceController {
     }
   }
 
-  /// Fitur override manual oleh Admin / Manager
+  /// Fitur override manual oleh Executive / Manager
   Future<bool> overrideAttendanceStatus({
     required String recordId,
     required String newStatus,

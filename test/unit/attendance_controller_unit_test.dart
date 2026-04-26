@@ -70,7 +70,7 @@ void main() {
         nama: 'Event Test',
         jenis: 'Rapat',
         tanggal: tanggalEvent,
-        createdBy: 'admin',
+        createdBy: 'Executive',
       ),
     );
   }

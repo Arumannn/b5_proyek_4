@@ -19,19 +19,19 @@ class CloudinaryService {
   // ─── Singleton ──────────────────────────────────────────────────
   static final CloudinaryService instance = CloudinaryService._internal();
   CloudinaryService._internal()
-      : _dio = Dio(
-          BaseOptions(
-            connectTimeout: const Duration(seconds: 30),
-            receiveTimeout: const Duration(seconds: 60),
-            sendTimeout: const Duration(seconds: 60),
-          ),
-        );
+    : _dio = Dio(
+        BaseOptions(
+          connectTimeout: const Duration(seconds: 30),
+          receiveTimeout: const Duration(seconds: 60),
+          sendTimeout: const Duration(seconds: 60),
+        ),
+      );
 
   final Dio _dio;
 
   // ─── Env Config ─────────────────────────────────────────────────
   String get _cloudName => dotenv.env['CLOUDINARY_CLOUD_NAME'] ?? '';
-  String get _apiKey    => dotenv.env['CLOUDINARY_API_KEY'] ?? '';
+  String get _apiKey => dotenv.env['CLOUDINARY_API_KEY'] ?? '';
   String get _apiSecret => dotenv.env['CLOUDINARY_API_SECRET'] ?? '';
 
   /// Base URL upload endpoint Cloudinary (auto-upload image)
@@ -56,8 +56,10 @@ class CloudinaryService {
   }) async {
     if (!_isConfigured) {
       debugPrint('[Cloudinary] ERROR: credentials belum dikonfigurasi di .env');
-      debugPrint('  Pastikan CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, '
-          'CLOUDINARY_API_SECRET sudah diisi.');
+      debugPrint(
+        '  Pastikan CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, '
+        'CLOUDINARY_API_SECRET sudah diisi.',
+      );
       return null;
     }
 
@@ -80,7 +82,7 @@ class CloudinaryService {
       );
 
       // ── Build multipart form data ───────────────────────────────
-      final formData = FormData.fromMap({
+      final formFields = <String, dynamic>{
         'file': await MultipartFile.fromFile(
           localPath,
           filename: _extractFilename(localPath),
@@ -89,16 +91,18 @@ class CloudinaryService {
         'timestamp': timestamp.toString(),
         'signature': signature,
         'folder': folder,
-        if (publicId != null) 'public_id': publicId,
-      });
+      };
+      if (publicId != null) {
+        formFields['public_id'] = publicId;
+      }
+
+      final formData = FormData.fromMap(formFields);
 
       // ── POST ke Cloudinary ─────────────────────────────────────
       final response = await _dio.post(
         _uploadUrl,
         data: formData,
-        options: Options(
-          headers: {'Content-Type': 'multipart/form-data'},
-        ),
+        options: Options(headers: {'Content-Type': 'multipart/form-data'}),
         onSendProgress: (sent, total) {
           if (total > 0) {
             final pct = (sent / total * 100).toStringAsFixed(1);
@@ -152,9 +156,7 @@ class CloudinaryService {
           'timestamp': timestamp.toString(),
           'signature': signature,
         },
-        options: Options(
-          contentType: Headers.formUrlEncodedContentType,
-        ),
+        options: Options(contentType: Headers.formUrlEncodedContentType),
       );
 
       final result = response.data?['result']?.toString();
@@ -176,8 +178,7 @@ class CloudinaryService {
   bool get _isConfigured =>
       _cloudName.isNotEmpty && _apiKey.isNotEmpty && _apiSecret.isNotEmpty;
 
-  int _nowTimestamp() =>
-      DateTime.now().millisecondsSinceEpoch ~/ 1000;
+  int _nowTimestamp() => DateTime.now().millisecondsSinceEpoch ~/ 1000;
 
   /// Build signed signature untuk Cloudinary authenticated upload.
   /// Format: SHA1(params_string + api_secret)
@@ -192,13 +193,13 @@ class CloudinaryService {
     final params = <String, String>{
       'folder': folder,
       'timestamp': timestamp.toString(),
-      if (publicId != null) 'public_id': publicId,
     };
+    if (publicId != null) {
+      params['public_id'] = publicId;
+    }
 
     final sortedKeys = params.keys.toList()..sort();
-    final paramString = sortedKeys
-        .map((k) => '$k=${params[k]}')
-        .join('&');
+    final paramString = sortedKeys.map((k) => '$k=${params[k]}').join('&');
 
     // Tambahkan api_secret di akhir (tidak di-encode)
     final toSign = '$paramString$_apiSecret';
@@ -267,7 +268,8 @@ class CloudinaryService {
       final w = List<int>.filled(80, 0);
 
       for (var i = 0; i < 16; i++) {
-        w[i] = ((chunk[i * 4] << 24) |
+        w[i] =
+            ((chunk[i * 4] << 24) |
                 (chunk[i * 4 + 1] << 16) |
                 (chunk[i * 4 + 2] << 8) |
                 chunk[i * 4 + 3]) &
@@ -296,8 +298,7 @@ class CloudinaryService {
           k = 0xCA62C1D6;
         }
 
-        final temp =
-            (_rotl32(a, 5) + f + e + k + w[i]) & 0xFFFFFFFF;
+        final temp = (_rotl32(a, 5) + f + e + k + w[i]) & 0xFFFFFFFF;
         e = d;
         d = c;
         c = _rotl32(b, 30);
@@ -312,9 +313,13 @@ class CloudinaryService {
       h4 = (h4 + e) & 0xFFFFFFFF;
     }
 
-    return [h0, h1, h2, h3, h4]
-        .map((v) => v.toRadixString(16).padLeft(8, '0'))
-        .join();
+    return [
+      h0,
+      h1,
+      h2,
+      h3,
+      h4,
+    ].map((v) => v.toRadixString(16).padLeft(8, '0')).join();
   }
 
   int _rotl32(int val, int shift) {

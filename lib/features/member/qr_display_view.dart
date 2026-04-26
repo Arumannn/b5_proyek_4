@@ -19,7 +19,7 @@ class QrDisplayView extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Text(
-                'Tunjukkan QR Code ini kepada Admin',
+                'Tunjukkan QR Code ini kepada Executive',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 30),

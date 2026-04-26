@@ -17,12 +17,13 @@ class _SubEventViewState extends State<SubEventView> {
   final EventController _controller = EventController.instance;
 
   String get _role =>
-      (AuthController.instance.currentUser.value?.role ?? AppConstants.roleMember)
+      (AuthController.instance.currentUser.value?.role ??
+              AppConstants.roleMember)
           .trim()
           .toLowerCase();
 
   bool get _canCrud =>
-      _role == AppConstants.roleAdmin || _role == AppConstants.roleManager;
+      _role == AppConstants.roleExecutive || _role == AppConstants.roleManager;
 
   String _formatDate(DateTime value) {
     final dd = value.day.toString().padLeft(2, '0');
@@ -51,7 +52,9 @@ class _SubEventViewState extends State<SubEventView> {
 
   Future<void> _editSubEvent(EventModel subEvent) async {
     final nameController = TextEditingController(text: subEvent.nama);
-    final descController = TextEditingController(text: subEvent.deskripsi ?? '');
+    final descController = TextEditingController(
+      text: subEvent.deskripsi ?? '',
+    );
     final formKey = GlobalKey<FormState>();
     DateTime selectedDate = subEvent.tanggal;
 
@@ -137,7 +140,9 @@ class _SubEventViewState extends State<SubEventView> {
       subEvent.copyWith(
         nama: nameController.text.trim(),
         tanggal: selectedDate,
-        deskripsi: descController.text.trim().isEmpty ? null : descController.text.trim(),
+        deskripsi: descController.text.trim().isEmpty
+            ? null
+            : descController.text.trim(),
       ),
     );
 
@@ -174,7 +179,7 @@ class _SubEventViewState extends State<SubEventView> {
       ),
       body: ValueListenableBuilder<List<EventModel>>(
         valueListenable: _controller.events,
-        builder: (context, _, __) {
+        builder: (context, events, child) {
           final mains = _controller.getRootEvents();
 
           if (mains.isEmpty) {
@@ -194,7 +199,9 @@ class _SubEventViewState extends State<SubEventView> {
                   margin: const EdgeInsets.only(bottom: 12),
                   child: ExpansionTile(
                     title: Text(mainEvent.nama),
-                    subtitle: Text('Main Event • ${_formatDate(mainEvent.tanggal)}'),
+                    subtitle: Text(
+                      'Main Event • ${_formatDate(mainEvent.tanggal)}',
+                    ),
                     childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                     children: [
                       if (subs.isEmpty)
@@ -207,9 +214,13 @@ class _SubEventViewState extends State<SubEventView> {
                           return Card(
                             margin: const EdgeInsets.only(top: 8),
                             child: ListTile(
-                              leading: const Icon(Icons.subdirectory_arrow_right),
+                              leading: const Icon(
+                                Icons.subdirectory_arrow_right,
+                              ),
                               title: Text(sub.nama),
-                              subtitle: Text('${sub.jenis} • ${_formatDate(sub.tanggal)}'),
+                              subtitle: Text(
+                                '${sub.jenis} • ${_formatDate(sub.tanggal)}',
+                              ),
                               trailing: _canCrud
                                   ? Wrap(
                                       spacing: 4,

@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_constants.dart';
@@ -31,8 +30,9 @@ class EventController {
 
   // ── Filter & Search State ──────────────────────────────────────
   final ValueNotifier<String?> selectedJenisFilter = ValueNotifier(null);
-  final ValueNotifier<DateTimeRange?> selectedDateRangeFilter =
-      ValueNotifier(null);
+  final ValueNotifier<DateTimeRange?> selectedDateRangeFilter = ValueNotifier(
+    null,
+  );
   final ValueNotifier<String> searchQuery = ValueNotifier('');
 
   bool _hasLoaded = false;
@@ -59,8 +59,7 @@ class EventController {
       _applyFilters();
       _hasLoaded = true;
 
-      debugPrint(
-          '[EventCtrl] load Hive: ${_allEvents.length} event dimuat.');
+      debugPrint('[EventCtrl] load Hive: ${_allEvents.length} event dimuat.');
     } catch (e) {
       errorMessage.value = 'Gagal memuat event: $e';
       debugPrint('[EventCtrl] load Hive error: $e');
@@ -105,7 +104,8 @@ class EventController {
       }
 
       debugPrint(
-          '[EventCtrl] pull cloud: ${cloudDocs.length} event ditemukan.');
+        '[EventCtrl] pull cloud: ${cloudDocs.length} event ditemukan.',
+      );
 
       var newCount = 0;
       var updatedCount = 0;
@@ -131,7 +131,7 @@ class EventController {
         } else {
           // Event sudah synced — lokal tidak ada perubahan pending.
           // Timpa saja dengan data dari cloud agar selalu up-to-date
-          // (karena admin lain mungkin telah mengubah event ini).
+          // (karena Executive lain mungkin telah mengubah event ini).
           final cloudEvent = EventModel.fromMap(cleanDoc);
           final synced = cloudEvent.copyWith(isSynced: true);
           await HiveService.events.put(synced.eventId, synced);
@@ -264,8 +264,7 @@ class EventController {
       _allEvents[index] = saved;
       _applyFilters();
 
-      debugPrint(
-          '[EventCtrl] update: saved to Hive — id=${saved.eventId}');
+      debugPrint('[EventCtrl] update: saved to Hive — id=${saved.eventId}');
 
       // Sync ke MongoDB di background
       unawaited(_upsertEventToCloudInBackground(saved));
@@ -301,12 +300,14 @@ class EventController {
       }
 
       // Update cache & UI
-      _allEvents
-          .removeWhere((e) => e.eventId == eventId || e.parentEventId == eventId);
+      _allEvents.removeWhere(
+        (e) => e.eventId == eventId || e.parentEventId == eventId,
+      );
       _applyFilters();
 
       debugPrint(
-          '[EventCtrl] delete: ${toDelete.length} event dihapus dari Hive.');
+        '[EventCtrl] delete: ${toDelete.length} event dihapus dari Hive.',
+      );
 
       // Hapus dari MongoDB di background
       for (final id in toDelete) {
@@ -334,7 +335,8 @@ class EventController {
     try {
       if (!await _isOnline()) {
         debugPrint(
-            '[EventCtrl] cloud upsert: offline, ${event.eventId} tetap pending.');
+          '[EventCtrl] cloud upsert: offline, ${event.eventId} tetap pending.',
+        );
         return;
       }
 
@@ -342,12 +344,14 @@ class EventController {
         final connected = await MongoService.instance.ensureConnected();
         if (!connected) {
           debugPrint(
-              '[EventCtrl] cloud upsert: MongoDB tidak terhubung, skip.');
+            '[EventCtrl] cloud upsert: MongoDB tidak terhubung, skip.',
+          );
           return;
         }
       }
 
-      final payload = event.toMap()..remove('isSynced'); // jangan simpan flag lokal ke cloud
+      final payload = event.toMap()
+        ..remove('isSynced'); // jangan simpan flag lokal ke cloud
 
       // Cek apakah dokumen sudah ada
       final existing = await MongoService.instance.findOne(
@@ -362,7 +366,8 @@ class EventController {
           document: payload,
         );
         debugPrint(
-            '[EventCtrl] cloud upsert: ✅ INSERT ${event.eventId} ke MongoDB');
+          '[EventCtrl] cloud upsert: ✅ INSERT ${event.eventId} ke MongoDB',
+        );
       } else {
         // Update yang sudah ada
         await MongoService.instance.updateOne(
@@ -371,7 +376,8 @@ class EventController {
           updateFields: payload,
         );
         debugPrint(
-            '[EventCtrl] cloud upsert: ✅ UPDATE ${event.eventId} di MongoDB');
+          '[EventCtrl] cloud upsert: ✅ UPDATE ${event.eventId} di MongoDB',
+        );
       }
 
       // Tandai synced di Hive
@@ -387,7 +393,8 @@ class EventController {
       if (MongoService.isDuplicateKeyError(e)) {
         // Duplicate key — data sudah ada di cloud, tandai synced
         debugPrint(
-            '[EventCtrl] cloud upsert: duplicate ${event.eventId} — ditandai synced.');
+          '[EventCtrl] cloud upsert: duplicate ${event.eventId} — ditandai synced.',
+        );
         final updatedEvent = event.copyWith(isSynced: true);
         await HiveService.events.put(updatedEvent.eventId, updatedEvent);
       } else {
@@ -439,12 +446,21 @@ class EventController {
     if (selectedDateRangeFilter.value != null) {
       final range = selectedDateRangeFilter.value!;
       filtered = filtered.where((e) {
-        final eventDate =
-            DateTime(e.tanggal.year, e.tanggal.month, e.tanggal.day);
+        final eventDate = DateTime(
+          e.tanggal.year,
+          e.tanggal.month,
+          e.tanggal.day,
+        );
         final startDate = DateTime(
-            range.start.year, range.start.month, range.start.day);
-        final endDate =
-            DateTime(range.end.year, range.end.month, range.end.day);
+          range.start.year,
+          range.start.month,
+          range.start.day,
+        );
+        final endDate = DateTime(
+          range.end.year,
+          range.end.month,
+          range.end.day,
+        );
         return !eventDate.isBefore(startDate) && !eventDate.isAfter(endDate);
       }).toList();
     }
@@ -452,9 +468,11 @@ class EventController {
     if (searchQuery.value.isNotEmpty) {
       final query = searchQuery.value.toLowerCase();
       filtered = filtered
-          .where((e) =>
-              e.nama.toLowerCase().contains(query) ||
-              e.jenis.toLowerCase().contains(query))
+          .where(
+            (e) =>
+                e.nama.toLowerCase().contains(query) ||
+                e.jenis.toLowerCase().contains(query),
+          )
           .toList();
     }
 
@@ -497,9 +515,7 @@ class EventController {
       events.value.where((e) => e.parentEventId == null).toList();
 
   List<EventModel> getSubEvents(String parentId) =>
-      events.value
-          .where((e) => e.parentEventId == parentId)
-          .toList()
+      events.value.where((e) => e.parentEventId == parentId).toList()
         ..sort((a, b) => a.tanggal.compareTo(b.tanggal));
 
   // ══════════════════════════════════════════════════════════════

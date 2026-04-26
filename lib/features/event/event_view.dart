@@ -20,12 +20,13 @@ class _EventViewState extends State<EventView> {
   final Map<String, bool> _expandedState = <String, bool>{};
 
   String get _role =>
-      (AuthController.instance.currentUser.value?.role ?? AppConstants.roleMember)
+      (AuthController.instance.currentUser.value?.role ??
+              AppConstants.roleMember)
           .trim()
           .toLowerCase();
 
   bool get _canCrud =>
-      _role == AppConstants.roleAdmin || _role == AppConstants.roleManager;
+      _role == AppConstants.roleExecutive || _role == AppConstants.roleManager;
 
   @override
   void initState() {
@@ -67,8 +68,8 @@ class _EventViewState extends State<EventView> {
   }
 
   Future<void> _showJenisFilter() async {
-    final available = _controller.events.value.map((e) => e.jenis).toSet().toList()
-      ..sort();
+    final available =
+        _controller.events.value.map((e) => e.jenis).toSet().toList()..sort();
 
     final selected = await showDialog<String>(
       context: context,
@@ -108,7 +109,10 @@ class _EventViewState extends State<EventView> {
     }
   }
 
-  Future<void> _addOrEditEvent({EventModel? existing, String? forcedParentId}) async {
+  Future<void> _addOrEditEvent({
+    EventModel? existing,
+    String? forcedParentId,
+  }) async {
     final form = await _showEventFormDialog(
       title: existing == null
           ? (forcedParentId == null ? 'Tambah Event' : 'Tambah Sub-Event')
@@ -157,7 +161,9 @@ class _EventViewState extends State<EventView> {
 
     CustomSnackbar.showSuccess(
       context,
-      existing == null ? 'Event berhasil ditambahkan.' : 'Event berhasil diubah.',
+      existing == null
+          ? 'Event berhasil ditambahkan.'
+          : 'Event berhasil diubah.',
     );
   }
 
@@ -204,13 +210,17 @@ class _EventViewState extends State<EventView> {
   }) async {
     final formKey = GlobalKey<FormState>();
     final nameController = TextEditingController(text: initial?.nama ?? '');
-    final descController = TextEditingController(text: initial?.deskripsi ?? '');
+    final descController = TextEditingController(
+      text: initial?.deskripsi ?? '',
+    );
 
     DateTime selectedDate = initial?.tanggal ?? DateTime.now();
     String selectedJenis = initial?.jenis ?? AppConstants.eventTypes.first;
     bool isSubEvent = forcedParentId != null || initial?.parentEventId != null;
     String? parentId = forcedParentId ?? initial?.parentEventId;
-    Set<String> targetDivisi = Set<String>.from(initial?.targetPeserta ?? const []);
+    Set<String> targetDivisi = Set<String>.from(
+      initial?.targetPeserta ?? const [],
+    );
 
     final allDbu = AppConstants.allDbuOptions;
 
@@ -258,7 +268,7 @@ class _EventViewState extends State<EventView> {
                         ),
                         const SizedBox(height: 12),
                         DropdownButtonFormField<String>(
-                          value: selectedJenis,
+                          initialValue: selectedJenis,
                           decoration: const InputDecoration(
                             labelText: 'Jenis Event',
                             prefixIcon: Icon(Icons.category_outlined),
@@ -304,13 +314,17 @@ class _EventViewState extends State<EventView> {
                         if (isSubEvent) ...[
                           const SizedBox(height: 8),
                           DropdownButtonFormField<String>(
-                            value: parentId,
+                            initialValue: parentId,
                             decoration: const InputDecoration(
                               labelText: 'Main Event (Parent)',
                               prefixIcon: Icon(Icons.account_tree_outlined),
                             ),
                             items: _parentOptions
-                                .where((e) => initial == null || e.eventId != initial.eventId)
+                                .where(
+                                  (e) =>
+                                      initial == null ||
+                                      e.eventId != initial.eventId,
+                                )
                                 .map(
                                   (e) => DropdownMenuItem<String>(
                                     value: e.eventId,
@@ -355,22 +369,24 @@ class _EventViewState extends State<EventView> {
                         Wrap(
                           spacing: 8,
                           runSpacing: 8,
-                          children: allDbu.map((divisi) {
-                            final selected = targetDivisi.contains(divisi);
-                            return FilterChip(
-                              label: Text(divisi),
-                              selected: selected,
-                              onSelected: (value) {
-                                setDialogState(() {
-                                  if (value) {
-                                    targetDivisi.add(divisi);
-                                  } else {
-                                    targetDivisi.remove(divisi);
-                                  }
-                                });
-                              },
-                            );
-                          }).toList(growable: false),
+                          children: allDbu
+                              .map((divisi) {
+                                final selected = targetDivisi.contains(divisi);
+                                return FilterChip(
+                                  label: Text(divisi),
+                                  selected: selected,
+                                  onSelected: (value) {
+                                    setDialogState(() {
+                                      if (value) {
+                                        targetDivisi.add(divisi);
+                                      } else {
+                                        targetDivisi.remove(divisi);
+                                      }
+                                    });
+                                  },
+                                );
+                              })
+                              .toList(growable: false),
                         ),
                       ],
                     ),
@@ -480,7 +496,10 @@ class _EventViewState extends State<EventView> {
                       Text(_formatDate(event.tanggal)),
                       const SizedBox(height: 4),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: _chipColor(event.jenis).withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(12),
@@ -505,7 +524,9 @@ class _EventViewState extends State<EventView> {
                         _expandedState[event.eventId] = !isExpanded;
                       });
                     },
-                    icon: Icon(isExpanded ? Icons.expand_less : Icons.expand_more),
+                    icon: Icon(
+                      isExpanded ? Icons.expand_less : Icons.expand_more,
+                    ),
                   ),
               ],
             ),
@@ -522,16 +543,17 @@ class _EventViewState extends State<EventView> {
                   margin: const EdgeInsets.only(bottom: 8),
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .surfaceContainerHighest
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest
                         .withValues(alpha: 0.4),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(sub.nama, style: Theme.of(context).textTheme.titleSmall),
+                      Text(
+                        sub.nama,
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
                       const SizedBox(height: 4),
                       Text('${sub.jenis} • ${_formatDate(sub.tanggal)}'),
                       const SizedBox(height: 8),
@@ -577,7 +599,7 @@ class _EventViewState extends State<EventView> {
           : null,
       body: ValueListenableBuilder<List<EventModel>>(
         valueListenable: _controller.events,
-        builder: (context, _, __) {
+        builder: (context, events, child) {
           final roots = _controller.getRootEvents();
 
           return ListView(
@@ -596,7 +618,9 @@ class _EventViewState extends State<EventView> {
                 runSpacing: 8,
                 children: [
                   FilterChip(
-                    label: Text(_controller.selectedJenisFilter.value ?? 'Semua Jenis'),
+                    label: Text(
+                      _controller.selectedJenisFilter.value ?? 'Semua Jenis',
+                    ),
                     selected: _controller.selectedJenisFilter.value != null,
                     onSelected: (_) => _showJenisFilter(),
                   ),

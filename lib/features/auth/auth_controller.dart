@@ -20,8 +20,8 @@ import '../../core/services/fcm_service.dart';
 ///
 /// Fitur utama:
 /// - Login offline-first (Hive -> fallback cloud)
-/// - Seeding admin default saat first run
-/// - CRUD user khusus admin
+/// - Seeding Executive default saat first run
+/// - CRUD user khusus Executive
 /// - State reactive dengan ValueNotifier
 class AuthController {
   static final AuthController instance = AuthController._internal();
@@ -121,11 +121,11 @@ class AuthController {
       }
 
       await ensureDefaultAccount(
-        nim: AppConstants.defaultAdminNim,
-        nama: AppConstants.defaultAdminName,
-        divisi: AppConstants.defaultAdminDivision,
-        role: AppConstants.roleAdmin,
-        password: AppConstants.defaultAdminPassword,
+        nim: AppConstants.defaultExecutiveNim,
+        nama: AppConstants.defaultExecutiveName,
+        divisi: AppConstants.defaultExecutiveDivision,
+        role: AppConstants.roleExecutive,
+        password: AppConstants.defaultExecutivePassword,
       );
 
       await ensureDefaultAccount(
@@ -153,7 +153,7 @@ class AuthController {
       );
 
       debugPrint(
-        '[Auth][seed] default accounts ensured/repaired (admin/member/organizer/manager)',
+        '[Auth][seed] default accounts ensured/repaired (Executive/member/organizer/manager)',
       );
     } catch (e, st) {
       debugPrint('[Auth][seed] error: $e');
@@ -161,7 +161,7 @@ class AuthController {
     }
   }
 
-  Future<bool> createUserByAdmin({
+  Future<bool> createUserByExecutive({
     required String nama,
     required String nim,
     required String divisi,
@@ -172,8 +172,8 @@ class AuthController {
     errorMessage.value = null;
 
     try {
-      if (!_isCurrentUserAdmin()) {
-        errorMessage.value = 'Hanya admin yang dapat membuat akun.';
+      if (!_isCurrentUserExecutive()) {
+        errorMessage.value = 'Hanya Executive yang dapat membuat akun.';
         return false;
       }
 
@@ -242,7 +242,7 @@ class AuthController {
     return users;
   }
 
-  Future<bool> updateUserByAdmin({
+  Future<bool> updateUserByExecutive({
     required String nim,
     String? nama,
     String? divisi,
@@ -253,8 +253,8 @@ class AuthController {
     errorMessage.value = null;
 
     try {
-      if (!_isCurrentUserAdmin()) {
-        errorMessage.value = 'Hanya admin yang dapat mengubah akun.';
+      if (!_isCurrentUserExecutive()) {
+        errorMessage.value = 'Hanya Executive yang dapat mengubah akun.';
         return false;
       }
 
@@ -318,13 +318,13 @@ class AuthController {
     }
   }
 
-  Future<bool> deleteUserByAdmin(String nim) async {
+  Future<bool> deleteUserByExecutive(String nim) async {
     isLoading.value = true;
     errorMessage.value = null;
 
     try {
-      if (!_isCurrentUserAdmin()) {
-        errorMessage.value = 'Hanya admin yang dapat menghapus akun.';
+      if (!_isCurrentUserExecutive()) {
+        errorMessage.value = 'Hanya Executive yang dapat menghapus akun.';
         return false;
       }
 
@@ -415,6 +415,9 @@ class AuthController {
       final loggedNim = (userDoc['nim'] ?? normalizedNim).toString().trim();
       unawaited(_updateFcmTokenInBackground(loggedNim));
 
+      if (!context.mounted) {
+        return false;
+      }
       _navigateByRole(context);
       return true;
     } catch (e, st) {
@@ -910,9 +913,9 @@ class AuthController {
     return storedPassword == inputPassword;
   }
 
-  bool _isCurrentUserAdmin() {
+  bool _isCurrentUserExecutive() {
     return _normalizeRole(currentUser.value?.role ?? '') ==
-        AppConstants.roleAdmin;
+        AppConstants.roleExecutive;
   }
 
   bool _isUserDocument(Map<String, dynamic> doc) {

@@ -42,19 +42,19 @@ class AppConstants {
   static const Duration syncRetryDelay = Duration(seconds: 5);
 
   // ─── Role Definitions ────────────────────────────
-  static const String roleAdmin = 'admin';
+  static const String roleExecutive = 'Executive';
   static const String roleManager = 'manager';
   static const String roleOrganizer = 'organizer';
   static const String roleMember = 'member';
 
   static const List<String> allowedRoles = [
-    roleAdmin,
+    roleExecutive,
     roleManager,
     roleOrganizer,
     roleMember,
   ];
 
-  // DBU options for user management form (Admin only)
+  // DBU options for user management form (Executive only)
   static const List<String> departmentDbuOptions = [
     'Departemen Komunikasi dan Informasi',
     'Departemen Luar Himpunan',
@@ -76,12 +76,12 @@ class AppConstants {
     ...unitDbuOptions,
   ];
 
-  // ─── Default Admin Seeding ───────────────────────
-  static const String defaultAdminNim = '38';
-  static const String defaultAdminPassword = '123';
-  static const String defaultAdminName = 'Admin Utama';
-  static const String defaultAdminDivision = 'HEXA';
-  static const String adminSeedFlagKey = '__seed_admin_done__';
+  // ─── Default Executive Seeding ───────────────────────
+  static const String defaultExecutiveNim = '38';
+  static const String defaultExecutivePassword = '123';
+  static const String defaultExecutiveName = 'Executive Utama';
+  static const String defaultExecutiveDivision = 'HEXA';
+  static const String ExecutiveSeedFlagKey = '__seed_Executive_done__';
 
     // ─── Default Member Seeding ───────────────────────
   static const String defaultMemberNim = '39';
