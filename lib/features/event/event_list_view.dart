@@ -734,58 +734,57 @@ class _EventListViewState extends State<EventListView> {
               builder: (context, allEvents, _) {
                 final rootEvents = _controller.getRootEvents();
 
-                  return Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      children: [
-                        // ── Search Bar ──────────────────────
-                        _buildSearchBar(),
+                return Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      // ── Search Bar ──────────────────────
+                      _buildSearchBar(),
 
-                        // ── Filter Chips ────────────────────
-                        _buildFilterChips(),
+                      // ── Filter Chips ────────────────────
+                      _buildFilterChips(),
 
-                        // ── Event List ──────────────────────
-                        Expanded(
-                          child: rootEvents.isEmpty
-                              ? EmptyStateWidget(
-                                  icon: _controller.hasActiveFilters
-                                      ? Icons.filter_list_off
-                                      : Icons.event_busy,
-                                  title: _controller.hasActiveFilters
-                                      ? 'Tidak ada event yang cocok'
-                                      : 'Belum ada event',
-                                  subtitle: _controller.hasActiveFilters
-                                      ? 'Coba ubah filter atau reset untuk melihat semua event'
-                                      : 'Tekan tombol + untuk menambah event pertama',
-                                  action: _controller.hasActiveFilters
-                                      ? FilledButton.icon(
-                                          onPressed: _clearAllFilters,
-                                          icon: const Icon(Icons.clear_all),
-                                          label: const Text('Reset Filter'),
-                                        )
-                                      : null,
-                                )
-                              : ListView.builder(
-                                  itemCount: rootEvents.length,
-                                  itemBuilder: (context, index) {
-                                    final event = rootEvents[index];
-                                    final subEvents = _controller.getSubEvents(event.eventId);
+                      // ── Event List ──────────────────────
+                      Expanded(
+                        child: rootEvents.isEmpty
+                            ? EmptyStateWidget(
+                                icon: _controller.hasActiveFilters
+                                    ? Icons.filter_list_off
+                                    : Icons.event_busy,
+                                title: _controller.hasActiveFilters
+                                    ? 'Tidak ada event yang cocok'
+                                    : 'Belum ada event',
+                                subtitle: _controller.hasActiveFilters
+                                    ? 'Coba ubah filter atau reset untuk melihat semua event'
+                                    : 'Tekan tombol + untuk menambah event pertama',
+                                action: _controller.hasActiveFilters
+                                    ? FilledButton.icon(
+                                        onPressed: _clearAllFilters,
+                                        icon: const Icon(Icons.clear_all),
+                                        label: const Text('Reset Filter'),
+                                      )
+                                    : null,
+                              )
+                            : ListView.builder(
+                                itemCount: rootEvents.length,
+                                itemBuilder: (context, index) {
+                                  final event = rootEvents[index];
+                                  final subEvents = _controller.getSubEvents(event.eventId);
 
-                                    return _buildEventCard(
-                                      event,
-                                      subEvents: subEvents,
-                                    );
-                                  },
-                                ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            );
-          },
-        ),
+                                  return _buildEventCard(
+                                    event,
+                                    subEvents: subEvents,
+                                  );
+                                },
+                              ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          );
+        },
       ),
     );
   }
