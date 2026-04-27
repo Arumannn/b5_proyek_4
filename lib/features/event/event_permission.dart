@@ -3,7 +3,7 @@ import '../../core/constants/app_constants.dart';
 class EventPermission {
   EventPermission._();
 
-  // RBAC: Admin pada requirement dipetakan ke role Executive yang sudah ada di sistem.
+  // RBAC: Executive memiliki hak akses penuh pada main-event.
   static String _normalizeRole(String role) => role.trim().toLowerCase();
 
   static String get _executiveRole => AppConstants.roleExecutive.toLowerCase();

@@ -10,7 +10,7 @@ import 'event_controller.dart';
 import 'event_form_view.dart';
 import 'event_permission.dart';
 
-/// Layar daftar event (Admin) — Enhanced Week 9 Sub-Tahap B
+/// Layar daftar event (Executive) — Enhanced Week 9 Sub-Tahap B
 ///
 /// FITUR BARU:
 /// - Expandable Main Event dengan Sub-Event
@@ -36,12 +36,12 @@ class _EventListViewState extends State<EventListView> {
           .trim()
           .toLowerCase(); // RBAC: gunakan role user login aktif untuk kontrol UI aksi.
 
-  bool get _canCreateMainEvent => EventPermission.canCreateMainEvent(_role); // RBAC: Main event CREATE hanya Admin.
-  bool get _canUpdateMainEvent => EventPermission.canUpdateMainEvent(_role); // RBAC: Main event UPDATE hanya Admin.
-  bool get _canDeleteMainEvent => EventPermission.canDeleteMainEvent(_role); // RBAC: Main event DELETE hanya Admin.
-  bool get _canCreateSubEvent => EventPermission.canCreateSubEvent(_role); // RBAC: Sub-event CREATE untuk Admin/Manager.
-  bool get _canUpdateSubEvent => EventPermission.canUpdateSubEvent(_role); // RBAC: Sub-event UPDATE untuk Admin/Manager.
-  bool get _canDeleteSubEvent => EventPermission.canDeleteSubEvent(_role); // RBAC: Sub-event DELETE untuk Admin/Manager.
+  bool get _canCreateMainEvent => EventPermission.canCreateMainEvent(_role); // RBAC: Main event CREATE hanya Executive.
+  bool get _canUpdateMainEvent => EventPermission.canUpdateMainEvent(_role); // RBAC: Main event UPDATE hanya Executive.
+  bool get _canDeleteMainEvent => EventPermission.canDeleteMainEvent(_role); // RBAC: Main event DELETE hanya Executive.
+  bool get _canCreateSubEvent => EventPermission.canCreateSubEvent(_role); // RBAC: Sub-event CREATE untuk Executive/Manager.
+  bool get _canUpdateSubEvent => EventPermission.canUpdateSubEvent(_role); // RBAC: Sub-event UPDATE untuk Executive/Manager.
+  bool get _canDeleteSubEvent => EventPermission.canDeleteSubEvent(_role); // RBAC: Sub-event DELETE untuk Executive/Manager.
 
   @override
   void initState() {

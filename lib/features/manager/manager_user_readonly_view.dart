@@ -37,7 +37,9 @@ class _ManagerUserReadonlyViewState extends State<ManagerUserReadonlyView> {
 
   String _roleLabel(String role) {
     final normalized = role.trim().toLowerCase();
-    if (normalized == 'admin') return 'Admin';
+    if (normalized == 'executive' || normalized == 'eksekutif' || normalized == 'admin') {
+      return 'Executive';
+    }
     if (normalized == 'manager') return 'Manager';
     if (normalized == 'organizer') return 'Organizer';
     return 'Member';

@@ -195,7 +195,7 @@ class EventController {
       errorMessage.value = 'Anda tidak memiliki izin membuat sub-event.';
       return false;
     }
-    // RBAC: Main event hanya boleh dibuat oleh Admin (mapped ke Executive).
+    // RBAC: Main event hanya boleh dibuat oleh Executive.
     if (!isSubEvent && !EventPermission.canCreateMainEvent(_currentRole)) {
       errorMessage.value = 'Anda tidak memiliki izin membuat main event.';
       return false;
@@ -278,7 +278,7 @@ class EventController {
       errorMessage.value = 'Anda tidak memiliki izin mengubah sub-event.';
       return false;
     }
-    // RBAC: Tolak UPDATE main event untuk role non-admin.
+    // RBAC: Tolak UPDATE main event untuk role non-executive.
     if (!isSubEvent && !EventPermission.canUpdateMainEvent(_currentRole)) {
       errorMessage.value = 'Anda tidak memiliki izin mengubah main event.';
       return false;
@@ -350,7 +350,7 @@ class EventController {
       errorMessage.value = 'Anda tidak memiliki izin menghapus sub-event.';
       return false;
     }
-    // RBAC: Tolak DELETE main event jika role bukan admin.
+    // RBAC: Tolak DELETE main event jika role bukan executive.
     if (!isSubEvent && !EventPermission.canDeleteMainEvent(_currentRole)) {
       errorMessage.value = 'Anda tidak memiliki izin menghapus main event.';
       return false;

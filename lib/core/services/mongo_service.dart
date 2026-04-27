@@ -15,7 +15,14 @@ import 'package:mongo_dart/mongo_dart.dart';
 ///   (tidak perlu connect/disconnect berulang)
 class MongoService {
   // ─── Singleton ─────────────────────────────────────────────────
-  static final MongoService instance = MongoService._internal();
+  static MongoService _instance = MongoService._internal();
+  static MongoService get instance => _instance;
+
+  @visibleForTesting
+  static set instance(MongoService newInstance) {
+    _instance = newInstance;
+  }
+
   MongoService._internal();
 
   // ─── State ─────────────────────────────────────────────────────

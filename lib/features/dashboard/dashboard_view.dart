@@ -88,31 +88,6 @@ class _DashboardViewState extends State<DashboardView> {
         builder: (_, __) => const EventView(),
       ),
       _DashboardMenuItem(
-        title: 'Manajemen Anggota',
-        subtitle: 'CRUD akun Admin, Manager, Organizer, dan Member',
-        icon: Icons.groups_2_outlined,
-        requireRoles: const [AppConstants.roleExecutive],
-        builder: (_, __) => const UserManagementView(),
-      ),
-      _DashboardMenuItem(
-        title: 'Lihat Event & Sub-Event',
-        subtitle: 'Akses read-only daftar event',
-        icon: Icons.visibility_outlined,
-        requireRoles: const [AppConstants.roleMember],
-        builder: (_, __) => const EventView(),
-      ),
-      _DashboardMenuItem(
-        title: 'Sub-Event',
-        subtitle: 'Kelola atau lihat sub-event per main event',
-        icon: Icons.account_tree_outlined,
-        requireRoles: const [
-          AppConstants.roleExecutive,
-          AppConstants.roleManager,
-          AppConstants.roleOrganizer,
-        ],
-        builder: (_, __) => const SubEventView(),
-      ),
-      _DashboardMenuItem(
         title: 'Rekap Kehadiran',
         subtitle: 'Lihat ringkasan kehadiran per event',
         icon: Icons.assignment_outlined,
@@ -122,20 +97,6 @@ class _DashboardViewState extends State<DashboardView> {
           AppConstants.roleOrganizer,
         ],
         builder: (_, __) => const AttendanceRecapView(),
-      ),
-      _DashboardMenuItem(
-        title: 'Scan Absensi',
-        subtitle: 'Scanner QR untuk absensi event',
-        icon: Icons.qr_code_scanner_outlined,
-        requireRoles: const [AppConstants.roleExecutive, AppConstants.roleManager],
-        builder: (_, __) => const ScanScreen(eventId: 'manual-scan'),
-      ),
-      _DashboardMenuItem(
-        title: 'Kelola Rekap Kehadiran',
-        subtitle: 'Lihat, tambah, edit, hapus kehadiran + scan QR',
-        icon: Icons.assignment_turned_in_outlined,
-        requireRoles: const [AppConstants.roleManager],
-        builder: (_, __) => const SubEventView(), // RBAC: gunakan layar event yang tersedia untuk manager.
       ),
 
       // ==========================================
@@ -214,18 +175,12 @@ class _DashboardViewState extends State<DashboardView> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Halo, ${currentUser.nama}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
             Text('Role: $roleLabel', style: const TextStyle(fontWeight: FontWeight.w500)),
             const SizedBox(height: 4),
             Text('NIM: ${currentUser.nim}'),
             const SizedBox(height: 4),
             Text('Divisi: ${currentUser.divisi}'),
-            const SizedBox(height: 12),
-            Text(
-              'Menu akan ditampilkan sesuai hak akses role.',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
+            const SizedBox(height: 12)
           ],
         ),
       ),

@@ -648,22 +648,6 @@ class _AttendanceRecapViewState extends State<AttendanceRecapView> {
               'Main event ini memiliki sub-event, sehingga absensi hanya boleh dicatat pada sub-event.',
             ),
           ),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            FilledButton.icon(
-              onPressed: _openScanQr,
-              icon: const Icon(Icons.qr_code_scanner_outlined),
-              label: const Text('Scan QR'),
-            ),
-            OutlinedButton.icon(
-              onPressed: _addManualAttendance,
-              icon: const Icon(Icons.add_task_outlined),
-              label: const Text('Tambah Manual'),
-            ),
-          ],
-        ),
         const SizedBox(height: 12),
         Text('Total record terfilter: ${_filteredCrudRecords.length}'),
         const SizedBox(height: 8),
