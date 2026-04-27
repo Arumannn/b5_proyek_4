@@ -73,7 +73,7 @@ class _UserManagementViewState extends State<UserManagementView> {
         value: '__header_biro__',
         child: Text('Biro', style: headerStyle),
       ),
-      ...AppConstants.biroDbuOptions.map(
+      ...AppConstants.bureauDbuOptions.map(
         (value) => DropdownMenuItem<String>(value: value, child: Text(value)),
       ),
       const DropdownMenuItem<String>(
@@ -91,216 +91,17 @@ class _UserManagementViewState extends State<UserManagementView> {
 
   Future<void> _showUserForm({MemberModel? existing}) async {
     final isEdit = existing != null;
-    final formKey = GlobalKey<FormState>();
-
-    final nimController = TextEditingController(text: existing?.nim ?? '');
-    final namaController = TextEditingController(text: existing?.nama ?? '');
-    final passwordController = TextEditingController();
-
-    String selectedRole = existing?.role ?? AppConstants.roleMember;
-    String selectedDbu =
-        existing?.divisi ?? AppConstants.departmentDbuOptions.first;
-
-    if (!AppConstants.allDbuOptions.contains(selectedDbu)) {
-      selectedDbu = AppConstants.departmentDbuOptions.first;
-    }
-
-    bool isSaving = false;
 
     final saved = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            Future<void> submit() async {
-              if (!(formKey.currentState?.validate() ?? false)) {
-                return;
-              }
-
-              setDialogState(() {
-                isSaving = true;
-              });
-
-              final success = isEdit
-                  ? await _authController.updateUserByExecutive(
-                      nim: existing.nim,
-                      nama: namaController.text,
-                      divisi: selectedDbu,
-                      role: selectedRole,
-                      password: passwordController.text.trim().isEmpty
-                          ? null
-                          : passwordController.text,
-                    )
-                  : await _authController.createUserByExecutive(
-                      nama: namaController.text,
-                      nim: nimController.text,
-                      divisi: selectedDbu,
-                      role: selectedRole,
-                      password: passwordController.text,
-                    );
-
-              if (!dialogContext.mounted) return;
-
-              if (success) {
-                Navigator.of(dialogContext).pop(true);
-              } else {
-                setDialogState(() {
-                  isSaving = false;
-                });
-                CustomSnackbar.showError(
-                  dialogContext,
-                  _authController.errorMessage.value ??
-                      'Gagal menyimpan data anggota.',
-                );
-              }
-            }
-
-            return AlertDialog(
-              title: Text(isEdit ? 'Edit Anggota' : 'Tambah Anggota'),
-              content: SizedBox(
-                width: 520,
-                child: Form(
-                  key: formKey,
-                  child: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        TextFormField(
-                          controller: nimController,
-                          enabled: !isEdit,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'NIM',
-                            prefixIcon: Icon(Icons.badge_outlined),
-                          ),
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'NIM wajib diisi.';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 12),
-                        TextFormField(
-                          controller: namaController,
-                          decoration: const InputDecoration(
-                            labelText: 'Nama',
-                            prefixIcon: Icon(Icons.person_outline),
-                          ),
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Nama wajib diisi.';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 12),
-                        DropdownButtonFormField<String>(
-                          initialValue: selectedRole,
-                          decoration: const InputDecoration(
-                            labelText: 'Role',
-                            prefixIcon: Icon(
-                              Icons.admin_panel_settings_outlined,
-                            ),
-                          ),
-                          items: AppConstants.allowedRoles
-                              .map(
-                                (role) => DropdownMenuItem<String>(
-                                  value: role,
-                                  child: Text(_roleLabel(role)),
-                                ),
-                              )
-                              .toList(growable: false),
-                          onChanged: (value) {
-                            if (value == null) return;
-                            setDialogState(() {
-                              selectedRole = value;
-                            });
-                          },
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Role wajib dipilih.';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 12),
-                        DropdownButtonFormField<String>(
-                          initialValue: selectedDbu,
-                          isExpanded: true,
-                          decoration: const InputDecoration(
-                            labelText: 'Departemen/Biro/Unit (DBU)',
-                            prefixIcon: Icon(Icons.account_tree_outlined),
-                          ),
-                          items: _buildDbuItems(),
-                          onChanged: (value) {
-                            if (value == null ||
-                                !AppConstants.allDbuOptions.contains(value)) {
-                              return;
-                            }
-                            setDialogState(() {
-                              selectedDbu = value;
-                            });
-                          },
-                          validator: (value) {
-                            if (value == null ||
-                                !AppConstants.allDbuOptions.contains(value)) {
-                              return 'DBU wajib dipilih.';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 12),
-                        TextFormField(
-                          controller: passwordController,
-                          obscureText: true,
-                          decoration: InputDecoration(
-                            labelText: isEdit
-                                ? 'Password baru (opsional)'
-                                : 'Password',
-                            prefixIcon: const Icon(Icons.key_outlined),
-                          ),
-                          validator: (value) {
-                            if (!isEdit && (value == null || value.isEmpty)) {
-                              return 'Password wajib diisi.';
-                            }
-                            return null;
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: isSaving
-                      ? null
-                      : () => Navigator.of(dialogContext).pop(false),
-                  child: const Text('Batal'),
-                ),
-                FilledButton.icon(
-                  onPressed: isSaving ? null : submit,
-                  icon: isSaving
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.save_outlined),
-                  label: Text(isEdit ? 'Simpan' : 'Tambah'),
-                ),
-              ],
-            );
-          },
-        );
-      },
+      builder: (dialogContext) => _UserFormDialog(
+        authController: _authController,
+        existing: existing,
+        roleLabelBuilder: _roleLabel,
+        dbuItemsBuilder: _buildDbuItems,
+      ),
     );
-
-    nimController.dispose();
-    namaController.dispose();
-    passwordController.dispose();
 
     if (saved == true) {
       await _refreshUsers();
@@ -458,6 +259,237 @@ class _UserManagementViewState extends State<UserManagementView> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _UserFormDialog extends StatefulWidget {
+  const _UserFormDialog({
+    required this.authController,
+    required this.roleLabelBuilder,
+    required this.dbuItemsBuilder,
+    this.existing,
+  });
+
+  final AuthController authController;
+  final MemberModel? existing;
+  final String Function(String role) roleLabelBuilder;
+  final List<DropdownMenuItem<String>> Function() dbuItemsBuilder;
+
+  @override
+  State<_UserFormDialog> createState() => _UserFormDialogState();
+}
+
+class _UserFormDialogState extends State<_UserFormDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _nimController;
+  late final TextEditingController _namaController;
+  late final TextEditingController _passwordController;
+
+  late String _selectedRole;
+  late String _selectedDbu;
+  bool _isSaving = false;
+
+  bool get _isEdit => widget.existing != null;
+
+  @override
+  void initState() {
+    super.initState();
+    _nimController = TextEditingController(text: widget.existing?.nim ?? '');
+    _namaController = TextEditingController(text: widget.existing?.nama ?? '');
+    _passwordController = TextEditingController();
+
+    _selectedRole = widget.existing?.role ?? AppConstants.roleMember;
+    _selectedDbu =
+        widget.existing?.divisi ?? AppConstants.departmentDbuOptions.first;
+    if (!AppConstants.allDbuOptions.contains(_selectedDbu)) {
+      _selectedDbu = AppConstants.departmentDbuOptions.first;
+    }
+  }
+
+  @override
+  void dispose() {
+    _nimController.dispose();
+    _namaController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      return;
+    }
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    final success = _isEdit
+        ? await widget.authController.updateUserByExecutive(
+            nim: widget.existing!.nim,
+            nama: _namaController.text,
+            divisi: _selectedDbu,
+            role: _selectedRole,
+            password: _passwordController.text.trim().isEmpty
+                ? null
+                : _passwordController.text,
+          )
+        : await widget.authController.createUserByExecutive(
+            nama: _namaController.text,
+            nim: _nimController.text,
+            divisi: _selectedDbu,
+            role: _selectedRole,
+            password: _passwordController.text,
+          );
+
+    if (!mounted) return;
+
+    if (success) {
+      Navigator.of(context).pop(true);
+      return;
+    }
+
+    setState(() {
+      _isSaving = false;
+    });
+    CustomSnackbar.showError(
+      context,
+      widget.authController.errorMessage.value ?? 'Gagal menyimpan data anggota.',
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(_isEdit ? 'Edit Anggota' : 'Tambah Anggota'),
+      content: SizedBox(
+        width: 520,
+        child: Form(
+          key: _formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: _nimController,
+                  enabled: !_isEdit,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'NIM',
+                    prefixIcon: Icon(Icons.badge_outlined),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'NIM wajib diisi.';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _namaController,
+                  decoration: const InputDecoration(
+                    labelText: 'Nama',
+                    prefixIcon: Icon(Icons.person_outline),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Nama wajib diisi.';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: _selectedRole,
+                  decoration: const InputDecoration(
+                    labelText: 'Role',
+                    prefixIcon: Icon(Icons.badge_outlined),
+                  ),
+                  items: AppConstants.allowedRoles
+                      .map(
+                        (role) => DropdownMenuItem<String>(
+                          value: role,
+                          child: Text(widget.roleLabelBuilder(role)),
+                        ),
+                      )
+                      .toList(growable: false),
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setState(() {
+                      _selectedRole = value;
+                    });
+                  },
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Role wajib dipilih.';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: _selectedDbu,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Departemen/Biro/Unit (DBU)',
+                    prefixIcon: Icon(Icons.account_tree_outlined),
+                  ),
+                  items: widget.dbuItemsBuilder(),
+                  onChanged: (value) {
+                    if (value == null ||
+                        !AppConstants.allDbuOptions.contains(value)) {
+                      return;
+                    }
+                    setState(() {
+                      _selectedDbu = value;
+                    });
+                  },
+                  validator: (value) {
+                    if (value == null ||
+                        !AppConstants.allDbuOptions.contains(value)) {
+                      return 'DBU wajib dipilih.';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _passwordController,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    labelText: _isEdit ? 'Password baru (opsional)' : 'Password',
+                    prefixIcon: const Icon(Icons.key_outlined),
+                  ),
+                  validator: (value) {
+                    if (!_isEdit && (value == null || value.isEmpty)) {
+                      return 'Password wajib diisi.';
+                    }
+                    return null;
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isSaving ? null : () => Navigator.of(context).pop(false),
+          child: const Text('Batal'),
+        ),
+        FilledButton.icon(
+          onPressed: _isSaving ? null : _submit,
+          icon: _isSaving
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.save_outlined),
+          label: Text(_isEdit ? 'Simpan' : 'Tambah'),
+        ),
+      ],
     );
   }
 }

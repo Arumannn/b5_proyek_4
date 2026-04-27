@@ -97,7 +97,7 @@ class _OrganizerQrViewState extends State<OrganizerQrView> {
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      'QR berisi identitas unik pengguna. Tunjukkan ke Admin/Manager saat absensi.',
+                      'QR berisi identitas unik pengguna. Tunjukkan ke Executive/Manager saat absensi.',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.bodySmall,
                     ),

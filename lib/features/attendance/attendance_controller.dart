@@ -234,9 +234,7 @@ class AttendanceController {
 
     final merged = Map<String, dynamic>.from(cloudDoc)
       ..['nim'] = (cloudDoc['nim'] ?? nimFromQr).toString().trim()
-      ..['memberId'] = (cloudDoc['memberId'] ?? cloudDoc['nim'] ?? nimFromQr)
-          .toString()
-          .trim()
+      ..['memberId'] = (cloudDoc['nim'] ?? nimFromQr).toString().trim()
       ..['qrCodeValue'] = (cloudDoc['qrCodeValue'] ?? normalizedScan).toString();
 
     final cached = MemberModel.fromMap(merged);
@@ -304,7 +302,7 @@ class AttendanceController {
         if (nim.isEmpty) continue;
 
         merged['nim'] = nim;
-        merged['memberId'] = (merged['memberId'] ?? nim).toString().trim();
+        merged['memberId'] = nim;
         merged['qrCodeValue'] =
             (merged['qrCodeValue'] ?? QrService.generateQrData(nim)).toString();
 

@@ -23,9 +23,9 @@ class _SubEventViewState extends State<SubEventView> {
           .trim()
           .toLowerCase();
 
-  bool get _canCreateSubEvent => EventPermission.canCreateSubEvent(_role); // RBAC: Sub-event CRUD hanya Admin/Manager.
-  bool get _canUpdateSubEvent => EventPermission.canUpdateSubEvent(_role); // RBAC: Sub-event CRUD hanya Admin/Manager.
-  bool get _canDeleteSubEvent => EventPermission.canDeleteSubEvent(_role); // RBAC: Sub-event CRUD hanya Admin/Manager.
+  bool get _canCreateSubEvent => EventPermission.canCreateSubEvent(_role); // RBAC: Sub-event CRUD hanya Executive/Manager.
+  bool get _canUpdateSubEvent => EventPermission.canUpdateSubEvent(_role); // RBAC: Sub-event CRUD hanya Executive/Manager.
+  bool get _canDeleteSubEvent => EventPermission.canDeleteSubEvent(_role); // RBAC: Sub-event CRUD hanya Executive/Manager.
   bool get _canManageSubEvent => _canCreateSubEvent || _canUpdateSubEvent || _canDeleteSubEvent; // RBAC: penentu mode layar.
 
   String _formatDate(DateTime value) {

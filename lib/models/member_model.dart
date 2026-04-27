@@ -55,10 +55,12 @@ class MemberModel extends HiveObject {
 
   factory MemberModel.fromMap(Map<String, dynamic> map) {
     final nim = map['nim']?.toString() ?? '';
+    final normalizedNim = nim.trim();
     return MemberModel(
-      memberId: map['memberId']?.toString() ?? nim,
+      // Konsistensi domain: memberId disamakan dengan nim di seluruh app.
+      memberId: normalizedNim,
       nama: map['nama']?.toString() ?? '',
-      nim: nim,
+      nim: normalizedNim,
       divisi: map['divisi']?.toString() ?? '',
       role: map['role']?.toString() ?? AppConstants.roleMember,
       password: map['password']?.toString() ?? '',
