@@ -6,6 +6,7 @@ import '../../widgets/custom_snackbar.dart';
 import '../../widgets/empty_state_widget.dart';
 import 'event_controller.dart';
 import 'event_form_view.dart';
+import '../../widgets/network_status_banner.dart';
 
 /// Layar daftar event (Admin) — Enhanced Week 9 Sub-Tahap B
 ///
@@ -640,90 +641,92 @@ class _EventListViewState extends State<EventListView> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Daftar Event'),
-        actions: [
-          IconButton(
-            tooltip: 'Refresh',
-            onPressed: () => _controller.loadEvents(force: true),
-            icon: const Icon(Icons.refresh),
-          ),
-          IconButton(
-            tooltip: 'Tambah Event',
-            onPressed: _addEvent,
-            icon: const Icon(Icons.add),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _addEvent,
-        icon: const Icon(Icons.add),
-        label: const Text('Tambah Event'),
-      ),
-      body: ValueListenableBuilder<bool>(
-        valueListenable: _controller.isLoading,
-        builder: (context, isLoading, _) {
-          return LoadingOverlay(
-            isLoading: isLoading,
-            message: 'Memuat event...',
-            child: ValueListenableBuilder<List<EventModel>>(
-              valueListenable: _controller.events,
-              builder: (context, allEvents, _) {
-                final rootEvents = _controller.getRootEvents();
-
-                return Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      // ── Search Bar ──────────────────────
-                      _buildSearchBar(),
-
-                      // ── Filter Chips ────────────────────
-                      _buildFilterChips(),
-
-                      // ── Event List ──────────────────────
-                      Expanded(
-                        child: rootEvents.isEmpty
-                            ? EmptyStateWidget(
-                                icon: _controller.hasActiveFilters
-                                    ? Icons.filter_list_off
-                                    : Icons.event_busy,
-                                title: _controller.hasActiveFilters
-                                    ? 'Tidak ada event yang cocok'
-                                    : 'Belum ada event',
-                                subtitle: _controller.hasActiveFilters
-                                    ? 'Coba ubah filter atau reset untuk melihat semua event'
-                                    : 'Tekan tombol + untuk menambah event pertama',
-                                action: _controller.hasActiveFilters
-                                    ? FilledButton.icon(
-                                        onPressed: _clearAllFilters,
-                                        icon: const Icon(Icons.clear_all),
-                                        label: const Text('Reset Filter'),
-                                      )
-                                    : null,
-                              )
-                            : ListView.builder(
-                                itemCount: rootEvents.length,
-                                itemBuilder: (context, index) {
-                                  final event = rootEvents[index];
-                                  final subEvents = _controller.getSubEvents(event.eventId);
-
-                                  return _buildEventCard(
-                                    event,
-                                    subEvents: subEvents,
-                                  );
-                                },
-                              ),
-                      ),
-                    ],
-                  ),
-                );
-              },
+    Widget build(BuildContext context) {
+      return NetworkStatusBanner(
+        child: Scaffold(
+          appBar: AppBar(
+            title: const Text('Daftar Event'),
+            actions: [
+              IconButton(
+                tooltip: 'Refresh',
+              onPressed: () => _controller.loadEvents(force: true),
+              icon: const Icon(Icons.refresh),
             ),
-          );
-        },
+            IconButton(
+              tooltip: 'Tambah Event',
+              onPressed: _addEvent,
+              icon: const Icon(Icons.add),
+            ),
+          ],
+        ),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: _addEvent,
+          icon: const Icon(Icons.add),
+          label: const Text('Tambah Event'),
+        ),
+        body: ValueListenableBuilder<bool>(
+          valueListenable: _controller.isLoading,
+          builder: (context, isLoading, _) {
+            return LoadingOverlay(
+              isLoading: isLoading,
+              message: 'Memuat event...',
+              child: ValueListenableBuilder<List<EventModel>>(
+                valueListenable: _controller.events,
+                builder: (context, allEvents, _) {
+                  final rootEvents = _controller.getRootEvents();
+
+                  return Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      children: [
+                        // ── Search Bar ──────────────────────
+                        _buildSearchBar(),
+
+                        // ── Filter Chips ────────────────────
+                        _buildFilterChips(),
+
+                        // ── Event List ──────────────────────
+                        Expanded(
+                          child: rootEvents.isEmpty
+                              ? EmptyStateWidget(
+                                  icon: _controller.hasActiveFilters
+                                      ? Icons.filter_list_off
+                                      : Icons.event_busy,
+                                  title: _controller.hasActiveFilters
+                                      ? 'Tidak ada event yang cocok'
+                                      : 'Belum ada event',
+                                  subtitle: _controller.hasActiveFilters
+                                      ? 'Coba ubah filter atau reset untuk melihat semua event'
+                                      : 'Tekan tombol + untuk menambah event pertama',
+                                  action: _controller.hasActiveFilters
+                                      ? FilledButton.icon(
+                                          onPressed: _clearAllFilters,
+                                          icon: const Icon(Icons.clear_all),
+                                          label: const Text('Reset Filter'),
+                                        )
+                                      : null,
+                                )
+                              : ListView.builder(
+                                  itemCount: rootEvents.length,
+                                  itemBuilder: (context, index) {
+                                    final event = rootEvents[index];
+                                    final subEvents = _controller.getSubEvents(event.eventId);
+
+                                    return _buildEventCard(
+                                      event,
+                                      subEvents: subEvents,
+                                    );
+                                  },
+                                ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            );
+          },
+        ),
       ),
     );
   }
