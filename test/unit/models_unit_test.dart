@@ -130,7 +130,7 @@ void main() {
         buktiFotoPath: '/tmp/img.jpg',
         buktiFotoUrl: 'https://img.example/test.jpg',
         status: 'Approved',
-        validatedBy: 'admin-1',
+        validatedBy: 'Executive-1',
       );
 
       final map = permission.toMap();

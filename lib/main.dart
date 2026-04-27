@@ -37,7 +37,7 @@ import 'core/services/sync_manager.dart';
     await NetworkStatusController.instance.startListening();
     debugPrint('✅ Step 5: Network monitoring started');
 
-    // Step 6: Seed default accounts (admin, member, organizer, manager)
+    // Step 6: Seed default accounts (Executive, member, organizer, manager)
     await AuthController.instance.initializeAuth();
     debugPrint('✅ Step 6: Default accounts seeded');
 
@@ -121,7 +121,7 @@ class _Week7SetupVerifierState extends State<_Week7SetupVerifier> {
                     ),
                     SizedBox(height: 4),
                     Text(
-                      'Pusat Rekam Aktivitas dan Administrasi Terintegrasi',
+                      'Pusat Rekam Aktivitas dan Executiveistrasi Terintegrasi',
                       style: TextStyle(color: Colors.white60, fontSize: 12),
                       textAlign: TextAlign.center,
                     ),

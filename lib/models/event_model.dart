@@ -35,6 +35,9 @@ class EventModel extends HiveObject {
   @HiveField(9)
   final DateTime createdAt;
 
+  @HiveField(10)
+  final DateTime? jamMulai;
+
   EventModel({
     required this.eventId,
     this.parentEventId,
@@ -46,6 +49,7 @@ class EventModel extends HiveObject {
     required this.createdBy,
     this.isSynced = false,
     DateTime? createdAt,
+    this.jamMulai,
   })  : targetPeserta = targetPeserta ?? [],
         createdAt = createdAt ?? DateTime.now();
 
@@ -61,6 +65,7 @@ class EventModel extends HiveObject {
       'createdBy': createdBy,
       'isSynced': isSynced,
       'createdAt': createdAt.toIso8601String(),
+      'jamMulai': jamMulai?.toIso8601String(),
     };
   }
 
@@ -83,6 +88,9 @@ class EventModel extends HiveObject {
       isSynced: map['isSynced'] == true,
       createdAt: DateTime.tryParse((map['createdAt'] ?? '').toString()) ??
           DateTime.now(),
+      jamMulai: map['jamMulai'] != null
+          ? DateTime.tryParse(map['jamMulai'].toString())
+          : null,
     );
   }
 
@@ -97,6 +105,7 @@ class EventModel extends HiveObject {
     String? createdBy,
     bool? isSynced,
     DateTime? createdAt,
+    DateTime? jamMulai,
   }) {
     return EventModel(
       eventId: eventId ?? this.eventId,
@@ -109,6 +118,7 @@ class EventModel extends HiveObject {
       createdBy: createdBy ?? this.createdBy,
       isSynced: isSynced ?? this.isSynced,
       createdAt: createdAt ?? this.createdAt,
+      jamMulai: jamMulai ?? this.jamMulai,
     );
   }
 }

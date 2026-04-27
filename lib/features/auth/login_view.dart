@@ -108,13 +108,15 @@ class _LoginViewState extends State<LoginView> {
                               const SizedBox(height: 14),
                               ValueListenableBuilder<bool>(
                                 valueListenable: _obscurePassword,
-                                builder: (context, obscure, __) {
+                                builder: (context, obscure, child) {
                                   return TextFormField(
                                     controller: _passwordController,
                                     obscureText: obscure,
                                     decoration: InputDecoration(
                                       labelText: 'Password',
-                                      prefixIcon: const Icon(Icons.key_outlined),
+                                      prefixIcon: const Icon(
+                                        Icons.key_outlined,
+                                      ),
                                       suffixIcon: IconButton(
                                         onPressed: () {
                                           _obscurePassword.value = !obscure;
@@ -138,7 +140,7 @@ class _LoginViewState extends State<LoginView> {
                               const SizedBox(height: 10),
                               ValueListenableBuilder<String?>(
                                 valueListenable: _authController.errorMessage,
-                                builder: (_, message, __) {
+                                builder: (context, message, child) {
                                   if (message == null || message.isEmpty) {
                                     return const SizedBox.shrink();
                                   }
@@ -161,7 +163,7 @@ class _LoginViewState extends State<LoginView> {
                               ),
                               const SizedBox(height: 12),
                               const Text(
-                                'Pembuatan akun hanya oleh admin.',
+                                'Pembuatan akun hanya oleh Executive.',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   color: Colors.black54,

@@ -1,5 +1,10 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
+
 part of 'attendance_record.dart';
+
+// **************************************************************************
+// TypeAdapterGenerator
+// **************************************************************************
 
 class AttendanceRecordAdapter extends TypeAdapter<AttendanceRecord> {
   @override
@@ -11,32 +16,26 @@ class AttendanceRecordAdapter extends TypeAdapter<AttendanceRecord> {
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-
-    DateTime parseDate(dynamic raw) {
-      if (raw is DateTime) return raw;
-      if (raw is String) {
-        return DateTime.tryParse(raw) ?? DateTime.now();
-      }
-      return DateTime.now();
-    }
-
     return AttendanceRecord(
-      recordId: (fields[0] ?? '').toString(),
-      eventId: (fields[1] ?? '').toString(),
-      memberId: (fields[2] ?? '').toString(),
-      timestamp: parseDate(fields[3]),
-      status: (fields[4] ?? 'Hadir').toString(),
-      isManualOverride: fields[5] as bool? ?? false,
-      overrideBy: fields[6]?.toString(),
-      isSynced: fields[7] as bool? ?? false,
-      compositeKey: (fields[8] ?? '').toString(),
+      recordId: fields[0] as String,
+      eventId: fields[1] as String,
+      memberId: fields[2] as String,
+      timestamp: fields[3] as DateTime,
+      status: fields[4] as String,
+      isManualOverride: fields[5] as bool,
+      overrideBy: fields[6] as String?,
+      isSynced: fields[7] as bool,
+      compositeKey: fields[8] as String,
+      permissionId: fields[9] as String?,
+      createdAt: fields[10] as DateTime?,
+      updatedAt: fields[11] as DateTime?,
     );
   }
 
   @override
   void write(BinaryWriter writer, AttendanceRecord obj) {
     writer
-      ..writeByte(9)
+      ..writeByte(12)
       ..writeByte(0)
       ..write(obj.recordId)
       ..writeByte(1)
@@ -54,7 +53,13 @@ class AttendanceRecordAdapter extends TypeAdapter<AttendanceRecord> {
       ..writeByte(7)
       ..write(obj.isSynced)
       ..writeByte(8)
-      ..write(obj.compositeKey);
+      ..write(obj.compositeKey)
+      ..writeByte(9)
+      ..write(obj.permissionId)
+      ..writeByte(10)
+      ..write(obj.createdAt)
+      ..writeByte(11)
+      ..write(obj.updatedAt);
   }
 
   @override

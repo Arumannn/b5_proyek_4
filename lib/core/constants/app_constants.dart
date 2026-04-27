@@ -15,6 +15,8 @@ class AppConstants {
   static const String eventBox = 'event_box';
   static const String attendanceBox = 'attendance_box';
   static const String permissionBox = 'permission_box';
+  static const String pendingUserUpsertBox = 'pending_user_upsert_box';
+  static const String pendingUserDeleteBox = 'pending_user_delete_box';
 
   // ─── Hive TypeId Registry ────────────────────────
   // Setiap model Hive harus punya typeId unik. Jangan ubah nilai ini!
@@ -40,24 +42,46 @@ class AppConstants {
   static const Duration syncRetryDelay = Duration(seconds: 5);
 
   // ─── Role Definitions ────────────────────────────
-  static const String roleAdmin = 'admin';
+  static const String roleExecutive = 'Executive';
   static const String roleManager = 'manager';
   static const String roleOrganizer = 'organizer';
   static const String roleMember = 'member';
 
   static const List<String> allowedRoles = [
-    roleAdmin,
+    roleExecutive,
     roleManager,
     roleOrganizer,
     roleMember,
   ];
 
-  // ─── Default Admin Seeding ───────────────────────
-  static const String defaultAdminNim = '38';
-  static const String defaultAdminPassword = '123';
-  static const String defaultAdminName = 'Admin Utama';
-  static const String defaultAdminDivision = 'Core';
-  static const String adminSeedFlagKey = '__seed_admin_done__';
+  // DBU options for user management form (Executive only)
+  static const List<String> departmentDbuOptions = [
+    'Departemen Komunikasi dan Informasi',
+    'Departemen Luar Himpunan',
+    'Departemen Pengembangan Sumber Daya Himpunan',
+    'Departemen Seni dan Olahraga',
+    'Departemen Keilmuan dan Keprofesian',
+  ];
+
+  static const List<String> biroDbuOptions = [
+    'Biro Kewirausahaan dan Keuangan',
+    'Biro Administrasi dan Kesekretariatan',
+  ];
+
+  static const List<String> unitDbuOptions = ['Unit Teknologi'];
+
+  static const List<String> allDbuOptions = [
+    ...departmentDbuOptions,
+    ...biroDbuOptions,
+    ...unitDbuOptions,
+  ];
+
+  // ─── Default Executive Seeding ───────────────────────
+  static const String defaultExecutiveNim = '38';
+  static const String defaultExecutivePassword = '123';
+  static const String defaultExecutiveName = 'Executive Utama';
+  static const String defaultExecutiveDivision = 'HEXA';
+  static const String ExecutiveSeedFlagKey = '__seed_Executive_done__';
 
     // ─── Default Member Seeding ───────────────────────
   static const String defaultMemberNim = '39';
@@ -78,9 +102,13 @@ class AppConstants {
   static const String defaultManagerPassword = '123';
   static const String defaultManagerName = 'Manager Biasa';
   static const String defaultManagerDivision = 'Kadep & Wakadep';
-  static const String managerSeedFlagKey = '__seed_manager_done__'; 
-
+  static const String managerSeedFlagKey = '__seed_manager_done__';
 
   // ─── Event Types ─────────────────────────────────
-  static const List<String> eventTypes = ['Rapat', 'Acara', 'Kegiatan', 'Lainnya'];
+  static const List<String> eventTypes = [
+    'Rapat',
+    'Acara',
+    'Kegiatan',
+    'Lainnya',
+  ];
 }

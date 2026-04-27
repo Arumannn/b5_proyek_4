@@ -9,12 +9,10 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/services/hive_service.dart';
 import '../../core/services/mongo_service.dart';
+import '../../core/utils/network_status_controller.dart';
 import '../../core/utils/qr_service.dart';
 import '../../models/member_model.dart';
-import '../dashboard/admin_dashboard.dart';
-import '../dashboard/manager_dashboard.dart';
-import '../dashboard/member_dashboard.dart';
-import '../dashboard/organizer_dashboard.dart';
+import '../dashboard/dashboard_view.dart';
 import 'login_view.dart';
 import '../../core/services/fcm_service.dart';
 
@@ -22,26 +20,34 @@ import '../../core/services/fcm_service.dart';
 ///
 /// Fitur utama:
 /// - Login offline-first (Hive -> fallback cloud)
-/// - Seeding admin default saat first run
-/// - CRUD user khusus admin
+/// - Seeding Executive default saat first run
+/// - CRUD user khusus Executive
 /// - State reactive dengan ValueNotifier
 class AuthController {
   static final AuthController instance = AuthController._internal();
 
   AuthController._internal()
-      : _dio = Dio(
-          BaseOptions(
-            connectTimeout: AppConstants.networkTimeout,
-            receiveTimeout: AppConstants.networkTimeout,
-            sendTimeout: AppConstants.networkTimeout,
-            headers: const {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-            },
-          ),
-        );
+    : _dio = Dio(
+        BaseOptions(
+          connectTimeout: AppConstants.networkTimeout,
+          receiveTimeout: AppConstants.networkTimeout,
+          sendTimeout: AppConstants.networkTimeout,
+          headers: const {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+        ),
+      ) {
+    _onlineListener = () {
+      if (NetworkStatusController.instance.isOnline.value) {
+        unawaited(_syncPendingUserChanges());
+      }
+    };
+    NetworkStatusController.instance.isOnline.addListener(_onlineListener);
+  }
 
   final Dio _dio;
+  late final VoidCallback _onlineListener;
 
   final ValueNotifier<MemberModel?> currentUser = ValueNotifier(null);
   final ValueNotifier<bool> isLoading = ValueNotifier(false);
@@ -49,102 +55,114 @@ class AuthController {
 
   Future<void> initializeAuth() async {
     await seedDefaultAccount();
+    unawaited(_syncPendingUserChanges());
   }
 
   // seedDefaultAccount()
-Future<void> seedDefaultAccount() async {
-  try {
-    final nowIso = DateTime.now().toIso8601String();
+  Future<void> seedDefaultAccount() async {
+    try {
+      final nowIso = DateTime.now().toIso8601String();
 
-    Future<void> ensureDefaultAccount({
-      required String nim,
-      required String nama,
-      required String divisi,
-      required String role,
-      required String password,
-    }) async {
-      final normalizedNim = nim.trim();
-      final existing = _findLocalUserByNim(normalizedNim);
-      final hashedDefaultPassword = _hashPassword(password);
+      Future<void> ensureDefaultAccount({
+        required String nim,
+        required String nama,
+        required String divisi,
+        required String role,
+        required String password,
+      }) async {
+        final normalizedNim = nim.trim();
+        final existing = _findLocalUserByNim(normalizedNim);
+        final hashedDefaultPassword = _hashPassword(password);
 
-      final needsCreate = existing == null;
-      final needsRepair = existing != null && (
-        _normalizeRole((existing['role'] ?? '').toString()) != role ||
-        !_verifyPassword(password, (existing['password'] ?? '').toString()) ||
-        (existing['nama'] ?? '').toString().trim().isEmpty ||
-        (existing['divisi'] ?? '').toString().trim().isEmpty
+        final needsCreate = existing == null;
+        final needsRepair =
+            existing != null &&
+            (_normalizeRole((existing['role'] ?? '').toString()) !=
+                    _normalizeRole(role) ||
+                !_verifyPassword(
+                  password,
+                  (existing['password'] ?? '').toString(),
+                ) ||
+                (existing['nama'] ?? '').toString().trim().isEmpty ||
+                (existing['divisi'] ?? '').toString().trim().isEmpty);
+
+        if (!needsCreate && !needsRepair) {
+          return;
+        }
+
+        final merged = <String, dynamic>{
+          ...?existing,
+          'nim': normalizedNim,
+          'nama': nama,
+          'divisi': divisi,
+          'role': _normalizeRole(role),
+          'password': hashedDefaultPassword,
+          'qrCodeValue': QrService.generateQrData(normalizedNim),
+          'memberId': normalizedNim,
+          'isSynced': false,
+          'createdAt': (existing?['createdAt'] ?? nowIso).toString(),
+          'updatedAt': nowIso,
+        };
+
+        await HiveService.members.put(normalizedNim, _memberFromMap(merged));
+        _enqueuePendingUpsert(normalizedNim);
+        unawaited(
+          _syncUpsertUserInBackground(nim: normalizedNim, userDoc: merged),
+        );
+
+        if (needsCreate) {
+          debugPrint(
+            '[Auth][seed] created default account nim=$normalizedNim role=$role',
+          );
+        } else {
+          debugPrint(
+            '[Auth][seed] repaired default account nim=$normalizedNim role=$role',
+          );
+        }
+      }
+
+      await ensureDefaultAccount(
+        nim: AppConstants.defaultExecutiveNim,
+        nama: AppConstants.defaultExecutiveName,
+        divisi: AppConstants.defaultExecutiveDivision,
+        role: AppConstants.roleExecutive,
+        password: AppConstants.defaultExecutivePassword,
       );
 
-      if (!needsCreate && !needsRepair) {
-        return;
-      }
+      await ensureDefaultAccount(
+        nim: AppConstants.defaultMemberNim,
+        nama: AppConstants.defaultMemberName,
+        divisi: AppConstants.defaultMemberDivision,
+        role: AppConstants.roleMember,
+        password: AppConstants.defaultMemberPassword,
+      );
 
-      final merged = <String, dynamic>{
-        ...?existing,
-        'nim': normalizedNim,
-        'nama': nama,
-        'divisi': divisi,
-        'role': role,
-        'password': hashedDefaultPassword,
-        'qrCodeValue': QrService.generateQrData(normalizedNim),
-        'memberId': normalizedNim,
-        'isSynced': false,
-        'createdAt': (existing?['createdAt'] ?? nowIso).toString(),
-        'updatedAt': nowIso,
-      };
+      await ensureDefaultAccount(
+        nim: AppConstants.defaultOrganizerNim,
+        nama: AppConstants.defaultOrganizerName,
+        divisi: AppConstants.defaultOrganizerDivision,
+        role: AppConstants.roleOrganizer,
+        password: AppConstants.defaultOrganizerPassword,
+      );
 
-      await HiveService.members.put(normalizedNim, _memberFromMap(merged));
-      unawaited(_syncUpsertUserInBackground(nim: normalizedNim, userDoc: merged));
+      await ensureDefaultAccount(
+        nim: AppConstants.defaultManagerNim,
+        nama: AppConstants.defaultManagerName,
+        divisi: AppConstants.defaultManagerDivision,
+        role: AppConstants.roleManager,
+        password: AppConstants.defaultManagerPassword,
+      );
 
-      if (needsCreate) {
-        debugPrint('[Auth][seed] created default account nim=$normalizedNim role=$role');
-      } else {
-        debugPrint('[Auth][seed] repaired default account nim=$normalizedNim role=$role');
-      }
+      debugPrint(
+        '[Auth][seed] default accounts ensured/repaired (Executive/member/organizer/manager)',
+      );
+    } catch (e, st) {
+      debugPrint('[Auth][seed] error: $e');
+      debugPrint(st.toString());
     }
-
-    await ensureDefaultAccount(
-      nim: AppConstants.defaultAdminNim,
-      nama: AppConstants.defaultAdminName,
-      divisi: AppConstants.defaultAdminDivision,
-      role: AppConstants.roleAdmin,
-      password: AppConstants.defaultAdminPassword,
-    );
-
-    await ensureDefaultAccount(
-      nim: AppConstants.defaultMemberNim,
-      nama: AppConstants.defaultMemberName,
-      divisi: AppConstants.defaultMemberDivision,
-      role: AppConstants.roleMember,
-      password: AppConstants.defaultMemberPassword,
-    );
-
-    await ensureDefaultAccount(
-      nim: AppConstants.defaultOrganizerNim,
-      nama: AppConstants.defaultOrganizerName,
-      divisi: AppConstants.defaultOrganizerDivision,
-      role: AppConstants.roleOrganizer,
-      password: AppConstants.defaultOrganizerPassword,
-    );
-
-    await ensureDefaultAccount(
-      nim: AppConstants.defaultManagerNim,
-      nama: AppConstants.defaultManagerName,
-      divisi: AppConstants.defaultManagerDivision,
-      role: AppConstants.roleManager,
-      password: AppConstants.defaultManagerPassword,
-    );
-
-    debugPrint(
-      '[Auth][seed] default accounts ensured/repaired (admin/member/organizer/manager)',
-    );
-  } catch (e, st) {
-    debugPrint('[Auth][seed] error: $e');
-    debugPrint(st.toString());
   }
-}
 
-  Future<bool> createUserByAdmin({
+  Future<bool> createUserByExecutive({
     required String nama,
     required String nim,
     required String divisi,
@@ -155,14 +173,24 @@ Future<void> seedDefaultAccount() async {
     errorMessage.value = null;
 
     try {
-      if (!_isCurrentUserAdmin()) {
-        errorMessage.value = 'Hanya admin yang dapat membuat akun.';
+      if (!_isCurrentUserExecutive()) {
+        errorMessage.value = 'Hanya Executive yang dapat membuat akun.';
         return false;
       }
 
       final normalizedRole = _normalizeRole(role);
       final normalizedNim = nim.trim();
+      final normalizedNama = nama.trim();
+      final normalizedDivisi = divisi.trim();
       debugPrint('[Auth][createUser] start nim=$nim role=$normalizedRole');
+
+      if (normalizedNim.isEmpty ||
+          normalizedNama.isEmpty ||
+          normalizedDivisi.isEmpty ||
+          password.isEmpty) {
+        errorMessage.value = 'NIM, Nama, Role, DBU, dan Password wajib diisi.';
+        return false;
+      }
 
       final existing = _findLocalUserByNim(normalizedNim);
       if (existing != null) {
@@ -173,9 +201,9 @@ Future<void> seedDefaultAccount() async {
 
       final nowIso = DateTime.now().toIso8601String();
       final localDoc = <String, dynamic>{
-        'nama': nama.trim(),
+        'nama': normalizedNama,
         'nim': normalizedNim,
-        'divisi': divisi.trim(),
+        'divisi': normalizedDivisi,
         'role': normalizedRole,
         'password': _hashPassword(password),
         'qrCodeValue': QrService.generateQrData(normalizedNim),
@@ -187,7 +215,10 @@ Future<void> seedDefaultAccount() async {
 
       await HiveService.members.put(normalizedNim, _memberFromMap(localDoc));
       debugPrint('[Auth][createUser] local saved nim=$normalizedNim');
-      unawaited(_syncUpsertUserInBackground(nim: normalizedNim, userDoc: localDoc));
+      _enqueuePendingUpsert(normalizedNim);
+      unawaited(
+        _syncUpsertUserInBackground(nim: normalizedNim, userDoc: localDoc),
+      );
       return true;
     } catch (e, st) {
       debugPrint('[Auth][createUser] error: $e');
@@ -212,7 +243,7 @@ Future<void> seedDefaultAccount() async {
     return users;
   }
 
-  Future<bool> updateUserByAdmin({
+  Future<bool> updateUserByExecutive({
     required String nim,
     String? nama,
     String? divisi,
@@ -223,13 +254,15 @@ Future<void> seedDefaultAccount() async {
     errorMessage.value = null;
 
     try {
-      if (!_isCurrentUserAdmin()) {
-        errorMessage.value = 'Hanya admin yang dapat mengubah akun.';
+      if (!_isCurrentUserExecutive()) {
+        errorMessage.value = 'Hanya Executive yang dapat mengubah akun.';
         return false;
       }
 
       final storageKey = _resolveLocalStorageKey(nim);
-      final raw = storageKey != null ? HiveService.members.get(storageKey) : null;
+      final raw = storageKey != null
+          ? HiveService.members.get(storageKey)
+          : null;
       final currentDoc = _toMap(raw);
       if (currentDoc == null || !_isUserDocument(currentDoc)) {
         errorMessage.value = 'User tidak ditemukan.';
@@ -253,19 +286,28 @@ Future<void> seedDefaultAccount() async {
       updatedDoc['isSynced'] = false;
       updatedDoc['updatedAt'] = DateTime.now().toIso8601String();
 
-        final nimStorageKey = (updatedDoc['nim'] ?? '').toString().trim();
-        final updatedStorageKey = nimStorageKey.isNotEmpty
+      final nimStorageKey = (updatedDoc['nim'] ?? '').toString().trim();
+      final updatedStorageKey = nimStorageKey.isNotEmpty
           ? nimStorageKey
-            : (storageKey ?? nim.trim());
+          : (storageKey ?? nim.trim());
 
-        await HiveService.members.put(updatedStorageKey, _memberFromMap(updatedDoc));
-        debugPrint('[Auth][updateUser] local updated nim=$updatedStorageKey');
+      await HiveService.members.put(
+        updatedStorageKey,
+        _memberFromMap(updatedDoc),
+      );
+      debugPrint('[Auth][updateUser] local updated nim=$updatedStorageKey');
+      _enqueuePendingUpsert(updatedStorageKey);
 
-        if (currentUser.value?.nim == nim.trim()) {
+      if (currentUser.value?.nim == nim.trim()) {
         currentUser.value = _memberFromMap(updatedDoc);
       }
 
-        unawaited(_syncUpsertUserInBackground(nim: updatedStorageKey, userDoc: updatedDoc));
+      unawaited(
+        _syncUpsertUserInBackground(
+          nim: updatedStorageKey,
+          userDoc: updatedDoc,
+        ),
+      );
       return true;
     } catch (e, st) {
       debugPrint('[Auth][updateUser] error: $e');
@@ -277,18 +319,20 @@ Future<void> seedDefaultAccount() async {
     }
   }
 
-  Future<bool> deleteUserByAdmin(String nim) async {
+  Future<bool> deleteUserByExecutive(String nim) async {
     isLoading.value = true;
     errorMessage.value = null;
 
     try {
-      if (!_isCurrentUserAdmin()) {
-        errorMessage.value = 'Hanya admin yang dapat menghapus akun.';
+      if (!_isCurrentUserExecutive()) {
+        errorMessage.value = 'Hanya Executive yang dapat menghapus akun.';
         return false;
       }
 
       final storageKey = _resolveLocalStorageKey(nim);
-      final raw = storageKey != null ? HiveService.members.get(storageKey) : null;
+      final raw = storageKey != null
+          ? HiveService.members.get(storageKey)
+          : null;
       final doc = _toMap(raw);
       if (doc == null || !_isUserDocument(doc)) {
         errorMessage.value = 'User tidak ditemukan.';
@@ -303,6 +347,8 @@ Future<void> seedDefaultAccount() async {
       }
 
       final nimToDelete = (doc['nim'] ?? nim).toString().trim();
+      _dequeuePendingUpsert(nimToDelete);
+      _enqueuePendingDelete(nimToDelete);
       unawaited(_deleteUserFromCloudInBackground(nimToDelete));
       return true;
     } catch (e, st) {
@@ -343,7 +389,9 @@ Future<void> seedDefaultAccount() async {
 
           final storageKey = cloudNim.isNotEmpty ? cloudNim : normalizedNim;
           await HiveService.members.put(storageKey, _memberFromMap(userDoc));
-          debugPrint('[Auth][login] cloud hit -> cached locally nim=$storageKey');
+          debugPrint(
+            '[Auth][login] cloud hit -> cached locally nim=$storageKey',
+          );
         }
       }
 
@@ -401,6 +449,8 @@ Future<void> seedDefaultAccount() async {
     required Map<String, dynamic> userDoc,
   }) async {
     try {
+      _enqueuePendingUpsert(nim);
+
       if (!await _isOnline()) {
         debugPrint('[Auth][syncUpsert] skipped: offline nim=$nim');
         return;
@@ -419,7 +469,11 @@ Future<void> seedDefaultAccount() async {
       final nimStorageKey = (localDoc['nim'] ?? '').toString().trim();
       final storageKey = nimStorageKey.isNotEmpty ? nimStorageKey : nim;
       await HiveService.members.put(storageKey, _memberFromMap(localDoc));
-      debugPrint('[Auth][syncUpsert] success: local sync flag updated nim=$storageKey');
+      _dequeuePendingUpsert(storageKey);
+      _dequeuePendingUpsert(nim);
+      debugPrint(
+        '[Auth][syncUpsert] success: local sync flag updated nim=$storageKey',
+      );
     } catch (e) {
       debugPrint('[Auth][syncUpsert] error nim=$nim -> $e');
     }
@@ -434,11 +488,96 @@ Future<void> seedDefaultAccount() async {
 
       final deleted = await _deleteUserFromCloud(nim);
       if (deleted) {
+        _dequeuePendingDelete(nim);
         debugPrint('[Auth][syncDelete] success nim=$nim');
       }
     } catch (e) {
       debugPrint('[Auth][syncDelete] error nim=$nim -> $e');
     }
+  }
+
+  Future<void> _syncPendingUserChanges() async {
+    if (!await _isOnline()) {
+      return;
+    }
+
+    await _syncPendingUserUpserts();
+    await _syncPendingUserDeletes();
+  }
+
+  Future<void> _syncPendingUserUpserts() async {
+    final pendingNims = HiveService.pendingUserUpserts.values
+        .map((nim) => nim.trim())
+        .where((nim) => nim.isNotEmpty)
+        .toSet()
+        .toList(growable: false);
+
+    for (final nim in pendingNims) {
+      final storageKey = _resolveLocalStorageKey(nim);
+      if (storageKey == null) {
+        _dequeuePendingUpsert(nim);
+        continue;
+      }
+
+      final member = HiveService.members.get(storageKey);
+      final doc = _toMap(member);
+      if (doc == null || !_isUserDocument(doc)) {
+        _dequeuePendingUpsert(nim);
+        continue;
+      }
+
+      final synced = await _upsertUserToCloud(doc);
+      if (synced) {
+        _dequeuePendingUpsert(nim);
+      }
+    }
+  }
+
+  Future<void> _syncPendingUserDeletes() async {
+    final pendingNims = HiveService.pendingUserDeletes.values
+        .map((nim) => nim.trim())
+        .where((nim) => nim.isNotEmpty)
+        .toSet()
+        .toList(growable: false);
+
+    for (final nim in pendingNims) {
+      final deleted = await _deleteUserFromCloud(nim);
+      if (deleted) {
+        _dequeuePendingDelete(nim);
+      }
+    }
+  }
+
+  void _enqueuePendingUpsert(String nim) {
+    final normalizedNim = nim.trim();
+    if (normalizedNim.isEmpty) {
+      return;
+    }
+    HiveService.pendingUserUpserts.put(normalizedNim, normalizedNim);
+  }
+
+  void _dequeuePendingUpsert(String nim) {
+    final normalizedNim = nim.trim();
+    if (normalizedNim.isEmpty) {
+      return;
+    }
+    HiveService.pendingUserUpserts.delete(normalizedNim);
+  }
+
+  void _enqueuePendingDelete(String nim) {
+    final normalizedNim = nim.trim();
+    if (normalizedNim.isEmpty) {
+      return;
+    }
+    HiveService.pendingUserDeletes.put(normalizedNim, normalizedNim);
+  }
+
+  void _dequeuePendingDelete(String nim) {
+    final normalizedNim = nim.trim();
+    if (normalizedNim.isEmpty) {
+      return;
+    }
+    HiveService.pendingUserDeletes.delete(normalizedNim);
   }
 
   Future<void> _updateFcmTokenInBackground(String nim) async {
@@ -500,9 +639,13 @@ Future<void> seedDefaultAccount() async {
           return true;
         }
 
-        debugPrint('[Auth][syncUpsert] cloud API non-success status=$statusCode');
+        debugPrint(
+          '[Auth][syncUpsert] cloud API non-success status=$statusCode',
+        );
       } catch (e) {
-        debugPrint('[Auth][syncUpsert] cloud API failed, fallback to MongoService: $e');
+        debugPrint(
+          '[Auth][syncUpsert] cloud API failed, fallback to MongoService: $e',
+        );
       }
     }
 
@@ -529,7 +672,9 @@ Future<void> seedDefaultAccount() async {
       return true;
     } catch (e) {
       if (MongoService.isDuplicateKeyError(e)) {
-        debugPrint('[Auth][syncUpsert] duplicate user on cloud, treated as synced');
+        debugPrint(
+          '[Auth][syncUpsert] duplicate user on cloud, treated as synced',
+        );
         return true;
       }
       debugPrint('[Auth][syncUpsert] mongo_dart upsert failed: $e');
@@ -558,7 +703,9 @@ Future<void> seedDefaultAccount() async {
           return true;
         }
       } catch (e) {
-        debugPrint('[Auth][syncDelete] cloud API failed, fallback to MongoService: $e');
+        debugPrint(
+          '[Auth][syncDelete] cloud API failed, fallback to MongoService: $e',
+        );
       }
     }
 
@@ -600,7 +747,9 @@ Future<void> seedDefaultAccount() async {
           }
         }
       } catch (e) {
-        debugPrint('[Auth][login] cloud API read failed, fallback to MongoService: $e');
+        debugPrint(
+          '[Auth][login] cloud API read failed, fallback to MongoService: $e',
+        );
       }
     }
 
@@ -637,26 +786,9 @@ Future<void> seedDefaultAccount() async {
   }
 
   void _navigateByRole(BuildContext context, String role) {
-    final normalizedRole = _normalizeRole(role);
-    final Widget destination;
-
-    switch (normalizedRole) {
-      case AppConstants.roleAdmin:
-        destination = const AdminDashboard();
-        break;
-      case AppConstants.roleManager:
-        destination = const ManagerDashboard();
-        break;
-      case AppConstants.roleOrganizer:
-        destination = const OrganizerDashboard();
-        break;
-      default:
-        destination = const MemberDashboard();
-    }
-
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute<void>(builder: (_) => destination),
+      MaterialPageRoute<void>(builder: (_) => const DashboardView()),
       (route) => false,
     );
   }
@@ -710,7 +842,6 @@ Future<void> seedDefaultAccount() async {
       fcmToken: doc['fcmToken']?.toString(),
     );
   }
-
 
   Map<String, dynamic>? _toMap(dynamic raw) {
     if (raw == null) return null;
@@ -780,8 +911,9 @@ Future<void> seedDefaultAccount() async {
     return storedPassword == inputPassword;
   }
 
-  bool _isCurrentUserAdmin() {
-    return _normalizeRole(currentUser.value?.role ?? '') == AppConstants.roleAdmin;
+  bool _isCurrentUserExecutive() {
+    return _normalizeRole(currentUser.value?.role ?? '') ==
+      AppConstants.roleExecutive.toLowerCase();
   }
 
   bool _isUserDocument(Map<String, dynamic> doc) {
@@ -790,7 +922,10 @@ Future<void> seedDefaultAccount() async {
 
   String _normalizeRole(String role) {
     final normalized = role.trim().toLowerCase();
-    if (AppConstants.allowedRoles.contains(normalized)) {
+    final allowed = AppConstants.allowedRoles
+        .map((item) => item.trim().toLowerCase())
+        .toSet();
+    if (allowed.contains(normalized)) {
       return normalized;
     }
     return AppConstants.roleMember;
@@ -832,6 +967,7 @@ Future<void> seedDefaultAccount() async {
   }
 
   void dispose() {
+    NetworkStatusController.instance.isOnline.removeListener(_onlineListener);
     currentUser.dispose();
     isLoading.dispose();
     errorMessage.dispose();

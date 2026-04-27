@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
+import '../../core/constants/app_constants.dart';
 import '../../models/event_model.dart';
 import '../attendance/scan_screen.dart';
+import '../auth/auth_controller.dart';
 import '../../widgets/loading_overlay.dart';
 import '../../widgets/custom_snackbar.dart';
 import '../../widgets/empty_state_widget.dart';
 import 'event_controller.dart';
 import 'event_form_view.dart';
-import '../../widgets/network_status_banner.dart';
+import 'event_permission.dart';
 
 /// Layar daftar event (Admin) — Enhanced Week 9 Sub-Tahap B
 ///
@@ -28,6 +30,18 @@ class _EventListViewState extends State<EventListView> {
   final EventController _controller = EventController.instance;
   final Map<String, bool> _expandedState = {}; // Track expanded/collapsed state
   final TextEditingController _searchController = TextEditingController();
+
+  String get _role =>
+      (AuthController.instance.currentUser.value?.role ?? AppConstants.roleMember)
+          .trim()
+          .toLowerCase(); // RBAC: gunakan role user login aktif untuk kontrol UI aksi.
+
+  bool get _canCreateMainEvent => EventPermission.canCreateMainEvent(_role); // RBAC: Main event CREATE hanya Admin.
+  bool get _canUpdateMainEvent => EventPermission.canUpdateMainEvent(_role); // RBAC: Main event UPDATE hanya Admin.
+  bool get _canDeleteMainEvent => EventPermission.canDeleteMainEvent(_role); // RBAC: Main event DELETE hanya Admin.
+  bool get _canCreateSubEvent => EventPermission.canCreateSubEvent(_role); // RBAC: Sub-event CREATE untuk Admin/Manager.
+  bool get _canUpdateSubEvent => EventPermission.canUpdateSubEvent(_role); // RBAC: Sub-event UPDATE untuk Admin/Manager.
+  bool get _canDeleteSubEvent => EventPermission.canDeleteSubEvent(_role); // RBAC: Sub-event DELETE untuk Admin/Manager.
 
   @override
   void initState() {
@@ -115,6 +129,11 @@ class _EventListViewState extends State<EventListView> {
   // ═══════════════════════════════════════════════════════════════
 
   Future<void> _addEvent() async {
+    if (!_canCreateMainEvent) {
+      CustomSnackbar.showError(context, 'Anda tidak memiliki izin membuat main event.'); // RBAC: cegah CREATE main event tanpa izin.
+      return;
+    }
+
     final result = await Navigator.push<EventFormValue>(
       context,
       MaterialPageRoute<EventFormValue>(
@@ -148,7 +167,16 @@ class _EventListViewState extends State<EventListView> {
   }
 
   Future<void> _editEvent(EventModel target) async {
-    final isSubEvent = target.parentEventId != null;
+    final isSubEvent = target.parentEventId != null; // RBAC: UPDATE permission ditentukan dari scope event.
+    if (!isSubEvent && !_canUpdateMainEvent) {
+      CustomSnackbar.showError(context, 'Anda tidak memiliki izin mengubah main event.'); // RBAC: cegah UPDATE main event tanpa izin.
+      return;
+    }
+    if (isSubEvent && !_canUpdateSubEvent) {
+      CustomSnackbar.showError(context, 'Anda tidak memiliki izin mengubah sub-event.'); // RBAC: cegah UPDATE sub-event tanpa izin.
+      return;
+    }
+
     final result = await Navigator.push<EventFormValue>(
       context,
       MaterialPageRoute<EventFormValue>(
@@ -189,6 +217,16 @@ class _EventListViewState extends State<EventListView> {
   }
 
   Future<void> _deleteEvent(EventModel target) async {
+    final isSubEvent = target.parentEventId != null; // RBAC: DELETE permission ditentukan dari scope event.
+    if (!isSubEvent && !_canDeleteMainEvent) {
+      CustomSnackbar.showError(context, 'Anda tidak memiliki izin menghapus main event.'); // RBAC: cegah DELETE main event tanpa izin.
+      return;
+    }
+    if (isSubEvent && !_canDeleteSubEvent) {
+      CustomSnackbar.showError(context, 'Anda tidak memiliki izin menghapus sub-event.'); // RBAC: cegah DELETE sub-event tanpa izin.
+      return;
+    }
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
@@ -360,7 +398,7 @@ class _EventListViewState extends State<EventListView> {
               Icon(Icons.calendar_today, size: 14, color: Colors.grey.shade600),
               const SizedBox(width: 4),
               Text(
-                _formatDate(subEvent.tanggal),
+                _formatDateTime(subEvent.tanggal),
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ],
@@ -370,41 +408,44 @@ class _EventListViewState extends State<EventListView> {
             spacing: 8,
             runSpacing: 8,
             children: [
-              OutlinedButton.icon(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute<void>(
-                      builder: (_) => ScanScreen(eventId: subEvent.eventId),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.qr_code_scanner, size: 16),
-                label: const Text('Scan'),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  minimumSize: Size.zero,
+              if (_canUpdateSubEvent)
+                OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute<void>(
+                        builder: (_) => ScanScreen(eventId: subEvent.eventId),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.qr_code_scanner, size: 16),
+                  label: const Text('Scan'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    minimumSize: Size.zero,
+                  ),
                 ),
-              ),
-              OutlinedButton.icon(
-                onPressed: () => _editEvent(subEvent),
-                icon: const Icon(Icons.edit_outlined, size: 16),
-                label: const Text('Edit'),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  minimumSize: Size.zero,
+              if (_canUpdateSubEvent)
+                OutlinedButton.icon(
+                  onPressed: () => _editEvent(subEvent),
+                  icon: const Icon(Icons.edit_outlined, size: 16),
+                  label: const Text('Edit'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    minimumSize: Size.zero,
+                  ),
                 ),
-              ),
-              OutlinedButton.icon(
-                onPressed: () => _deleteEvent(subEvent),
-                icon: const Icon(Icons.delete_outline, size: 16),
-                label: const Text('Hapus'),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  minimumSize: Size.zero,
-                  foregroundColor: Colors.red,
+              if (_canDeleteSubEvent)
+                OutlinedButton.icon(
+                  onPressed: () => _deleteEvent(subEvent),
+                  icon: const Icon(Icons.delete_outline, size: 16),
+                  label: const Text('Hapus'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    minimumSize: Size.zero,
+                    foregroundColor: Colors.red,
+                  ),
                 ),
-              ),
             ],
           ),
         ],
@@ -459,7 +500,7 @@ class _EventListViewState extends State<EventListView> {
                                  color: Colors.grey.shade600),
                             const SizedBox(width: 4),
                             Text(
-                              _formatDate(event.tanggal),
+                              _formatDateTime(event.tanggal),
                               style: Theme.of(context).textTheme.bodySmall,
                             ),
                             const SizedBox(width: 12),
@@ -495,7 +536,7 @@ class _EventListViewState extends State<EventListView> {
                           : Icons.expand_more,
                       color: Theme.of(context).colorScheme.primary,
                     )
-                  else
+                  else if (_canCreateSubEvent)
                     IconButton(
                       tooltip: 'Tambah Sub Event',
                       onPressed: () => _addSubEvent(event),
@@ -527,31 +568,35 @@ class _EventListViewState extends State<EventListView> {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute<void>(
-                          builder: (_) => ScanScreen(eventId: event.eventId),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.qr_code_scanner),
-                    label: const Text('Scan Absensi'),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: () => _editEvent(event),
-                    icon: const Icon(Icons.edit_outlined),
-                    label: const Text('Edit'),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: () => _deleteEvent(event),
-                    icon: const Icon(Icons.delete_outline),
-                    label: const Text('Hapus'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.red,
+                  if (!hasSubEvents)
+                    if (_canUpdateMainEvent)
+                      OutlinedButton.icon(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute<void>(
+                              builder: (_) => ScanScreen(eventId: event.eventId),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.qr_code_scanner),
+                        label: const Text('Scan Absensi'),
+                      ),
+                  if (_canUpdateMainEvent)
+                    OutlinedButton.icon(
+                      onPressed: () => _editEvent(event),
+                      icon: const Icon(Icons.edit_outlined),
+                      label: const Text('Edit'),
                     ),
-                  ),
+                  if (_canDeleteMainEvent)
+                    OutlinedButton.icon(
+                      onPressed: () => _deleteEvent(event),
+                      icon: const Icon(Icons.delete_outline),
+                      label: const Text('Hapus'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red,
+                      ),
+                    ),
                 ],
               ),
 
@@ -576,6 +621,11 @@ class _EventListViewState extends State<EventListView> {
   }
 
   Future<void> _addSubEvent(EventModel parentEvent) async {
+    if (!_canCreateSubEvent) {
+      CustomSnackbar.showError(context, 'Anda tidak memiliki izin membuat sub-event.'); // RBAC: cegah CREATE sub-event tanpa izin.
+      return;
+    }
+
     final result = await Navigator.push<EventFormValue>(
       context,
       MaterialPageRoute<EventFormValue>(
@@ -625,6 +675,13 @@ class _EventListViewState extends State<EventListView> {
     return '$dd/$mm/$yyyy';
   }
 
+  String _formatDateTime(DateTime date) {
+    final datePart = _formatDate(date);
+    final hh = date.hour.toString().padLeft(2, '0');
+    final mm = date.minute.toString().padLeft(2, '0');
+    return '$datePart $hh:$mm';
+  }
+
   Color _getJenisColor(String jenis) {
     switch (jenis) {
       case 'Rapat':
@@ -641,39 +698,41 @@ class _EventListViewState extends State<EventListView> {
   }
 
   @override
-    Widget build(BuildContext context) {
-      return NetworkStatusBanner(
-        child: Scaffold(
-          appBar: AppBar(
-            title: const Text('Daftar Event'),
-            actions: [
-              IconButton(
-                tooltip: 'Refresh',
-              onPressed: () => _controller.loadEvents(force: true),
-              icon: const Icon(Icons.refresh),
-            ),
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Daftar Event'),
+        actions: [
+          IconButton(
+            tooltip: 'Refresh',
+            onPressed: () => _controller.loadEvents(force: true),
+            icon: const Icon(Icons.refresh),
+          ),
+          if (_canCreateMainEvent)
             IconButton(
               tooltip: 'Tambah Event',
               onPressed: _addEvent,
               icon: const Icon(Icons.add),
             ),
-          ],
-        ),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: _addEvent,
-          icon: const Icon(Icons.add),
-          label: const Text('Tambah Event'),
-        ),
-        body: ValueListenableBuilder<bool>(
-          valueListenable: _controller.isLoading,
-          builder: (context, isLoading, _) {
-            return LoadingOverlay(
-              isLoading: isLoading,
-              message: 'Memuat event...',
-              child: ValueListenableBuilder<List<EventModel>>(
-                valueListenable: _controller.events,
-                builder: (context, allEvents, _) {
-                  final rootEvents = _controller.getRootEvents();
+        ],
+      ),
+      floatingActionButton: _canCreateMainEvent
+          ? FloatingActionButton.extended(
+              onPressed: _addEvent,
+              icon: const Icon(Icons.add),
+              label: const Text('Tambah Event'),
+            )
+          : null,
+      body: ValueListenableBuilder<bool>(
+        valueListenable: _controller.isLoading,
+        builder: (context, isLoading, _) {
+          return LoadingOverlay(
+            isLoading: isLoading,
+            message: 'Memuat event...',
+            child: ValueListenableBuilder<List<EventModel>>(
+              valueListenable: _controller.events,
+              builder: (context, allEvents, _) {
+                final rootEvents = _controller.getRootEvents();
 
                   return Padding(
                     padding: const EdgeInsets.all(16),
