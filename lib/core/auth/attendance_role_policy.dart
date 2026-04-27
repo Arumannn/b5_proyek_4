@@ -11,7 +11,7 @@ class AttendanceRolePolicy {
   bool get hasActionColumn => canEditStatus || canDeleteRecord;
   factory AttendanceRolePolicy.forRole(String role) {
     switch (role) {
-      case AppConstants.roleAdmin:
+      case AppConstants.roleExecutive:
         return const AttendanceRolePolicy(
           canEditStatus: true,
           canDeleteRecord: true,
@@ -33,7 +33,7 @@ class AttendanceRolePolicy {
         );
     }
   }
-  static const AttendanceRolePolicy admin = AttendanceRolePolicy(
+  static const AttendanceRolePolicy Executive = AttendanceRolePolicy(
     canEditStatus: true,
     canDeleteRecord: true,
   );

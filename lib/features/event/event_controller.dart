@@ -1,13 +1,14 @@
 import 'dart:async';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../core/services/hive_service.dart';
 import '../../core/services/mongo_service.dart';
 import '../../models/event_model.dart';
+import '../auth/auth_controller.dart';
+import 'event_permission.dart';
 
 /// Controller untuk CRUD Event — Offline-First dengan cross-device sync.
 ///
@@ -31,12 +32,27 @@ class EventController {
 
   // ── Filter & Search State ──────────────────────────────────────
   final ValueNotifier<String?> selectedJenisFilter = ValueNotifier(null);
-  final ValueNotifier<DateTimeRange?> selectedDateRangeFilter =
-      ValueNotifier(null);
+  final ValueNotifier<DateTimeRange?> selectedDateRangeFilter = ValueNotifier(
+    null,
+  );
   final ValueNotifier<String> searchQuery = ValueNotifier('');
 
   bool _hasLoaded = false;
   List<EventModel> _allEvents = [];
+
+  // RBAC: Ambil role user login saat ini untuk evaluasi izin di layer logic.
+  String get _currentRole =>
+      AuthController.instance.currentUser.value?.role ?? AppConstants.roleMember;
+
+  // RBAC: createdBy wajib otomatis dari user login agar jejak audit konsisten.
+  String? get _currentMemberId {
+    final raw = AuthController.instance.currentUser.value?.memberId;
+    final normalized = raw?.trim();
+    if (normalized == null || normalized.isEmpty) {
+      return null;
+    }
+    return normalized;
+  }
 
   // ══════════════════════════════════════════════════════════════
   // LOAD EVENTS — Hive + MongoDB merge
@@ -59,8 +75,7 @@ class EventController {
       _applyFilters();
       _hasLoaded = true;
 
-      debugPrint(
-          '[EventCtrl] load Hive: ${_allEvents.length} event dimuat.');
+      debugPrint('[EventCtrl] load Hive: ${_allEvents.length} event dimuat.');
     } catch (e) {
       errorMessage.value = 'Gagal memuat event: $e';
       debugPrint('[EventCtrl] load Hive error: $e');
@@ -105,7 +120,8 @@ class EventController {
       }
 
       debugPrint(
-          '[EventCtrl] pull cloud: ${cloudDocs.length} event ditemukan.');
+        '[EventCtrl] pull cloud: ${cloudDocs.length} event ditemukan.',
+      );
 
       var newCount = 0;
       var updatedCount = 0;
@@ -131,7 +147,7 @@ class EventController {
         } else {
           // Event sudah synced — lokal tidak ada perubahan pending.
           // Timpa saja dengan data dari cloud agar selalu up-to-date
-          // (karena admin lain mungkin telah mengubah event ini).
+          // (karena Executive lain mungkin telah mengubah event ini).
           final cloudEvent = EventModel.fromMap(cleanDoc);
           final synced = cloudEvent.copyWith(isSynced: true);
           await HiveService.events.put(synced.eventId, synced);
@@ -172,6 +188,26 @@ class EventController {
     String? deskripsi,
     List<String>? targetPeserta,
   }) async {
+    // RBAC: Tentukan scope izin berdasarkan apakah data adalah sub-event atau main event.
+    final isSubEvent = parentEventId != null && parentEventId.isNotEmpty;
+    // RBAC: Tolak CREATE jika role tidak punya izin pada scope event terkait.
+    if (isSubEvent && !EventPermission.canCreateSubEvent(_currentRole)) {
+      errorMessage.value = 'Anda tidak memiliki izin membuat sub-event.';
+      return false;
+    }
+    // RBAC: Main event hanya boleh dibuat oleh Executive.
+    if (!isSubEvent && !EventPermission.canCreateMainEvent(_currentRole)) {
+      errorMessage.value = 'Anda tidak memiliki izin membuat main event.';
+      return false;
+    }
+
+    // RBAC: createdBy harus otomatis berasal dari memberId user login.
+    final actorMemberId = _currentMemberId;
+    if (actorMemberId == null) {
+      errorMessage.value = 'User login tidak valid untuk membuat event.';
+      return false;
+    }
+
     // ── Validasi ──────────────────────────────────────────────────
     final trimmed = nama.trim();
     if (trimmed.isEmpty) {
@@ -203,7 +239,7 @@ class EventController {
         nama: trimmed,
         jenis: jenis,
         tanggal: tanggal,
-        createdBy: createdBy,
+        createdBy: actorMemberId,
         parentEventId: parentEventId,
         deskripsi: deskripsi,
         targetPeserta: targetPeserta,
@@ -235,6 +271,19 @@ class EventController {
   // ══════════════════════════════════════════════════════════════
 
   Future<bool> updateEvent(EventModel event) async {
+    // RBAC: Main event dan sub-event memiliki aturan UPDATE yang berbeda.
+    final isSubEvent = event.parentEventId != null && event.parentEventId!.isNotEmpty;
+    // RBAC: Tolak UPDATE sub-event untuk role tanpa hak tulis sub-event.
+    if (isSubEvent && !EventPermission.canUpdateSubEvent(_currentRole)) {
+      errorMessage.value = 'Anda tidak memiliki izin mengubah sub-event.';
+      return false;
+    }
+    // RBAC: Tolak UPDATE main event untuk role non-executive.
+    if (!isSubEvent && !EventPermission.canUpdateMainEvent(_currentRole)) {
+      errorMessage.value = 'Anda tidak memiliki izin mengubah main event.';
+      return false;
+    }
+
     final trimmed = event.nama.trim();
     if (trimmed.isEmpty) {
       errorMessage.value = 'Nama event wajib diisi.';
@@ -264,8 +313,7 @@ class EventController {
       _allEvents[index] = saved;
       _applyFilters();
 
-      debugPrint(
-          '[EventCtrl] update: saved to Hive — id=${saved.eventId}');
+      debugPrint('[EventCtrl] update: saved to Hive — id=${saved.eventId}');
 
       // Sync ke MongoDB di background
       unawaited(_upsertEventToCloudInBackground(saved));
@@ -285,6 +333,29 @@ class EventController {
   // ══════════════════════════════════════════════════════════════
 
   Future<bool> deleteEvent(String eventId) async {
+    // RBAC: Validasi target delete agar izin dinilai dari tipe event aktual.
+    final target = _allEvents.cast<EventModel?>().firstWhere(
+      (e) => e?.eventId == eventId,
+      orElse: () => null,
+    );
+    if (target == null) {
+      errorMessage.value = 'Event tidak ditemukan.';
+      return false;
+    }
+
+    // RBAC: Main event dan sub-event memiliki aturan DELETE yang berbeda.
+    final isSubEvent = target.parentEventId != null && target.parentEventId!.isNotEmpty;
+    // RBAC: Tolak DELETE sub-event jika role tidak memiliki izin.
+    if (isSubEvent && !EventPermission.canDeleteSubEvent(_currentRole)) {
+      errorMessage.value = 'Anda tidak memiliki izin menghapus sub-event.';
+      return false;
+    }
+    // RBAC: Tolak DELETE main event jika role bukan executive.
+    if (!isSubEvent && !EventPermission.canDeleteMainEvent(_currentRole)) {
+      errorMessage.value = 'Anda tidak memiliki izin menghapus main event.';
+      return false;
+    }
+
     isLoading.value = true;
     errorMessage.value = null;
 
@@ -301,12 +372,14 @@ class EventController {
       }
 
       // Update cache & UI
-      _allEvents
-          .removeWhere((e) => e.eventId == eventId || e.parentEventId == eventId);
+      _allEvents.removeWhere(
+        (e) => e.eventId == eventId || e.parentEventId == eventId,
+      );
       _applyFilters();
 
       debugPrint(
-          '[EventCtrl] delete: ${toDelete.length} event dihapus dari Hive.');
+        '[EventCtrl] delete: ${toDelete.length} event dihapus dari Hive.',
+      );
 
       // Hapus dari MongoDB di background
       for (final id in toDelete) {
@@ -334,7 +407,8 @@ class EventController {
     try {
       if (!await _isOnline()) {
         debugPrint(
-            '[EventCtrl] cloud upsert: offline, ${event.eventId} tetap pending.');
+          '[EventCtrl] cloud upsert: offline, ${event.eventId} tetap pending.',
+        );
         return;
       }
 
@@ -342,12 +416,14 @@ class EventController {
         final connected = await MongoService.instance.ensureConnected();
         if (!connected) {
           debugPrint(
-              '[EventCtrl] cloud upsert: MongoDB tidak terhubung, skip.');
+            '[EventCtrl] cloud upsert: MongoDB tidak terhubung, skip.',
+          );
           return;
         }
       }
 
-      final payload = event.toMap()..remove('isSynced'); // jangan simpan flag lokal ke cloud
+      final payload = event.toMap()
+        ..remove('isSynced'); // jangan simpan flag lokal ke cloud
 
       // Cek apakah dokumen sudah ada
       final existing = await MongoService.instance.findOne(
@@ -362,7 +438,8 @@ class EventController {
           document: payload,
         );
         debugPrint(
-            '[EventCtrl] cloud upsert: ✅ INSERT ${event.eventId} ke MongoDB');
+          '[EventCtrl] cloud upsert: ✅ INSERT ${event.eventId} ke MongoDB',
+        );
       } else {
         // Update yang sudah ada
         await MongoService.instance.updateOne(
@@ -371,7 +448,8 @@ class EventController {
           updateFields: payload,
         );
         debugPrint(
-            '[EventCtrl] cloud upsert: ✅ UPDATE ${event.eventId} di MongoDB');
+          '[EventCtrl] cloud upsert: ✅ UPDATE ${event.eventId} di MongoDB',
+        );
       }
 
       // Tandai synced di Hive
@@ -387,7 +465,8 @@ class EventController {
       if (MongoService.isDuplicateKeyError(e)) {
         // Duplicate key — data sudah ada di cloud, tandai synced
         debugPrint(
-            '[EventCtrl] cloud upsert: duplicate ${event.eventId} — ditandai synced.');
+          '[EventCtrl] cloud upsert: duplicate ${event.eventId} — ditandai synced.',
+        );
         final updatedEvent = event.copyWith(isSynced: true);
         await HiveService.events.put(updatedEvent.eventId, updatedEvent);
       } else {
@@ -439,12 +518,21 @@ class EventController {
     if (selectedDateRangeFilter.value != null) {
       final range = selectedDateRangeFilter.value!;
       filtered = filtered.where((e) {
-        final eventDate =
-            DateTime(e.tanggal.year, e.tanggal.month, e.tanggal.day);
+        final eventDate = DateTime(
+          e.tanggal.year,
+          e.tanggal.month,
+          e.tanggal.day,
+        );
         final startDate = DateTime(
-            range.start.year, range.start.month, range.start.day);
-        final endDate =
-            DateTime(range.end.year, range.end.month, range.end.day);
+          range.start.year,
+          range.start.month,
+          range.start.day,
+        );
+        final endDate = DateTime(
+          range.end.year,
+          range.end.month,
+          range.end.day,
+        );
         return !eventDate.isBefore(startDate) && !eventDate.isAfter(endDate);
       }).toList();
     }
@@ -452,9 +540,11 @@ class EventController {
     if (searchQuery.value.isNotEmpty) {
       final query = searchQuery.value.toLowerCase();
       filtered = filtered
-          .where((e) =>
-              e.nama.toLowerCase().contains(query) ||
-              e.jenis.toLowerCase().contains(query))
+          .where(
+            (e) =>
+                e.nama.toLowerCase().contains(query) ||
+                e.jenis.toLowerCase().contains(query),
+          )
           .toList();
     }
 
@@ -497,9 +587,7 @@ class EventController {
       events.value.where((e) => e.parentEventId == null).toList();
 
   List<EventModel> getSubEvents(String parentId) =>
-      events.value
-          .where((e) => e.parentEventId == parentId)
-          .toList()
+      events.value.where((e) => e.parentEventId == parentId).toList()
         ..sort((a, b) => a.tanggal.compareTo(b.tanggal));
 
   // ══════════════════════════════════════════════════════════════

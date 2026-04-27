@@ -24,6 +24,7 @@ class AttendanceRecapSharedView extends StatefulWidget {
   State<AttendanceRecapSharedView> createState() =>
       _AttendanceRecapSharedViewState();
 }
+
 class _AttendanceRecapSharedViewState extends State<AttendanceRecapSharedView> {
   bool _isLoading = true;
   List<EventModel> _events = const [];
@@ -35,11 +36,12 @@ class _AttendanceRecapSharedViewState extends State<AttendanceRecapSharedView> {
     super.initState();
     _refresh();
   }
+
   Future<void> _refresh() async {
     setState(() {
       _isLoading = true;
     });
-    
+
     // Tarik data terbaru dari MongoDB Cloud
     await EventController.instance.loadEvents(force: true);
 
@@ -65,12 +67,14 @@ class _AttendanceRecapSharedViewState extends State<AttendanceRecapSharedView> {
       _isLoading = false;
     });
   }
+
   List<AttendanceRecord> get _filteredRecords {
     if (_selectedEventId == null) return const [];
     return _records
         .where((r) => r.eventId == _selectedEventId)
         .toList(growable: false);
   }
+
   String _eventLabel(String eventId) {
     final event = _events.where((e) => e.eventId == eventId).toList();
     if (event.isEmpty) return eventId;
@@ -82,6 +86,7 @@ class _AttendanceRecapSharedViewState extends State<AttendanceRecapSharedView> {
     final parentName = parent.isEmpty ? 'Unknown' : parent.first.nama;
     return 'Sub-Event - $parentName / ${e.nama}';
   }
+
   void _showMessage(String message, {bool isError = false}) {
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
@@ -102,7 +107,7 @@ class _AttendanceRecapSharedViewState extends State<AttendanceRecapSharedView> {
             return AlertDialog(
               title: const Text('Edit Status Kehadiran'),
               content: DropdownButtonFormField<String>(
-                value: selected,
+                initialValue: selected,
                 decoration: const InputDecoration(
                   labelText: 'Status',
                   border: OutlineInputBorder(),
@@ -134,7 +139,8 @@ class _AttendanceRecapSharedViewState extends State<AttendanceRecapSharedView> {
       },
     );
     if (confirmed != true) return;
-    final managerId = AuthController.instance.currentUser.value?.memberId ??
+    final managerId =
+        AuthController.instance.currentUser.value?.memberId ??
         AuthController.instance.currentUser.value?.nim ??
         'system';
     final ok = await AttendanceController.instance.overrideAttendanceStatus(
@@ -151,6 +157,7 @@ class _AttendanceRecapSharedViewState extends State<AttendanceRecapSharedView> {
     if (!mounted) return;
     _showMessage('Status kehadiran berhasil diperbarui.');
   }
+
   Future<void> _deleteRecord(AttendanceRecord record) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -228,8 +235,9 @@ class _AttendanceRecapSharedViewState extends State<AttendanceRecapSharedView> {
                         showEventColumn: true,
                         showActionColumn: widget.policy.hasActionColumn,
                         enableFilters: true,
-                        onEdit:
-                            widget.policy.canEditStatus ? _editStatus : null,
+                        onEdit: widget.policy.canEditStatus
+                            ? _editStatus
+                            : null,
                         onDelete: widget.policy.canDeleteRecord
                             ? _deleteRecord
                             : null,

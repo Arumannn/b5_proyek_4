@@ -65,7 +65,9 @@ class MongoService {
 
     if (_uri.isEmpty || _uri.contains('<')) {
       debugPrint('❌ MongoService: MONGO_URI di .env belum diisi dengan benar!');
-      debugPrint('   Pastikan format: mongodb+srv://user:password@cluster.xxx.mongodb.net/');
+      debugPrint(
+        '   Pastikan format: mongodb+srv://user:password@cluster.xxx.mongodb.net/',
+      );
       return false;
     }
 
@@ -96,8 +98,12 @@ class MongoService {
       debugPrint('❌ MongoService: Gagal terhubung ke Atlas!');
       debugPrint('   Error: $e');
       debugPrint('   Tips troubleshooting:');
-      debugPrint('   1. Cek MONGO_URI di .env — pastikan username & password benar');
-      debugPrint('   2. Pastikan IP 0.0.0.0/0 sudah di-allow di Atlas Network Access');
+      debugPrint(
+        '   1. Cek MONGO_URI di .env — pastikan username & password benar',
+      );
+      debugPrint(
+        '   2. Pastikan IP 0.0.0.0/0 sudah di-allow di Atlas Network Access',
+      );
       debugPrint('   3. Pastikan cluster aktif (bukan paused)');
       return false;
     }
@@ -217,11 +223,8 @@ class MongoService {
       modifier = modifier.set(entry.key, entry.value);
     }
 
-    final result = await collection(collectionName).updateOne(
-      filter,
-      modifier,
-    );
-    return result.nModified ?? 0;
+    final result = await collection(collectionName).updateOne(filter, modifier);
+    return result.nModified;
   }
 
   // ─── DELETE ONE ─────────────────────────────────────────────────
@@ -231,8 +234,7 @@ class MongoService {
     required Map<String, dynamic> filter,
   }) async {
     await ensureConnected();
-    final result =
-        await collection(collectionName).deleteOne(filter);
+    final result = await collection(collectionName).deleteOne(filter);
     return result.nRemoved;
   }
 

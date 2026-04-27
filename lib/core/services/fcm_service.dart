@@ -6,7 +6,7 @@ import 'package:flutter/foundation.dart';
 ///   init(): Firebase.initializeApp() + minta permission notifikasi
 ///   getFcmToken(): ambil token perangkat → simpan ke Hive & MongoDB
 ///   setupMessageHandlers(): foreground, background, terminated state
-///   sendNotification(): Admin → Member saat izin divalidasi
+///   sendNotification(): Executive → Member saat izin divalidasi
 class FcmService {
   static final FcmService instance = FcmService._internal();
   FcmService._internal();

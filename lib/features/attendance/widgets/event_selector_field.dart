@@ -6,7 +6,7 @@ class EventSelectorField extends StatelessWidget {
   final List<EventModel> events;
   final String Function(String eventId) labelBuilder;
   final ValueChanged<String?> onChanged;
-  
+
   const EventSelectorField({
     super.key,
     required this.selectedEventId,
@@ -18,7 +18,7 @@ class EventSelectorField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DropdownButtonFormField<String>(
-      value: selectedEventId,
+      initialValue: selectedEventId,
       decoration: const InputDecoration(
         labelText: 'Pilih Event / Sub-Event',
         border: OutlineInputBorder(),

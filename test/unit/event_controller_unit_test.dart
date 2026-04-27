@@ -45,7 +45,7 @@ void main() {
         nama: '  Rapat Divisi  ',
         tanggal: DateTime.now().add(const Duration(days: 2)),
         jenis: 'Rapat',
-        createdBy: 'admin-1',
+        createdBy: 'Executive-1',
       );
 
       expect(ok, isTrue);
@@ -72,7 +72,7 @@ void main() {
         nama: 'Parent',
         jenis: 'Kegiatan',
         tanggal: DateTime.now().add(const Duration(days: 1)),
-        createdBy: 'admin',
+        createdBy: 'Executive',
       );
       await HiveService.events.put(parent.eventId, parent);
       await controller.loadEvents(force: true);
@@ -95,7 +95,7 @@ void main() {
         nama: 'Nama Lama',
         jenis: 'Rapat',
         tanggal: DateTime.now().add(const Duration(days: 2)),
-        createdBy: 'admin',
+        createdBy: 'Executive',
         isSynced: true,
       );
       await HiveService.events.put(existing.eventId, existing);
@@ -118,14 +118,14 @@ void main() {
         nama: 'Root',
         jenis: 'Rapat',
         tanggal: DateTime.now().add(const Duration(days: 1)),
-        createdBy: 'admin',
+        createdBy: 'Executive',
       );
       final child = EventModel(
         eventId: 'child-1',
         nama: 'Child',
         jenis: 'Acara',
         tanggal: DateTime.now().add(const Duration(days: 2)),
-        createdBy: 'admin',
+        createdBy: 'Executive',
         parentEventId: 'root-1',
       );
       await HiveService.events.put(root.eventId, root);
@@ -149,21 +149,21 @@ void main() {
           nama: 'Rapat Core',
           jenis: 'Rapat',
           tanggal: DateTime(2026, 4, 24),
-          createdBy: 'admin',
+          createdBy: 'Executive',
         ),
         EventModel(
           eventId: 'e2',
           nama: 'Acara Besar',
           jenis: 'Acara',
           tanggal: DateTime(2026, 4, 25),
-          createdBy: 'admin',
+          createdBy: 'Executive',
         ),
         EventModel(
           eventId: 'e3',
           nama: 'Kegiatan Divisi',
           jenis: 'Kegiatan',
           tanggal: DateTime(2026, 4, 26),
-          createdBy: 'admin',
+          createdBy: 'Executive',
         ),
       ];
 

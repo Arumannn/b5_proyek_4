@@ -20,8 +20,8 @@ import '../../core/services/fcm_service.dart';
 ///
 /// Fitur utama:
 /// - Login offline-first (Hive -> fallback cloud)
-/// - Seeding admin default saat first run
-/// - CRUD user khusus admin
+/// - Seeding Executive default saat first run
+/// - CRUD user khusus Executive
 /// - State reactive dengan ValueNotifier
 class AuthController {
   static final AuthController instance = AuthController._internal();
@@ -54,6 +54,7 @@ class AuthController {
   final ValueNotifier<String?> errorMessage = ValueNotifier(null);
 
   Future<void> initializeAuth() async {
+    await _normalizeStoredRoles();
     await seedDefaultAccount();
     unawaited(_syncPendingUserChanges());
   }
@@ -77,7 +78,8 @@ class AuthController {
         final needsCreate = existing == null;
         final needsRepair =
             existing != null &&
-            (_normalizeRole((existing['role'] ?? '').toString()) != role ||
+            (_normalizeRole((existing['role'] ?? '').toString()) !=
+                    _normalizeRole(role) ||
                 !_verifyPassword(
                   password,
                   (existing['password'] ?? '').toString(),
@@ -94,7 +96,7 @@ class AuthController {
           'nim': normalizedNim,
           'nama': nama,
           'divisi': divisi,
-          'role': role,
+          'role': _normalizeRole(role),
           'password': hashedDefaultPassword,
           'qrCodeValue': QrService.generateQrData(normalizedNim),
           'memberId': normalizedNim,
@@ -105,8 +107,9 @@ class AuthController {
 
         await HiveService.members.put(normalizedNim, _memberFromMap(merged));
         _enqueuePendingUpsert(normalizedNim);
-        unawaited(
-          _syncUpsertUserInBackground(nim: normalizedNim, userDoc: merged),
+        await _syncUpsertUserInBackground(
+          nim: normalizedNim,
+          userDoc: merged,
         );
 
         if (needsCreate) {
@@ -121,11 +124,11 @@ class AuthController {
       }
 
       await ensureDefaultAccount(
-        nim: AppConstants.defaultAdminNim,
-        nama: AppConstants.defaultAdminName,
-        divisi: AppConstants.defaultAdminDivision,
-        role: AppConstants.roleAdmin,
-        password: AppConstants.defaultAdminPassword,
+        nim: AppConstants.defaultExecutiveNim,
+        nama: AppConstants.defaultExecutiveName,
+        divisi: AppConstants.defaultExecutiveDivision,
+        role: AppConstants.roleExecutive,
+        password: AppConstants.defaultExecutivePassword,
       );
 
       await ensureDefaultAccount(
@@ -153,7 +156,7 @@ class AuthController {
       );
 
       debugPrint(
-        '[Auth][seed] default accounts ensured/repaired (admin/member/organizer/manager)',
+        '[Auth][seed] default accounts ensured/repaired (Executive/member/organizer/manager)',
       );
     } catch (e, st) {
       debugPrint('[Auth][seed] error: $e');
@@ -161,7 +164,7 @@ class AuthController {
     }
   }
 
-  Future<bool> createUserByAdmin({
+  Future<bool> createUserByExecutive({
     required String nama,
     required String nim,
     required String divisi,
@@ -172,8 +175,8 @@ class AuthController {
     errorMessage.value = null;
 
     try {
-      if (!_isCurrentUserAdmin()) {
-        errorMessage.value = 'Hanya admin yang dapat membuat akun.';
+      if (!_isCurrentUserExecutive()) {
+        errorMessage.value = 'Hanya Executive yang dapat membuat akun.';
         return false;
       }
 
@@ -215,9 +218,7 @@ class AuthController {
       await HiveService.members.put(normalizedNim, _memberFromMap(localDoc));
       debugPrint('[Auth][createUser] local saved nim=$normalizedNim');
       _enqueuePendingUpsert(normalizedNim);
-      unawaited(
-        _syncUpsertUserInBackground(nim: normalizedNim, userDoc: localDoc),
-      );
+      await _syncUpsertUserInBackground(nim: normalizedNim, userDoc: localDoc);
       return true;
     } catch (e, st) {
       debugPrint('[Auth][createUser] error: $e');
@@ -242,7 +243,7 @@ class AuthController {
     return users;
   }
 
-  Future<bool> updateUserByAdmin({
+  Future<bool> updateUserByExecutive({
     required String nim,
     String? nama,
     String? divisi,
@@ -253,8 +254,8 @@ class AuthController {
     errorMessage.value = null;
 
     try {
-      if (!_isCurrentUserAdmin()) {
-        errorMessage.value = 'Hanya admin yang dapat mengubah akun.';
+      if (!_isCurrentUserExecutive()) {
+        errorMessage.value = 'Hanya Executive yang dapat mengubah akun.';
         return false;
       }
 
@@ -301,11 +302,9 @@ class AuthController {
         currentUser.value = _memberFromMap(updatedDoc);
       }
 
-      unawaited(
-        _syncUpsertUserInBackground(
-          nim: updatedStorageKey,
-          userDoc: updatedDoc,
-        ),
+      await _syncUpsertUserInBackground(
+        nim: updatedStorageKey,
+        userDoc: updatedDoc,
       );
       return true;
     } catch (e, st) {
@@ -318,13 +317,13 @@ class AuthController {
     }
   }
 
-  Future<bool> deleteUserByAdmin(String nim) async {
+  Future<bool> deleteUserByExecutive(String nim) async {
     isLoading.value = true;
     errorMessage.value = null;
 
     try {
-      if (!_isCurrentUserAdmin()) {
-        errorMessage.value = 'Hanya admin yang dapat menghapus akun.';
+      if (!_isCurrentUserExecutive()) {
+        errorMessage.value = 'Hanya Executive yang dapat menghapus akun.';
         return false;
       }
 
@@ -502,6 +501,64 @@ class AuthController {
 
     await _syncPendingUserUpserts();
     await _syncPendingUserDeletes();
+  }
+
+  Future<void> _normalizeStoredRoles() async {
+    var localChanged = false;
+
+    for (final entry in HiveService.members.toMap().entries) {
+      final doc = _toMap(entry.value);
+      if (doc == null) continue;
+
+      final normalizedRole = _normalizeRole((doc['role'] ?? '').toString());
+      if (normalizedRole != doc['role']) {
+        doc['role'] = normalizedRole;
+        doc['isSynced'] = false;
+        doc['updatedAt'] = DateTime.now().toIso8601String();
+
+        final storageKey = (doc['nim'] ?? entry.key).toString().trim();
+        if (storageKey.isEmpty) continue;
+        await HiveService.members.put(storageKey, _memberFromMap(doc));
+        _enqueuePendingUpsert(storageKey);
+        localChanged = true;
+      }
+    }
+
+    if (localChanged) {
+      debugPrint('[Auth][normalizeRole] local roles normalized in Hive.');
+    }
+
+    if (!await _isOnline()) {
+      return;
+    }
+
+    try {
+      final users = await MongoService.instance.findMany(
+        collectionName: AppConstants.usersCollection,
+      );
+      var changedCount = 0;
+      for (final user in users) {
+        final nim = (user['nim'] ?? '').toString().trim();
+        if (nim.isEmpty) continue;
+        final normalizedRole = _normalizeRole((user['role'] ?? '').toString());
+        if (normalizedRole == (user['role'] ?? '').toString()) {
+          continue;
+        }
+        await MongoService.instance.updateOne(
+          collectionName: AppConstants.usersCollection,
+          filter: {'nim': nim},
+          updateFields: {'role': normalizedRole},
+        );
+        changedCount++;
+      }
+      if (changedCount > 0) {
+        debugPrint(
+          '[Auth][normalizeRole] cloud roles normalized: $changedCount user(s).',
+        );
+      }
+    } catch (e) {
+      debugPrint('[Auth][normalizeRole] cloud normalization skipped: $e');
+    }
   }
 
   Future<void> _syncPendingUserUpserts() async {
@@ -793,12 +850,13 @@ class AuthController {
   }
 
   Map<String, dynamic> _toCloudPayload(Map<String, dynamic> doc) {
+    final nim = (doc['nim'] ?? '').toString().trim();
     return <String, dynamic>{
-      'memberId': doc['memberId'] ?? doc['nim'],
+      'memberId': nim,
       'nama': doc['nama'],
-      'nim': doc['nim'],
+      'nim': nim,
       'divisi': doc['divisi'],
-      'role': doc['role'],
+      'role': _normalizeRole((doc['role'] ?? '').toString()),
       'qrCodeValue': doc['qrCodeValue'] ?? doc['qrData'],
       'createdAt': doc['createdAt'],
       'updatedAt': doc['updatedAt'],
@@ -831,7 +889,7 @@ class AuthController {
   MemberModel _memberFromMap(Map<String, dynamic> doc) {
     final nim = (doc['nim'] ?? '').toString().trim();
     return MemberModel(
-      memberId: (doc['memberId'] ?? nim).toString().trim(),
+      memberId: nim,
       nim: nim,
       nama: (doc['nama'] ?? '').toString(),
       divisi: (doc['divisi'] ?? '').toString(),
@@ -848,7 +906,7 @@ class AuthController {
     if (raw is Map) return raw.map((k, v) => MapEntry(k.toString(), v));
     if (raw is MemberModel) {
       return <String, dynamic>{
-        'memberId': raw.memberId,
+        'memberId': raw.nim,
         'nama': raw.nama,
         'nim': raw.nim,
         'divisi': raw.divisi,
@@ -910,9 +968,9 @@ class AuthController {
     return storedPassword == inputPassword;
   }
 
-  bool _isCurrentUserAdmin() {
+  bool _isCurrentUserExecutive() {
     return _normalizeRole(currentUser.value?.role ?? '') ==
-        AppConstants.roleAdmin;
+        AppConstants.roleExecutive;
   }
 
   bool _isUserDocument(Map<String, dynamic> doc) {
@@ -921,10 +979,16 @@ class AuthController {
 
   String _normalizeRole(String role) {
     final normalized = role.trim().toLowerCase();
-    if (AppConstants.allowedRoles.contains(normalized)) {
+    if (normalized.isEmpty) {
+      return AppConstants.roleMember;
+    }
+    final allowed = AppConstants.allowedRoles
+        .map((item) => item.trim().toLowerCase())
+        .toSet();
+    if (allowed.contains(normalized)) {
       return normalized;
     }
-    return AppConstants.roleMember;
+    return AppConstants.roleExecutive;
   }
 
   Future<bool> _isOnline() async {

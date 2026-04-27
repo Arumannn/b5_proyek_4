@@ -36,6 +36,7 @@ class AttendanceRecordsTable extends StatefulWidget {
   @override
   State<AttendanceRecordsTable> createState() => _AttendanceRecordsTableState();
 }
+
 class _AttendanceRecordsTableState extends State<AttendanceRecordsTable> {
   String _selectedStatus = 'Semua';
   DateTime? _fromDate;
@@ -48,9 +49,11 @@ class _AttendanceRecordsTableState extends State<AttendanceRecordsTable> {
     final min = value.minute.toString().padLeft(2, '0');
     return '$dd/$mm/$yyyy $hh:$min';
   }
+
   DateTime _dateOnly(DateTime value) {
     return DateTime(value.year, value.month, value.day);
   }
+
   bool _isDateInRange(DateTime value) {
     final date = _dateOnly(value);
     if (_fromDate != null && date.isBefore(_dateOnly(_fromDate!))) {
@@ -61,14 +64,18 @@ class _AttendanceRecordsTableState extends State<AttendanceRecordsTable> {
     }
     return true;
   }
+
   List<AttendanceRecord> _filteredRecords() {
-    return widget.records.where((record) {
-      final passStatus =
-          _selectedStatus == 'Semua' || record.status == _selectedStatus;
-      final passDate = _isDateInRange(record.timestamp);
-      return passStatus && passDate;
-    }).toList(growable: false);
+    return widget.records
+        .where((record) {
+          final passStatus =
+              _selectedStatus == 'Semua' || record.status == _selectedStatus;
+          final passDate = _isDateInRange(record.timestamp);
+          return passStatus && passDate;
+        })
+        .toList(growable: false);
   }
+
   Future<void> _pickFromDate() async {
     final now = DateTime.now();
     final initial = _fromDate ?? _toDate ?? now;
@@ -86,6 +93,7 @@ class _AttendanceRecordsTableState extends State<AttendanceRecordsTable> {
       }
     });
   }
+
   Future<void> _pickToDate() async {
     final now = DateTime.now();
     final initial = _toDate ?? _fromDate ?? now;
@@ -103,6 +111,7 @@ class _AttendanceRecordsTableState extends State<AttendanceRecordsTable> {
       }
     });
   }
+
   void _clearFilters() {
     setState(() {
       _selectedStatus = 'Semua';
@@ -110,6 +119,7 @@ class _AttendanceRecordsTableState extends State<AttendanceRecordsTable> {
       _toDate = null;
     });
   }
+
   Widget _buildFilterBar() {
     if (!widget.enableFilters) return const SizedBox.shrink();
     final statusItems = ['Semua', ...widget.statuses];
@@ -123,7 +133,7 @@ class _AttendanceRecordsTableState extends State<AttendanceRecordsTable> {
           SizedBox(
             width: 180,
             child: DropdownButtonFormField<String>(
-              value: _selectedStatus,
+              initialValue: _selectedStatus,
               decoration: const InputDecoration(
                 labelText: 'Status',
                 border: OutlineInputBorder(),
@@ -149,14 +159,18 @@ class _AttendanceRecordsTableState extends State<AttendanceRecordsTable> {
             onPressed: _pickFromDate,
             icon: const Icon(Icons.date_range_outlined),
             label: Text(
-              _fromDate == null ? 'Dari Tanggal' : _formatDate(_fromDate!).split(' ').first,
+              _fromDate == null
+                  ? 'Dari Tanggal'
+                  : _formatDate(_fromDate!).split(' ').first,
             ),
           ),
           OutlinedButton.icon(
             onPressed: _pickToDate,
             icon: const Icon(Icons.event_available_outlined),
             label: Text(
-              _toDate == null ? 'Sampai Tanggal' : _formatDate(_toDate!).split(' ').first,
+              _toDate == null
+                  ? 'Sampai Tanggal'
+                  : _formatDate(_toDate!).split(' ').first,
             ),
           ),
           TextButton(
@@ -167,13 +181,15 @@ class _AttendanceRecordsTableState extends State<AttendanceRecordsTable> {
       ),
     );
   }
+
   @override
   Widget build(BuildContext context) {
     final visibleRecords = _filteredRecords();
     final columns = <DataColumn>[
       const DataColumn(label: Text('NIM')),
       const DataColumn(label: Text('Nama')),
-      if (widget.showEventColumn) const DataColumn(label: Text('Event/Sub-event')),
+      if (widget.showEventColumn)
+        const DataColumn(label: Text('Event/Sub-event')),
       const DataColumn(label: Text('Status')),
       const DataColumn(label: Text('Timestamp')),
       if (widget.showActionColumn) const DataColumn(label: Text('Action')),
@@ -190,7 +206,10 @@ class _AttendanceRecordsTableState extends State<AttendanceRecordsTable> {
               DataCell(
                 SizedBox(
                   width: 220,
-                  child: Text(widget.eventLabelBuilder?.call(record.eventId) ?? record.eventId),
+                  child: Text(
+                    widget.eventLabelBuilder?.call(record.eventId) ??
+                        record.eventId,
+                  ),
                 ),
               ),
             DataCell(Text(record.status)),
