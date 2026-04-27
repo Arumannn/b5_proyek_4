@@ -43,7 +43,7 @@ class _UserManagementViewState extends State<UserManagementView> {
   String _roleLabel(String role) {
     switch (role.trim().toLowerCase()) {
       case AppConstants.roleAdmin:
-        return 'Admin';
+        return 'Eksekutif';
       case AppConstants.roleManager:
         return 'Manager';
       case AppConstants.roleOrganizer:
@@ -436,7 +436,7 @@ class _UserManagementViewState extends State<UserManagementView> {
               padding: const EdgeInsets.all(16),
               children: [
                 Text(
-                  'Admin dapat mengelola seluruh akun: Admin, Manager, Organizer, dan Member.',
+                  'Eksekutif dapat mengelola seluruh akun: Eksekutif, Manager, Organizer, dan Member.',
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
                 const SizedBox(height: 12),

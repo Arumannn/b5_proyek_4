@@ -42,7 +42,7 @@ class AppConstants {
   static Duration syncRetryDelay = const Duration(seconds: 5);
 
   // ─── Role Definitions ────────────────────────────
-  static const String roleAdmin = 'admin';
+  static const String roleAdmin = 'eksekutif';
   static const String roleManager = 'manager';
   static const String roleOrganizer = 'organizer';
   static const String roleMember = 'member';
@@ -79,7 +79,7 @@ class AppConstants {
   // ─── Default Admin Seeding ───────────────────────
   static const String defaultAdminNim = '38';
   static const String defaultAdminPassword = '123';
-  static const String defaultAdminName = 'Admin Utama';
+  static const String defaultAdminName = 'Eksekutif Utama';
   static const String defaultAdminDivision = 'HEXA';
   static const String adminSeedFlagKey = '__seed_admin_done__';
 
