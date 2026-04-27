@@ -969,8 +969,8 @@ class AuthController {
   }
 
   bool _isCurrentUserExecutive() {
-    return _normalizeRole(currentUser.value?.role ?? '') ==
-        AppConstants.roleExecutive;
+    return _normalizeRole(currentUser.value?.role ?? '').toLowerCase() ==
+      AppConstants.roleExecutive.toLowerCase();
   }
 
   bool _isUserDocument(Map<String, dynamic> doc) {
