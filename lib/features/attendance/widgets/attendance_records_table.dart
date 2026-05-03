@@ -196,8 +196,8 @@ class _AttendanceRecordsTableState extends State<AttendanceRecordsTable> {
     ];
     final rows = visibleRecords
         .map((record) {
-          final member = widget.memberById[record.memberId];
-          final nim = member?.nim ?? record.memberId;
+          final member = widget.memberById[record.nim];
+          final nim = member?.nim ?? record.nim;
           final nama = member?.nama ?? '-';
           final cells = <DataCell>[
             DataCell(Text(nim)),

@@ -5,6 +5,7 @@ import '../../core/services/hive_service.dart';
 import '../../models/attendance_record.dart';
 import '../../models/event_model.dart';
 import '../../models/member_model.dart';
+import '../../widgets/gradient_header.dart';
 import '../../widgets/custom_snackbar.dart';
 import '../auth/auth_controller.dart';
 import 'attendance_controller.dart';
@@ -62,7 +63,7 @@ class _AttendanceRecapViewState extends State<AttendanceRecapView> {
 
     final members = HiveService.members.values.toList(growable: false);
     final memberById = <String, MemberModel>{
-      for (final m in members) m.memberId: m,
+      for (final m in members) m.nim: m,
     };
     final eventById = <String, EventModel>{
       for (final e in events) e.eventId: e,
@@ -270,7 +271,7 @@ class _AttendanceRecapViewState extends State<AttendanceRecapView> {
     }
 
     String selectedStatus = 'Hadir';
-    String selectedMemberId = members.first.memberId;
+    String selectedNim = members.first.nim;
 
     final saved = await showDialog<bool>(
       context: context,
@@ -283,14 +284,14 @@ class _AttendanceRecapViewState extends State<AttendanceRecapView> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   DropdownButtonFormField<String>(
-                    initialValue: selectedMemberId,
+                    initialValue: selectedNim,
                     decoration: const InputDecoration(
                       labelText: 'Pilih Anggota',
                     ),
                     items: members
                         .map(
                           (m) => DropdownMenuItem<String>(
-                            value: m.memberId,
+                            value: m.nim,
                             child: Text('${m.nim} - ${m.nama}'),
                           ),
                         )
@@ -298,7 +299,7 @@ class _AttendanceRecapViewState extends State<AttendanceRecapView> {
                     onChanged: (value) {
                       if (value == null) return;
                       setDialogState(() {
-                        selectedMemberId = value;
+                        selectedNim = value;
                       });
                     },
                   ),
@@ -345,7 +346,7 @@ class _AttendanceRecapViewState extends State<AttendanceRecapView> {
 
     final ok = await AttendanceController.instance.addManualAttendance(
       eventId: eventId,
-      memberId: selectedMemberId,
+      nim: selectedNim,
       status: selectedStatus,
     );
 
@@ -411,8 +412,7 @@ class _AttendanceRecapViewState extends State<AttendanceRecapView> {
 
     if (confirmed != true) return;
 
-    final managerId =
-        AuthController.instance.currentUser.value?.memberId ?? 'manager';
+    final managerId = AuthController.instance.currentUser.value?.nim ?? 'manager';
     final ok = await AttendanceController.instance.overrideAttendanceStatus(
       recordId: record.recordId,
       newStatus: selected,
@@ -477,6 +477,7 @@ class _AttendanceRecapViewState extends State<AttendanceRecapView> {
       children: [
         DropdownButtonFormField<String>(
           initialValue: _selectedReadOnlyEventId,
+          isExpanded: true,
           decoration: const InputDecoration(
             labelText: 'Pilih Event / Sub-Event',
             border: OutlineInputBorder(),
@@ -485,7 +486,11 @@ class _AttendanceRecapViewState extends State<AttendanceRecapView> {
               .map(
                 (event) => DropdownMenuItem<String>(
                   value: event.eventId,
-                  child: Text(_eventLabel(event.eventId)),
+                  child: Text(
+                    _eventLabel(event.eventId),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               )
               .toList(growable: false),
@@ -517,10 +522,10 @@ class _AttendanceRecapViewState extends State<AttendanceRecapView> {
                       ],
                       rows: _readOnlyRecords
                           .map((r) {
-                            final member = _memberById[r.memberId];
+                            final member = _memberById[r.nim];
                             return DataRow(
                               cells: [
-                                DataCell(Text(member?.nim ?? r.memberId)),
+                                DataCell(Text(member?.nim ?? r.nim)),
                                 DataCell(Text(member?.nama ?? '-')),
                                 DataCell(Text(r.status)),
                                 DataCell(Text(_formatDate(r.timestamp))),
@@ -674,10 +679,10 @@ class _AttendanceRecapViewState extends State<AttendanceRecapView> {
                       ],
                       rows: _filteredCrudRecords
                           .map((r) {
-                            final member = _memberById[r.memberId];
+                            final member = _memberById[r.nim];
                             return DataRow(
                               cells: [
-                                DataCell(Text(member?.nim ?? r.memberId)),
+                                DataCell(Text(member?.nim ?? r.nim)),
                                 DataCell(Text(member?.nama ?? '-')),
                                 DataCell(
                                   SizedBox(
@@ -722,7 +727,7 @@ class _AttendanceRecapViewState extends State<AttendanceRecapView> {
   Widget build(BuildContext context) {
     if (!_canCrud && !_isReadOnly) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Rekap Kehadiran')),
+        appBar: const GradientHeader(title: 'Rekap Kehadiran'),
         body: const Center(
           child: Text('Role ini tidak memiliki akses ke rekap kehadiran.'),
         ),
@@ -730,15 +735,14 @@ class _AttendanceRecapViewState extends State<AttendanceRecapView> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          _canCrud ? 'Rekap Kehadiran (CRUD)' : 'Rekap Kehadiran (Read-Only)',
-        ),
+      appBar: GradientHeader(
+        title: 'Rekap Kehadiran',
+        subtitle: _canCrud ? 'Kelola data absensi per event' : 'Mode read-only untuk organizer',
         actions: [
           IconButton(
             tooltip: 'Refresh',
             onPressed: _refresh,
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh, color: Colors.white),
           ),
         ],
       ),

@@ -307,33 +307,68 @@ class PRASASTIApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF1B3A6B),
+          seedColor: const Color(0xFF2563EB), // Blue 600 from Figma
           brightness: Brightness.light,
         ),
         useMaterial3: true,
         fontFamily: 'Roboto',
+        scaffoldBackgroundColor: const Color(0xFFF9FAFB), // Gray 50
         appBarTheme: const AppBarTheme(
           centerTitle: true,
           elevation: 0,
-          backgroundColor: Color(0xFF1B3A6B),
+          backgroundColor: Color(0xFF2563EB), // Blue 600
           foregroundColor: Colors.white,
+          toolbarHeight: 56,
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            minimumSize: const Size(double.infinity, 48),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+          style: ButtonStyle(
+            minimumSize: MaterialStateProperty.all(const Size(double.infinity, 48)),
+            backgroundColor: MaterialStateProperty.all(const Color(0xFF2563EB)),
+            foregroundColor: MaterialStateProperty.all(Colors.white),
+            shape: MaterialStateProperty.all<RoundedRectangleBorder>(
+              RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
+            textStyle: MaterialStateProperty.all(const TextStyle(fontWeight: FontWeight.w500)),
           ),
         ),
         inputDecorationTheme: InputDecorationTheme(
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
           ),
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 16,
             vertical: 14,
           ),
+          filled: true,
+          fillColor: Colors.white,
+        ),
+        bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+          backgroundColor: Colors.white,
+          selectedItemColor: Color(0xFF2563EB),
+          unselectedItemColor: Color(0xFF9CA3AF),
+          elevation: 8,
+          type: BottomNavigationBarType.fixed,
+          selectedLabelStyle: TextStyle(fontSize: 12),
+          unselectedLabelStyle: TextStyle(fontSize: 12),
+          showUnselectedLabels: true,
+        ),
+        cardTheme: CardThemeData(
+          color: Colors.white,
+          elevation: 2,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 0),
+        ),
+        // Basic text size tokens mapping
+        textTheme: const TextTheme(
+          titleLarge: TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
+          titleMedium: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+          titleSmall: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+          bodyLarge: TextStyle(fontSize: 16),
+          bodyMedium: TextStyle(fontSize: 14),
+          bodySmall: TextStyle(fontSize: 12),
         ),
       ),
       home: const LoginView(),

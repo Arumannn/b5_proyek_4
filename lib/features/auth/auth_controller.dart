@@ -889,7 +889,6 @@ class AuthController {
   MemberModel _memberFromMap(Map<String, dynamic> doc) {
     final nim = (doc['nim'] ?? '').toString().trim();
     return MemberModel(
-      memberId: nim,
       nim: nim,
       nama: (doc['nama'] ?? '').toString(),
       divisi: (doc['divisi'] ?? '').toString(),

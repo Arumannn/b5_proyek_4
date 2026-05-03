@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../widgets/gradient_header.dart';
+
 import '../../core/constants/app_constants.dart';
 import '../../models/member_model.dart';
 import '../../widgets/custom_snackbar.dart';
@@ -19,6 +21,15 @@ class _UserManagementViewState extends State<UserManagementView> {
 
   bool _isPageLoading = true;
   List<MemberModel> _users = const [];
+
+    String get _currentRole =>
+      (_authController.currentUser.value?.role ?? '').trim().toLowerCase();
+
+    bool get _hasAccess =>
+      _currentRole == AppConstants.roleExecutive.toLowerCase() ||
+      _currentRole == 'executive' ||
+      _currentRole == 'eksekutif' ||
+      _currentRole == 'admin';
 
   @override
   void initState() {
@@ -208,17 +219,36 @@ class _UserManagementViewState extends State<UserManagementView> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_hasAccess) {
+      return Scaffold(
+        appBar: const GradientHeader(
+          title: 'Manajemen Anggota',
+          subtitle: 'Akses terbatas',
+        ),
+        body: const Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Text(
+              'Halaman ini hanya dapat diakses oleh Executive.',
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      );
+    }
+
     return NetworkStatusBanner(
       child: LoadingOverlay(
         isLoading: _isPageLoading,
         message: 'Memproses data anggota...',
         child: Scaffold(
-          appBar: AppBar(
-            title: const Text('Manajemen Anggota'),
+          appBar: GradientHeader(
+            title: 'Manajemen Anggota',
+            subtitle: 'Kelola akun Executive, Manager, Organizer, dan Member',
             actions: [
               IconButton(
                 tooltip: 'Refresh',
-                icon: const Icon(Icons.refresh),
+                icon: const Icon(Icons.refresh, color: Colors.white),
                 onPressed: _refreshUsers,
               ),
             ],

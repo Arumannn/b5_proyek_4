@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../core/constants/app_constants.dart';
+import '../../widgets/gradient_header.dart';
+
 import '../../features/auth/auth_controller.dart';
 import '../../models/member_model.dart';
 
@@ -14,6 +17,16 @@ class ManagerUserReadonlyView extends StatefulWidget {
 class _ManagerUserReadonlyViewState extends State<ManagerUserReadonlyView> {
   bool _isLoading = true;
   List<MemberModel> _users = const [];
+
+  String get _currentRole =>
+      (AuthController.instance.currentUser.value?.role ?? '').trim().toLowerCase();
+
+  bool get _hasAccess =>
+      _currentRole == AppConstants.roleManager.toLowerCase() ||
+      _currentRole == AppConstants.roleExecutive.toLowerCase() ||
+      _currentRole == 'executive' ||
+      _currentRole == 'eksekutif' ||
+      _currentRole == 'admin';
 
   @override
   void initState() {
@@ -47,14 +60,33 @@ class _ManagerUserReadonlyViewState extends State<ManagerUserReadonlyView> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_hasAccess) {
+      return Scaffold(
+        appBar: const GradientHeader(
+          title: 'Data Akun Pengguna',
+          subtitle: 'Akses terbatas',
+        ),
+        body: const Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Text(
+              'Halaman ini hanya dapat diakses oleh Manager atau Executive.',
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Data Akun Pengguna (Read-Only)'),
+      appBar: GradientHeader(
+        title: 'Data Akun Pengguna',
+        subtitle: 'Mode read-only untuk manager',
         actions: [
           IconButton(
             tooltip: 'Refresh',
             onPressed: _loadUsers,
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh, color: Colors.white),
           ),
         ],
       ),

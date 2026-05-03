@@ -3,6 +3,7 @@ import '../../core/constants/app_constants.dart';
 import '../../models/event_model.dart';
 import '../attendance/scan_screen.dart';
 import '../auth/auth_controller.dart';
+import '../../widgets/gradient_header.dart';
 import '../../widgets/loading_overlay.dart';
 import '../../widgets/custom_snackbar.dart';
 import '../../widgets/empty_state_widget.dart';
@@ -700,19 +701,20 @@ class _EventListViewState extends State<EventListView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Daftar Event'),
+      appBar: GradientHeader(
+        title: 'Daftar Event',
+        subtitle: 'Kelola main event dan sub-event',
         actions: [
           IconButton(
             tooltip: 'Refresh',
             onPressed: () => _controller.loadEvents(force: true),
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh, color: Colors.white),
           ),
           if (_canCreateMainEvent)
             IconButton(
               tooltip: 'Tambah Event',
               onPressed: _addEvent,
-              icon: const Icon(Icons.add),
+              icon: const Icon(Icons.add, color: Colors.white),
             ),
         ],
       ),

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/constants/app_constants.dart';
 import '../../models/event_model.dart';
 import '../../widgets/custom_snackbar.dart';
+import '../../widgets/gradient_header.dart';
 import '../auth/auth_controller.dart';
 import 'event_controller.dart';
 import 'event_permission.dart';
@@ -180,13 +181,13 @@ class _SubEventViewState extends State<SubEventView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_canManageSubEvent ? 'Sub-Event (CRUD)' : 'Sub-Event (Read-Only)'),
+      appBar: GradientHeader(
+        title: _canManageSubEvent ? 'Sub-Event (CRUD)' : 'Sub-Event (Read-Only)',
         actions: [
           IconButton(
             tooltip: 'Refresh',
             onPressed: _refresh,
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh, color: Colors.white),
           ),
         ],
       ),

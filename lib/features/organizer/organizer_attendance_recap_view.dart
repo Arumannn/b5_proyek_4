@@ -39,7 +39,7 @@ class _OrganizerAttendanceRecapViewState
       ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
     final members = HiveService.members.values.toList(growable: false);
-    final map = <String, MemberModel>{for (final m in members) m.memberId: m};
+    final map = <String, MemberModel>{for (final m in members) m.nim: m};
 
     String? selected = _selectedEventId;
     if (selected == null && events.isNotEmpty) {
@@ -111,8 +111,8 @@ class _OrganizerAttendanceRecapViewState
         ],
         rows: rows
             .map((record) {
-              final member = _memberById[record.memberId];
-              final nim = member?.nim ?? record.memberId;
+              final member = _memberById[record.nim];
+              final nim = member?.nim ?? record.nim;
               final nama = member?.nama ?? '-';
               return DataRow(
                 cells: [
@@ -131,13 +131,14 @@ class _OrganizerAttendanceRecapViewState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Rekap Kehadiran (Read-Only)'),
+      appBar: GradientHeader(
+        title: 'Rekap Kehadiran',
+        subtitle: 'Mode read-only untuk organizer',
         actions: [
           IconButton(
             tooltip: 'Refresh',
             onPressed: _refresh,
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh, color: Colors.white),
           ),
         ],
       ),

@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_constants.dart';
+import '../../core/services/hive_service.dart';
 import '../../models/event_model.dart';
+import '../../models/attendance_record.dart';
 import '../../widgets/custom_snackbar.dart';
+import '../../widgets/gradient_header.dart';
 import '../attendance/scan_screen.dart';
 import '../auth/auth_controller.dart';
 import 'event_controller.dart';
 import 'event_permission.dart';
+import 'event_detail_view.dart';
 
 class EventView extends StatefulWidget {
   const EventView({super.key});
@@ -71,6 +75,42 @@ class _EventViewState extends State<EventView> {
       default:
         return Colors.grey;
     }
+  }
+
+  List<AttendanceRecord> _attendanceForEvent(String eventId) {
+    return HiveService.attendance.values
+        .where((record) => record.eventId == eventId)
+        .toList(growable: false);
+  }
+
+  String _eventStatusLabel(EventModel event) {
+    final now = DateTime.now();
+    final isCompleted = now.isAfter(event.tanggal.add(const Duration(hours: 1)));
+    return isCompleted ? 'Selesai' : 'Berlangsung';
+  }
+
+  Color _eventStatusColor(EventModel event) {
+    final now = DateTime.now();
+    final isCompleted = now.isAfter(event.tanggal.add(const Duration(hours: 1)));
+    return isCompleted ? const Color(0xFF22C55E) : const Color(0xFF2563EB);
+  }
+
+  Color _eventStatusBgColor(EventModel event) {
+    final now = DateTime.now();
+    final isCompleted = now.isAfter(event.tanggal.add(const Duration(hours: 1)));
+    return isCompleted ? const Color(0xFFDCFCE7) : const Color(0xFFDBEAFE);
+  }
+
+  String _eventLocation(EventModel event) {
+    final raw = event.deskripsi?.trim();
+    if (raw != null && raw.isNotEmpty) return raw;
+    return 'Lokasi belum diatur';
+  }
+
+  int _targetCount(EventModel event, int presentCount) {
+    final target = event.targetPeserta.length;
+    if (target > 0) return target;
+    return presentCount > 0 ? presentCount : 1;
   }
 
   Future<void> _showJenisFilter() async {
@@ -516,78 +556,190 @@ class _EventViewState extends State<EventView> {
   Widget _buildEventCard(EventModel event) {
     final subEvents = _controller.getSubEvents(event.eventId);
     final isExpanded = _expandedState[event.eventId] ?? false;
+    final attendance = _attendanceForEvent(event.eventId);
+    final presentCount = attendance.where((r) => r.status.toLowerCase().contains('hadir')).length;
+    final targetCount = _targetCount(event, presentCount);
+    final attendancePercent = targetCount == 0 ? 0.0 : (presentCount / targetCount).clamp(0.0, 1.0);
+    final attendanceText = '$presentCount/$targetCount hadir';
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => EventDetailView(event: event)),
+                      );
+                    },
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          event.nama,
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFF1F2937),
+                              ),
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Container(
+                              width: 28,
+                              height: 28,
+                              alignment: Alignment.center,
+                              child: const Icon(Icons.schedule_outlined, size: 20, color: Color(0xFF9CA3AF)),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                '${_formatDate(event.tanggal)} • ${event.jamMulai != null ? '${event.jamMulai!.hour.toString().padLeft(2, '0')}:${event.jamMulai!.minute.toString().padLeft(2, '0')} WIB' : 'WIB'}',
+                                style: const TextStyle(fontSize: 15, color: Color(0xFF4B5563)),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Container(
+                              width: 28,
+                              height: 28,
+                              alignment: Alignment.center,
+                              child: const Icon(Icons.location_on_outlined, size: 20, color: Color(0xFF9CA3AF)),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _eventLocation(event),
+                                style: const TextStyle(fontSize: 15, color: Color(0xFF4B5563)),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Container(
+                              width: 28,
+                              height: 28,
+                              alignment: Alignment.center,
+                              child: const Icon(Icons.groups_outlined, size: 20, color: Color(0xFF9CA3AF)),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              attendanceText,
+                              style: const TextStyle(fontSize: 15, color: Color(0xFF4B5563)),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: _eventStatusBgColor(event),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
+                      Icon(Icons.check_circle_outline, size: 16, color: _eventStatusColor(event)),
+                      const SizedBox(width: 6),
                       Text(
-                        event.nama,
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(_formatDate(event.tanggal)),
-                      const SizedBox(height: 4),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: _chipColor(event.jenis).withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          event.jenis,
-                          style: TextStyle(
-                            color: _chipColor(event.jenis),
-                            fontWeight: FontWeight.w700,
-                            fontSize: 12,
-                          ),
+                        _eventStatusLabel(event),
+                        style: TextStyle(
+                          color: _eventStatusColor(event),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
                         ),
                       ),
                     ],
                   ),
                 ),
-                if (subEvents.isNotEmpty)
-                  IconButton(
-                    tooltip: isExpanded ? 'Tutup Sub-Event' : 'Lihat Sub-Event',
-                    onPressed: () {
-                      setState(() {
-                        _expandedState[event.eventId] = !isExpanded;
-                      });
-                    },
-                    icon: Icon(
-                      isExpanded ? Icons.expand_less : Icons.expand_more,
-                    ),
-                  ),
               ],
             ),
-            const SizedBox(height: 10),
-            _buildActionButtons(event),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                const Text(
+                  'Kehadiran',
+                  style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(999),
+                    child: LinearProgressIndicator(
+                      minHeight: 10,
+                      value: attendancePercent,
+                      backgroundColor: const Color(0xFFE5E7EB),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        attendancePercent >= 0.9
+                            ? const Color(0xFF22C55E)
+                            : const Color(0xFF3B82F6),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  '${(attendancePercent * 100).round()}%',
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1F2937),
+                  ),
+                ),
+              ],
+            ),
+            if (_hasAnyCrudAccess || subEvents.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              const Divider(height: 1),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  if (subEvents.isNotEmpty)
+                    TextButton.icon(
+                      onPressed: () {
+                        setState(() {
+                          _expandedState[event.eventId] = !isExpanded;
+                        });
+                      },
+                      icon: Icon(isExpanded ? Icons.expand_less : Icons.expand_more),
+                      label: Text(isExpanded ? 'Tutup Sub-Event' : 'Lihat Sub-Event'),
+                    ),
+                  const Spacer(),
+                  if (_canUpdateMainEvent || _canDeleteMainEvent || _canCreateSubEvent)
+                    _buildActionButtons(event),
+                ],
+              ),
+            ],
             if (subEvents.isNotEmpty && isExpanded) ...[
-              const SizedBox(height: 8),
-              const Divider(),
-              const SizedBox(height: 8),
-              Text('Sub-Event', style: Theme.of(context).textTheme.titleSmall),
-              const SizedBox(height: 6),
+              const SizedBox(height: 12),
               ...subEvents.map((sub) {
                 return Container(
                   margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest
-                        .withValues(alpha: 0.4),
-                    borderRadius: BorderRadius.circular(10),
+                    color: const Color(0xFFF9FAFB),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFE5E7EB)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -616,19 +768,19 @@ class _EventViewState extends State<EventView> {
     final title = _hasAnyCrudAccess ? 'Event (Partial CRUD)' : 'Event (Read-Only)'; // RBAC: Manager punya CRUD hanya untuk sub-event.
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(title),
+      appBar: GradientHeader(
+        title: title,
         actions: [
           IconButton(
             tooltip: 'Refresh',
             onPressed: () => _controller.loadEvents(force: true),
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh, color: Colors.white),
           ),
           if (_canCreateMainEvent)
             IconButton(
               tooltip: 'Tambah Event',
               onPressed: () => _addOrEditEvent(),
-              icon: const Icon(Icons.add),
+              icon: const Icon(Icons.add, color: Colors.white),
             ),
         ],
       ),

@@ -80,10 +80,10 @@ class _PermissionFormViewState extends State<PermissionFormView> {
 
 void _submitForm() {
   if (_formKey.currentState!.validate()) {
-    final currentMemberId = AuthController.instance.currentUser.value?.memberId;
+    final currentNim = AuthController.instance.currentUser.value?.nim;
     
     final isAlreadySubmitted = HiveService.permissions.values.any(
-      (p) => p.eventId == _selectedEventId && p.memberId == currentMemberId
+      (p) => p.eventId == _selectedEventId && p.nim == currentNim
     );
 
     if (isAlreadySubmitted) {
@@ -116,10 +116,7 @@ void _submitForm() {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Pengajuan Izin / Sakit'),
-        centerTitle: true,
-      ),
+      appBar: const GradientHeader(title: 'Pengajuan Izin / Sakit', subtitle: 'Form pengajuan anggota'),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Form(

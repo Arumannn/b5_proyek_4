@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../core/constants/app_constants.dart';
+import '../../widgets/gradient_header.dart';
+import '../auth/auth_controller.dart';
+
 class EventParentOption {
   final String id;
   final String name;
@@ -62,6 +66,16 @@ class _EventFormViewState extends State<EventFormView> {
   late Set<String> _selectedDivisi;
 
   final _formKey = GlobalKey<FormState>();
+
+    String get _currentRole =>
+      (AuthController.instance.currentUser.value?.role ?? '').trim().toLowerCase();
+
+    bool get _hasAccess =>
+      _currentRole == AppConstants.roleExecutive.toLowerCase() ||
+      _currentRole == 'executive' ||
+      _currentRole == 'eksekutif' ||
+      _currentRole == 'admin' ||
+      _currentRole == AppConstants.roleManager.toLowerCase();
 
   // Daftar divisi yang tersedia (bisa di-customize sesuai organisasi)
   static const List<String> _availableDivisi = [
@@ -266,12 +280,31 @@ class _EventFormViewState extends State<EventFormView> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_hasAccess) {
+      return Scaffold(
+        appBar: const GradientHeader(
+          title: 'Form Event',
+          subtitle: 'Akses terbatas',
+        ),
+        body: const Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Text(
+              'Halaman form event hanya dapat diakses oleh Executive atau Manager.',
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
+      appBar: GradientHeader(
+        title: widget.title,
+        subtitle: 'Form pembuatan dan pengeditan event',
         actions: [
           IconButton(
-            icon: const Icon(Icons.check),
+            icon: const Icon(Icons.check, color: Colors.white),
             onPressed: _submit,
             tooltip: 'Simpan',
           ),

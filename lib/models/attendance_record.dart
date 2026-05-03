@@ -12,7 +12,9 @@ class AttendanceRecord extends HiveObject {
   final String eventId;
 
   @HiveField(2)
-  final String memberId; // memberId (= nim) anggota
+  final String memberId; // Disimpan legacy, nilainya diperlakukan sebagai NIM.
+
+  String get nim => memberId;
 
   @HiveField(3)
   final DateTime timestamp;
@@ -24,13 +26,13 @@ class AttendanceRecord extends HiveObject {
   bool isManualOverride; // true jika diubah paksa Executive/Manager
 
   @HiveField(6)
-  String? overrideBy; // memberId yang melakukan override
+  String? overrideBy; // NIM petugas yang melakukan override
 
   @HiveField(7)
   bool isSynced;
 
   @HiveField(8)
-  final String compositeKey; // '${eventId}_${memberId}' — ANTI-DUPLIKAT
+  final String compositeKey; // '${eventId}_${nim}' — ANTI-DUPLIKAT
 
   @HiveField(9)
   String? permissionId; // ID izin terkait jika status = 'Izin' atau 'Sakit'
@@ -60,18 +62,18 @@ class AttendanceRecord extends HiveObject {
   factory AttendanceRecord.create({
     required String recordId,
     required String eventId,
-    required String memberId,
+    required String nim,
     String status = 'Hadir',
   }) {
     return AttendanceRecord(
       recordId: recordId,
       eventId: eventId,
-      memberId: memberId,
+      memberId: nim,
       timestamp: DateTime.now(),
       status: status,
       isManualOverride: false,
       isSynced: false,
-      compositeKey: '${eventId}_$memberId',
+      compositeKey: '${eventId}_$nim',
     );
   }
 
@@ -79,7 +81,8 @@ class AttendanceRecord extends HiveObject {
     return {
       'recordId': recordId,
       'eventId': eventId,
-      'memberId': memberId,
+      'nim': nim,
+      'memberId': nim,
       'timestamp': timestamp.toIso8601String(),
       'status': status,
       'isManualOverride': isManualOverride,
@@ -107,6 +110,6 @@ class AttendanceRecord extends HiveObject {
 
   @override
   String toString() =>
-      'AttendanceRecord(recordId: $recordId, memberId: $memberId, '
+      'AttendanceRecord(recordId: $recordId, nim: $nim, '
       'status: $status, compositeKey: $compositeKey)';
 }

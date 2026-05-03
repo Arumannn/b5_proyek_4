@@ -1,68 +1,73 @@
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import '../../widgets/gradient_header.dart';
 
 class MemberProfileView extends StatelessWidget {
   final String nama;
   final String nim;
   final String divisi;
-  final String memberId;
 
   const MemberProfileView({
     super.key,
     required this.nama,
     required this.nim,
     required this.divisi,
-    required this.memberId,
   });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Profil Anggota'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () {
-            },
-          ),
-        ],
-      ),
+      appBar: const GradientHeader(title: 'Profil Anggota'),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
         child: Column(
           children: [
             Card(
-              elevation: 4,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+              elevation: 2,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               child: Padding(
-                padding: const EdgeInsets.all(20.0),
+                padding: const EdgeInsets.all(16.0),
                 child: Column(
                   children: [
                     const CircleAvatar(
                       radius: 40,
-                      child: Icon(Icons.person, size: 50),
+                      backgroundColor: Color(0xFF60A5FA),
+                      child: Icon(Icons.person, size: 48, color: Colors.white),
                     ),
-                    const SizedBox(height: 15),
+                    const SizedBox(height: 12),
                     Text(
                       nama,
                       style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                       textAlign: TextAlign.center,
                     ),
+                    const SizedBox(height: 6),
                     Text(
                       nim,
-                      style: const TextStyle(fontSize: 16, color: Colors.grey),
+                      style: const TextStyle(fontSize: 16, color: Color(0xFF6B7280)),
                     ),
-                    const Divider(height: 30),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF2563EB),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: const Text('Pengurus Inti', style: TextStyle(color: Colors.white)),
+                        ),
+                      ],
+                    ),
+                    const Divider(height: 28),
                     _buildInfoRow(Icons.group, 'Divisi', divisi),
-                    _buildInfoRow(Icons.badge, 'Role', 'Member'), // Default Role
+                    _buildInfoRow(Icons.badge, 'Role', 'Member'),
                   ],
                 ),
               ),
             ),
-            const SizedBox(height: 30),
-            
-            // Section QR Code untuk Screenshot
+            const SizedBox(height: 24),
+
             const Text(
               'Identitas Digital (QR Code)',
               style: TextStyle(fontWeight: FontWeight.bold),
@@ -72,11 +77,11 @@ class MemberProfileView extends StatelessWidget {
               padding: const EdgeInsets.all(15),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(15),
+                borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: Colors.grey.shade300),
               ),
               child: QrImageView(
-                data: memberId,
+                data: nim,
                 version: QrVersions.auto,
                 size: 200.0,
               ),
@@ -84,7 +89,7 @@ class MemberProfileView extends StatelessWidget {
             const SizedBox(height: 10),
             const Text(
               'Simpan QR ini untuk absensi luring',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
+              style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
             ),
           ],
         ),
