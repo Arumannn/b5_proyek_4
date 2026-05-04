@@ -1,3 +1,5 @@
+// ignore_for_file: unused_import
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../core/services/hive_service.dart';
@@ -7,7 +9,8 @@ import '../../models/event_model.dart';
 
 class AttendanceHistoryView extends StatefulWidget {
   final String nim;
-  const AttendanceHistoryView({super.key, required this.nim});
+  final bool showBottomNav;
+  const AttendanceHistoryView({super.key, required this.nim, this.showBottomNav = true});
 
   @override
   State<AttendanceHistoryView> createState() => _AttendanceHistoryViewState();

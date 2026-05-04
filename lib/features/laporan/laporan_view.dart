@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 class LaporanView extends StatefulWidget {
-  const LaporanView({Key? key}) : super(key: key);
+  final bool showBottomNav;
+
+  const LaporanView({Key? key, this.showBottomNav = true}) : super(key: key);
 
   @override
   State<LaporanView> createState() => _LaporanViewState();
@@ -52,12 +54,6 @@ class _LaporanViewState extends State<LaporanView> {
       appBar: AppBar(
         backgroundColor: Colors.blueAccent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            Navigator.pop(context);
-          },
-        ),
         title: const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

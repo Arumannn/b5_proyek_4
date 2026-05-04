@@ -4,7 +4,9 @@ import '../../models/member_model.dart';
 // import 'member_profile_view.dart'; // Uncomment jika sudah ada
 
 class MemberListView extends StatefulWidget {
-  const MemberListView({super.key});
+  final bool showBottomNav;
+
+  const MemberListView({super.key, this.showBottomNav = true});
 
   @override
   State<MemberListView> createState() => _MemberListViewState();

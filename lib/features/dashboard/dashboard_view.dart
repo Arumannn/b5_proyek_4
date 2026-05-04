@@ -8,12 +8,10 @@ import '../../widgets/gradient_header.dart';
 import '../../widgets/stats_grid.dart';
 import '../../widgets/quick_actions.dart';
 import '../attendance/attendance_history_view.dart';
-import '../attendance/attendance_recap_view.dart';
 import '../attendance/scan_screen.dart';
 import '../auth/auth_controller.dart';
 import '../event/event_controller.dart';
 import '../event/event_detail_view.dart';
-import '../../widgets/custom_drawer.dart';
 import '../../widgets/event_list_section.dart';
 import '../laporan/laporan_view.dart';
 
@@ -274,7 +272,6 @@ class _DashboardViewState extends State<DashboardView> {
         final role = currentUser.role.trim().toLowerCase();
 
         return Scaffold(
-          drawer: const CustomDrawer(),
           appBar: GradientHeader(
             title: 'Dashboard PRASASTI',
             actions: [
@@ -309,7 +306,7 @@ class _DashboardViewState extends State<DashboardView> {
                   }
                 },
                 onReports: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => const LaporanView()));
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => LaporanView()));
                 },
               ),
               const SizedBox(height: 16),
