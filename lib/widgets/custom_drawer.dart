@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../features/laporan/laporan_view.dart';
 import '../features/member/member_list_view.dart';
+import '../features/auth/auth_controller.dart';
+import '../features/attendance/attendance_history_view.dart';
 
 class CustomDrawer extends StatelessWidget {
   const CustomDrawer({Key? key}) : super(key: key);
@@ -120,7 +122,17 @@ class CustomDrawer extends StatelessWidget {
                     icon: Icons.history,
                     title: 'Riwayat',
                     isSelected: false,
-                    onTap: () {},
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => AttendanceHistoryView(
+                            nim: AuthController.instance.currentUser.value?.nim ?? '',
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),
