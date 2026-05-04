@@ -13,6 +13,9 @@ import '../attendance/scan_screen.dart';
 import '../auth/auth_controller.dart';
 import '../event/event_controller.dart';
 import '../event/event_detail_view.dart';
+import '../../widgets/custom_drawer.dart';
+import '../../widgets/event_list_section.dart';
+import '../laporan/laporan_view.dart';
 
 class DashboardView extends StatefulWidget {
   const DashboardView({super.key});
@@ -271,6 +274,7 @@ class _DashboardViewState extends State<DashboardView> {
         final role = currentUser.role.trim().toLowerCase();
 
         return Scaffold(
+          drawer: const CustomDrawer(),
           appBar: GradientHeader(
             title: 'Dashboard PRASASTI',
             actions: [
@@ -305,10 +309,12 @@ class _DashboardViewState extends State<DashboardView> {
                   }
                 },
                 onReports: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => const AttendanceRecapView()));
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const LaporanView()));
                 },
               ),
               const SizedBox(height: 16),
+              const EventListSection(),
+              const SizedBox(height: 40),
               Row(
                 children: [
                   Text(
