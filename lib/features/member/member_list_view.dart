@@ -5,28 +5,18 @@ import '../../core/constants/app_constants.dart';
 import '../../core/services/hive_service.dart';
 import '../../core/services/mongo_service.dart';
 import '../../core/utils/network_status_controller.dart';
+import 'member_controller.dart';
 import '../../models/member_model.dart';
-import '../../widgets/member_card.dart';
-import 'member_profile_view.dart';
 
 class MemberListView extends StatefulWidget {
-  const MemberListView({Key? key}) : super(key: key);
+  const MemberListView({super.key});
 
   @override
   State<MemberListView> createState() => _MemberListViewState();
 }
 
 class _MemberListViewState extends State<MemberListView> {
-  List<MemberModel> _members = const <MemberModel>[];
-  String _query = '';
-  int _selectedFilterIndex = 0;
-  final List<String> _filters = [
-    'Semua',
-    'Humas',
-    'Acara',
-    'Keilmuan',
-    'Medinfo',
-  ];
+  final MemberController _controller = MemberController.instance;
 
   @override
   void initState() {
@@ -35,9 +25,8 @@ class _MemberListViewState extends State<MemberListView> {
   }
 
   Future<void> _loadMembers({bool syncFromCloud = true}) async {
-    final all = HiveService.members.values.toList(growable: false);
     if (mounted) {
-      setState(() => _members = all);
+      _controller.loadMembers();
     }
 
     if (!syncFromCloud) return;
@@ -50,183 +39,289 @@ class _MemberListViewState extends State<MemberListView> {
 
       if (docs.isEmpty) return;
 
-      var updated = false;
+      bool updated = false;
       for (final raw in docs) {
         final map = Map<String, dynamic>.from(raw)..remove('_id');
         final member = MemberModel.fromMap(map);
         if (member.nim.isEmpty) continue;
+
         await HiveService.members.put(member.nim, member);
         updated = true;
       }
 
-      if (updated && mounted) {
-        final merged = HiveService.members.values.toList(growable: false);
-        setState(() => _members = merged);
-      }
+      if (updated) _controller.loadMembers();
     } catch (e) {
-      debugPrint('[MemberList] Cloud sync skipped: $e');
+      debugPrint('[MemberList] Cloud sync error: $e');
     }
   }
 
-  List<MemberModel> get _filtered {
-    final q = _query.trim().toLowerCase();
-    final selectedLabel = _filters[_selectedFilterIndex].toLowerCase();
-
-    return _members.where((m) {
-      final matchesQuery =
-          q.isEmpty ||
-          m.nama.toLowerCase().contains(q) ||
-          m.nim.toLowerCase().contains(q);
-      final matchesFilter =
-          selectedLabel == 'semua' ||
-          m.divisi.toLowerCase() == selectedLabel;
-      return matchesQuery && matchesFilter;
-    }).toList(growable: false);
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5F7FA),
+      appBar: _buildAppBar(),
+      body: Column(
+        children: [
+          _buildFilterChips(),
+          Expanded(
+            child: _buildMemberList(),
+          ),
+        ],
+      ),
+    );
   }
 
-  // Fungsi bantuan untuk membuat tombol filter (Chip)
-  Widget _buildFilterChip(String label, int index) {
-    bool isSelected = _selectedFilterIndex == index;
-    return Padding(
-      padding: const EdgeInsets.only(right: 8.0), // Jarak antar tombol
-      child: GestureDetector(
-        onTap: () {
-          setState(() {
-            _selectedFilterIndex = index;
-          });
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      backgroundColor: const Color(0xFF1D4ED8),
+      elevation: 0,
+      title: ValueListenableBuilder<List<MemberModel>>(
+        valueListenable: _controller.members,
+        builder: (context, membersList, child) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Daftar Anggota', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22)),
+              Text('${membersList.length} anggota aktif',
+                  style: const TextStyle(fontSize: 12, color: Colors.white70)),
+            ],
+          );
         },
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
-          decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFF1D4ED8) : Colors.grey[200], // Biru jika aktif, abu-abu jika tidak
-            borderRadius: BorderRadius.circular(12.0),
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              color: isSelected ? Colors.white : Colors.blueGrey[700],
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-              fontSize: 14,
+      ),
+      bottom: PreferredSize(
+        preferredSize: const Size.fromHeight(68),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: Container(
+            height: 48,
+            decoration: BoxDecoration(
+              color: const Color(0xFF3B66E0),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white.withOpacity(0.2)),
+            ),
+            child: TextField(
+              style: const TextStyle(color: Colors.white),
+              onChanged: _controller.setSearchQuery,
+              decoration: const InputDecoration(
+                hintText: 'Cari nama atau NIM...',
+                hintStyle: TextStyle(color: Colors.white70),
+                prefixIcon: Icon(Icons.search, color: Colors.white70),
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+              ),
             ),
           ),
         ),
       ),
     );
   }
-  
+
+  Widget _buildFilterChips() {
+    return Container(
+      color: Colors.white,
+      height: 60,
+      child: ValueListenableBuilder<List<String>>(
+        valueListenable: _controller.availableDivisions,
+        builder: (context, divisions, _) {
+          return ValueListenableBuilder<String>(
+            valueListenable: _controller.selectedDivision,
+            builder: (context, selectedDiv, _) {
+              return ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                itemCount: divisions.length,
+                itemBuilder: (context, index) {
+                  final div = divisions[index];
+                  final isSelected = div == selectedDiv;
+                  final count = _controller.getDivisionCount(div);
+
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ChoiceChip(
+                      label: Text('$div ($count)'),
+                      selected: isSelected,
+                      onSelected: (_) => _controller.setDivision(div),
+                      selectedColor: const Color(0xFF1D4ED8),
+                      backgroundColor: const Color(0xFFF0F2F5),
+                      labelStyle: TextStyle(
+                        color: isSelected ? Colors.white : Colors.black87,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildMemberList() {
+    return ValueListenableBuilder<List<MemberModel>>(
+      valueListenable: _controller.filteredMembers,
+      builder: (context, filtered, child) {
+        if (filtered.isEmpty) {
+          return const Center(
+            child: Text('Tidak ada anggota yang cocok', style: TextStyle(color: Colors.grey, fontSize: 16)),
+          );
+        }
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: filtered.length,
+          itemBuilder: (context, index) {
+            return _MemberCardDesign(member: filtered[index]);
+          },
+        );
+      },
+    );
+  }
+}
+
+// ==================== MEMBER CARD ====================
+
+class _MemberCardDesign extends StatelessWidget {
+  final MemberModel member;
+
+  const _MemberCardDesign({super.key, required this.member});
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF1D4ED8),
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    final firstName = member.nama.split(' ').first.toLowerCase();
+    final dummyEmail = '$firstName@email.com';
+    final dummyPhone = '081234567890';
+    final attendancePercent = 75 + (member.nama.length % 25);
+    final isHighAttendance = attendancePercent >= 90;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))],
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
           children: [
-            const Text(
-              'Daftar Anggota',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
-              ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CircleAvatar(
+                  radius: 28,
+                  backgroundColor: const Color(0xFF1D4ED8),
+                  child: Text(
+                    member.nama.isNotEmpty ? member.nama[0].toUpperCase() : '?',
+                    style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const SizedBox(width: 16),
+
+                // Info Utama
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              member.nama,
+                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (isHighAttendance)
+                            const Icon(Icons.workspace_premium, color: Colors.amber, size: 24),
+                        ],
+                      ),
+                      Text('NIM: ${member.nim}', style: const TextStyle(color: Colors.grey, fontSize: 13)),
+                      const SizedBox(height: 12),
+                      _buildInfoRow(Icons.person_outline, '${member.divisi} - ${member.role}'),
+                      const SizedBox(height: 4),
+                      _buildInfoRow(Icons.mail_outline, dummyEmail),
+                      const SizedBox(height: 4),
+                      _buildInfoRow(Icons.phone_outlined, dummyPhone),
+                    ],
+                  ),
+                ),
+
+                // Titik Tiga (Menu Edit & Hapus)
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert, color: Colors.grey),
+                  onSelected: (value) {
+                    if (value == 'edit') {
+                      // TODO: Tambahkan fungsi edit
+                      debugPrint('Edit member: ${member.nim}');
+                    } else if (value == 'delete') {
+                      // TODO: Tambahkan konfirmasi hapus
+                      debugPrint('Delete member: ${member.nim}');
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(
+                      value: 'edit',
+                      child: Row(
+                        children: [Icon(Icons.edit, size: 20), SizedBox(width: 8), Text('Edit')],
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [Icon(Icons.delete, size: 20, color: Colors.red), SizedBox(width: 8), Text('Hapus')],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-            const SizedBox(height: 2),
-            Text(
-              'Total ${_members.length} anggota aktif',
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 13,
-                fontWeight: FontWeight.normal,
-              ),
+            const SizedBox(height: 16),
+            const Divider(height: 1),
+            const SizedBox(height: 16),
+
+            // Progress Kehadiran
+            Row(
+              children: [
+                const Text('Tingkat Kehadiran: ', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: attendancePercent / 100,
+                      minHeight: 8,
+                      backgroundColor: Colors.grey.shade200,
+                      color: isHighAttendance ? Colors.green : const Color(0xFF1D4ED8),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text('$attendancePercent%', style: const TextStyle(fontWeight: FontWeight.bold)),
+              ],
             ),
           ],
         ),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(70.0),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 16.0),
-            child: Container(
-              height: 44,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(12.0),
-                border: Border.all(color: Colors.white.withOpacity(0.3)),
-              ),
-              child: TextField(
-                style: const TextStyle(color: Colors.white),
-                onChanged: (value) => setState(() => _query = value),
-                decoration: const InputDecoration(
-                  hintText: 'Cari nama atau NIM...',
-                  hintStyle: TextStyle(color: Colors.white70),
-                  prefixIcon: Icon(Icons.search, color: Colors.white70),
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 16.0,
-                    vertical: 12.0,
-                  ),
-                  isDense: true,
-                ),
-              ),
-            ),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String text) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: Colors.grey.shade600),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
-      ),
-      body: Column(
-        children: [
-          Container(
-            color: Colors.white,
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 12.0),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Row(
-                children: List.generate(
-                  _filters.length,
-                  (index) => _buildFilterChip(_filters[index], index),
-                ),
-              ),
-            ),
-          ),
-            // --- TAHAP 3: DAFTAR KARTU ANGGOTA ---
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16.0),
-              itemCount: _filtered.length,
-              itemBuilder: (context, index) {
-                final member = _filtered[index];
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: MemberCard(
-                    name: member.nama,
-                    nim: member.nim,
-                    division: member.divisi,
-                    attendancePercent: 0.0,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => MemberProfileView(
-                            nama: member.nama,
-                            nim: member.nim,
-                            divisi: member.divisi,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                );
-              },
-            ),
-          ),
-        ]
-      )
+      ],
     );
   }
 }

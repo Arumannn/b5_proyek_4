@@ -1,3 +1,5 @@
+// ignore_for_file: unused_import
+
 import 'package:flutter/material.dart';
 import '../../core/services/hive_service.dart';
 import '../../features/attendance/attendance_controller.dart';

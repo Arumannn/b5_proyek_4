@@ -84,7 +84,7 @@ void main() {
       final record = AttendanceRecord.create(
         recordId: 'r-1',
         eventId: 'e-1',
-        memberId: '241511003',
+        nim: '241511003',
       );
 
       expect(record.compositeKey, equals('e-1_241511003'));

@@ -8,6 +8,7 @@ import 'package:b5_proyek_4/core/services/hive_service.dart';
 import 'package:b5_proyek_4/core/services/mongo_service.dart';
 import 'package:b5_proyek_4/core/services/sync_manager.dart';
 import 'package:b5_proyek_4/models/attendance_record.dart';
+import 'package:mongo_dart/mongo_dart.dart';
 
 // Mock MongoService manually untuk kemudahan
 class MockMongoService extends Mock implements MongoService {
@@ -24,7 +25,7 @@ class MockMongoService extends Mock implements MongoService {
   }
 
   @override
-  Future<dynamic> insertOne({
+  Future<WriteResult> insertOne({
     required String collectionName,
     required Map<String, dynamic> document,
   }) async {
@@ -32,10 +33,11 @@ class MockMongoService extends Mock implements MongoService {
     if (shouldThrow) {
       throw Exception('Simulated Database Down / Network Error');
     }
-    // Return mock WriteResult (using dynamic to avoid depending on mongo_dart types in mock)
-    return null; // The app doesn't strictly check the return value of insertOne in SyncManager
+    return MockWriteResult();
   }
 }
+
+class MockWriteResult extends Mock implements WriteResult {}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
