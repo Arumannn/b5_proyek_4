@@ -5,6 +5,9 @@ import '../../core/constants/app_constants.dart';
 import '../../core/services/hive_service.dart';
 import '../../core/services/mongo_service.dart';
 import '../../core/utils/network_status_controller.dart';
+import '../../widgets/custom_snackbar.dart';
+import '../auth/auth_controller.dart';
+import '../auth/user_management_view.dart';
 import 'member_controller.dart';
 import '../../models/member_model.dart';
 
@@ -17,11 +20,132 @@ class MemberListView extends StatefulWidget {
 
 class _MemberListViewState extends State<MemberListView> {
   final MemberController _controller = MemberController.instance;
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _loadMembers();
+    _searchController.addListener(() {
+      _controller.setSearchQuery(_searchController.text);
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  bool get _isExecutive {
+    final role = (AuthController.instance.currentUser.value?.role ?? '').trim().toLowerCase();
+    return role == AppConstants.roleExecutive.toLowerCase() ||
+        role == 'executive' ||
+        role == 'eksekutif' ||
+        role == 'admin';
+  }
+
+  Future<void> _editMember(MemberModel member) async {
+    final saved = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => UserFormDialog(
+        authController: AuthController.instance,
+        existing: member,
+        roleLabelBuilder: _roleLabel,
+        dbuItemsBuilder: _buildDbuItems,
+      ),
+    );
+
+    if (saved == true) {
+      await _loadMembers();
+      if (!mounted) return;
+      CustomSnackbar.showSuccess(context, 'Data anggota berhasil diperbarui.');
+    }
+  }
+
+  Future<void> _deleteMember(MemberModel member) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Konfirmasi Hapus'),
+          content: Text('Hapus anggota ${member.nama} (${member.nim})?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Batal'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Hapus'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) return;
+
+    final success = await AuthController.instance.deleteUserByExecutive(member.nim);
+    if (!mounted) return;
+
+    if (!success) {
+      CustomSnackbar.showError(
+        context,
+        AuthController.instance.errorMessage.value ?? 'Gagal menghapus anggota.',
+      );
+      return;
+    }
+
+    await _loadMembers();
+    if (!mounted) return;
+    CustomSnackbar.showSuccess(context, 'Anggota berhasil dihapus.');
+  }
+
+  String _roleLabel(String role) {
+    final normalized = role.trim().toLowerCase();
+    if (normalized == 'executive' || normalized == 'eksekutif' || normalized == 'admin') {
+      return 'Executive';
+    }
+    if (normalized == AppConstants.roleManager) return 'Manager';
+    if (normalized == AppConstants.roleOrganizer) return 'Organizer';
+    return 'Member';
+  }
+
+  List<DropdownMenuItem<String>> _buildDbuItems() {
+    const headerStyle = TextStyle(
+      fontWeight: FontWeight.w700,
+      color: Colors.black54,
+    );
+
+    return [
+      const DropdownMenuItem<String>(
+        enabled: false,
+        value: '__header_departemen__',
+        child: Text('Departemen', style: headerStyle),
+      ),
+      ...AppConstants.departmentDbuOptions.map(
+        (value) => DropdownMenuItem<String>(value: value, child: Text(value)),
+      ),
+      const DropdownMenuItem<String>(
+        enabled: false,
+        value: '__header_biro__',
+        child: Text('Biro', style: headerStyle),
+      ),
+      ...AppConstants.biroDbuOptions.map(
+        (value) => DropdownMenuItem<String>(value: value, child: Text(value)),
+      ),
+      const DropdownMenuItem<String>(
+        enabled: false,
+        value: '__header_unit__',
+        child: Text('Unit', style: headerStyle),
+      ),
+      ...AppConstants.unitDbuOptions.map(
+        (value) => DropdownMenuItem<String>(value: value, child: Text(value)),
+      ),
+    ];
   }
 
   Future<void> _loadMembers({bool syncFromCloud = true}) async {
@@ -99,16 +223,27 @@ class _MemberListViewState extends State<MemberListView> {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: Colors.white.withOpacity(0.2)),
             ),
-            child: TextField(
-              style: const TextStyle(color: Colors.white),
-              onChanged: _controller.setSearchQuery,
-              decoration: const InputDecoration(
-                hintText: 'Cari nama atau NIM...',
-                hintStyle: TextStyle(color: Colors.white70),
-                prefixIcon: Icon(Icons.search, color: Colors.white70),
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-              ),
+            child: ValueListenableBuilder<TextEditingValue>(
+              valueListenable: _searchController,
+              builder: (context, value, _) {
+                return TextField(
+                  controller: _searchController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    hintText: 'Cari nama atau NIM...',
+                    hintStyle: const TextStyle(color: Color.fromARGB(150, 107, 107, 107)),
+                    prefixIcon: const Icon(Icons.search, color: Color.fromARGB(150, 107, 107, 107)),
+                    suffixIcon: value.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.close, color: Color.fromARGB(150, 107, 107, 107)),
+                            onPressed: () => _searchController.clear(),
+                          )
+                        : null,
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                  ),
+                );
+              },
             ),
           ),
         ),
@@ -171,7 +306,13 @@ class _MemberListViewState extends State<MemberListView> {
           padding: const EdgeInsets.all(16),
           itemCount: filtered.length,
           itemBuilder: (context, index) {
-            return _MemberCardDesign(member: filtered[index]);
+            final member = filtered[index];
+            return _MemberCardDesign(
+              member: member,
+              isExecutive: _isExecutive,
+              onEdit: () => _editMember(member),
+              onDelete: () => _deleteMember(member),
+            );
           },
         );
       },
@@ -183,8 +324,17 @@ class _MemberListViewState extends State<MemberListView> {
 
 class _MemberCardDesign extends StatelessWidget {
   final MemberModel member;
+  final bool isExecutive;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
 
-  const _MemberCardDesign({super.key, required this.member});
+  const _MemberCardDesign({
+    super.key,
+    required this.member,
+    required this.isExecutive,
+    required this.onEdit,
+    required this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -250,17 +400,16 @@ class _MemberCardDesign extends StatelessWidget {
                 ),
 
                 // Titik Tiga (Menu Edit & Hapus)
-                PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert, color: Colors.grey),
-                  onSelected: (value) {
-                    if (value == 'edit') {
-                      // TODO: Tambahkan fungsi edit
-                      debugPrint('Edit member: ${member.nim}');
-                    } else if (value == 'delete') {
-                      // TODO: Tambahkan konfirmasi hapus
-                      debugPrint('Delete member: ${member.nim}');
-                    }
-                  },
+                if (isExecutive)
+                  PopupMenuButton<String>(
+                    icon: const Icon(Icons.more_vert, color: Colors.grey),
+                    onSelected: (value) {
+                      if (value == 'edit') {
+                        onEdit();
+                      } else if (value == 'delete') {
+                        onDelete();
+                      }
+                    },
                   itemBuilder: (context) => [
                     const PopupMenuItem(
                       value: 'edit',

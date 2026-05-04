@@ -286,6 +286,40 @@ class _EventFormViewState extends State<EventFormView> {
     }
   }
 
+  Widget _buildSectionCard({required String title, required List<Widget> children}) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(color: Colors.grey.shade100),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1D4ED8),
+            ),
+          ),
+          const SizedBox(height: 16),
+          ...children,
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!_hasAccess) {
@@ -307,6 +341,7 @@ class _EventFormViewState extends State<EventFormView> {
     }
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF9FAFB),
       appBar: GradientHeader(
         title: widget.title,
         subtitle: 'Form pembuatan dan pengeditan event',
@@ -324,202 +359,198 @@ class _EventFormViewState extends State<EventFormView> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              // ── Nama Event ──────────────────────────────────
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Nama Event *',
-                  hintText: 'Contoh: Rapat Evaluasi Bulanan',
-                  prefixIcon: Icon(Icons.event),
-                ),
-                textCapitalization: TextCapitalization.words,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Nama event wajib diisi';
-                  }
-                  return null;
-                },
-              ),
-              
-              const SizedBox(height: 16),
-
-              // ── Jenis Event (Dropdown) ──────────────────────
-              DropdownButtonFormField<String>(
-                value: _selectedJenis,
-                decoration: const InputDecoration(
-                  labelText: 'Jenis Event *',
-                  prefixIcon: Icon(Icons.category_outlined),
-                ),
-                items: _jenisOptions
-                    .map((jenis) => DropdownMenuItem<String>(
-                          value: jenis,
-                          child: Text(jenis),
-                        ))
-                    .toList(),
-                onChanged: (value) {
-                  if (value != null) {
-                    setState(() {
-                      _selectedJenis = value;
-                    });
-                  }
-                },
-              ),
-
-              const SizedBox(height: 16),
-
-              // ── Sub Event Toggle ────────────────────────────
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Jadikan Sub Event'),
-                subtitle: _isSubEvent 
-                    ? const Text('Event ini merupakan bagian dari event utama')
-                    : null,
-                value: _isSubEvent,
-                onChanged: widget.canChangeHierarchy
-                    ? (value) {
+              _buildSectionCard(
+                title: 'Informasi Umum',
+                children: [
+                  TextFormField(
+                    controller: _nameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Nama Event *',
+                      hintText: 'Contoh: Rapat Evaluasi Bulanan',
+                      prefixIcon: Icon(Icons.event),
+                    ),
+                    textCapitalization: TextCapitalization.words,
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Nama event wajib diisi';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    value: _selectedJenis,
+                    decoration: const InputDecoration(
+                      labelText: 'Jenis Event *',
+                      prefixIcon: Icon(Icons.category_outlined),
+                    ),
+                    items: _jenisOptions
+                        .map((jenis) => DropdownMenuItem<String>(
+                              value: jenis,
+                              child: Text(jenis),
+                            ))
+                        .toList(),
+                    onChanged: (value) {
+                      if (value != null) {
                         setState(() {
-                          _isSubEvent = value;
-                          if (!_isSubEvent) _parentId = null;
+                          _selectedJenis = value;
                         });
                       }
-                    : null,
-              ),
-
-              if (_isSubEvent) ...[
-                const SizedBox(height: 8),
-                DropdownButtonFormField<String>(
-                  value: _parentId,
-                  decoration: const InputDecoration(
-                    labelText: 'Parent Event *',
-                    prefixIcon: Icon(Icons.account_tree_outlined),
+                    },
                   ),
-                  hint: const Text('Pilih parent event'),
-                  items: widget.parentOptions
-                      .map(
-                        (event) => DropdownMenuItem<String>(
-                          value: event.id,
-                          child: Text(event.name),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: widget.canChangeHierarchy
-                      ? (value) {
-                          setState(() {
-                            _parentId = value;
-                          });
+                  const SizedBox(height: 16),
+                  Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: const Color(0xFFE5E7EB)),
+                      borderRadius: BorderRadius.circular(12),
+                      color: Colors.white,
+                    ),
+                    child: SwitchListTile(
+                      title: const Text('Jadikan Sub Event', style: TextStyle(fontWeight: FontWeight.w500)),
+                      subtitle: _isSubEvent 
+                          ? const Text('Event ini merupakan bagian dari event utama')
+                          : null,
+                      value: _isSubEvent,
+                      activeColor: const Color(0xFF2563EB),
+                      onChanged: widget.canChangeHierarchy
+                          ? (value) {
+                              setState(() {
+                                _isSubEvent = value;
+                                if (!_isSubEvent) _parentId = null;
+                              });
+                            }
+                          : null,
+                    ),
+                  ),
+                  if (_isSubEvent) ...[
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      value: _parentId,
+                      decoration: const InputDecoration(
+                        labelText: 'Parent Event *',
+                        prefixIcon: Icon(Icons.account_tree_outlined),
+                      ),
+                      hint: const Text('Pilih parent event'),
+                      items: widget.parentOptions
+                          .map(
+                            (event) => DropdownMenuItem<String>(
+                              value: event.id,
+                              child: Text(event.name),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: widget.canChangeHierarchy
+                          ? (value) {
+                              setState(() {
+                                _parentId = value;
+                              });
+                            }
+                          : null,
+                      validator: (value) {
+                        if (_isSubEvent && (value == null || value.isEmpty)) {
+                          return 'Parent event wajib dipilih untuk sub event';
                         }
-                      : null,
-                  validator: (value) {
-                    if (_isSubEvent && (value == null || value.isEmpty)) {
-                      return 'Parent event wajib dipilih untuk sub event';
-                    }
-                    return null;
-                  },
-                ),
-              ],
-
-              const SizedBox(height: 16),
-
-              // ── Tanggal Event ───────────────────────────────
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Tanggal Event *'),
-                subtitle: Text(
-                  _formatDate(_selectedDate),
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                leading: const Icon(Icons.calendar_today_outlined),
-                trailing: const Icon(Icons.edit_calendar_outlined),
-                onTap: _pickDate,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  side: BorderSide(color: Colors.grey.shade300),
-                ),
+                        return null;
+                      },
+                    ),
+                  ],
+                ],
               ),
 
-              const SizedBox(height: 12),
-
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Waktu Dimulai *'),
-                subtitle: Text(
-                  _formatTime(_selectedDate),
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                leading: const Icon(Icons.schedule_outlined),
-                trailing: const Icon(Icons.edit_outlined),
-                onTap: _pickTime,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  side: BorderSide(color: Colors.grey.shade300),
-                ),
+              _buildSectionCard(
+                title: 'Waktu & Lokasi',
+                children: [
+                  ListTile(
+                    title: const Text('Tanggal Event *'),
+                    subtitle: Text(
+                      _formatDate(_selectedDate),
+                      style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black87),
+                    ),
+                    leading: const Icon(Icons.calendar_today_outlined, color: Color(0xFF2563EB)),
+                    trailing: const Icon(Icons.edit_calendar_outlined),
+                    onTap: _pickDate,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: const BorderSide(color: Color(0xFFE5E7EB)),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ListTile(
+                    title: const Text('Waktu Dimulai *'),
+                    subtitle: Text(
+                      _formatTime(_selectedDate),
+                      style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black87),
+                    ),
+                    leading: const Icon(Icons.schedule_outlined, color: Color(0xFF2563EB)),
+                    trailing: const Icon(Icons.edit_outlined),
+                    onTap: _pickTime,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: const BorderSide(color: Color(0xFFE5E7EB)),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _lokasiController,
+                    decoration: const InputDecoration(
+                      labelText: 'Lokasi (Opsional)',
+                      hintText: 'Contoh: Ruang Seminar Informatika, Lt. 3',
+                      prefixIcon: Icon(Icons.location_on_outlined),
+                    ),
+                    textCapitalization: TextCapitalization.sentences,
+                  ),
+                ],
               ),
 
-              const SizedBox(height: 16),
-
-              // ── Lokasi (Opsional) ──────────────────────────
-              TextFormField(
-                controller: _lokasiController,
-                decoration: const InputDecoration(
-                  labelText: 'Lokasi (Opsional)',
-                  hintText: 'Contoh: Ruang Seminar Informatika, Lt. 3',
-                  prefixIcon: Icon(Icons.location_on_outlined),
-                ),
-                textCapitalization: TextCapitalization.sentences,
-              ),
-
-              const SizedBox(height: 16),
-
-              // ── Target Peserta (Multi-Select) ──────────────
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Target Peserta'),
-                subtitle: Text(
-                  _getSelectedDivisiText(),
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              _buildSectionCard(
+                title: 'Peserta & Deskripsi',
+                children: [
+                  ListTile(
+                    title: const Text('Target Peserta'),
+                    subtitle: Text(
+                      _getSelectedDivisiText(),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w500,
                         color: _selectedDivisi.isEmpty 
                             ? Colors.grey 
-                            : Theme.of(context).colorScheme.primary,
+                            : const Color(0xFF2563EB),
                       ),
-                ),
-                leading: const Icon(Icons.people_outline),
-                trailing: const Icon(Icons.arrow_drop_down),
-                onTap: _showDivisiPicker,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  side: BorderSide(color: Colors.grey.shade300),
-                ),
+                    ),
+                    leading: const Icon(Icons.people_outline, color: Color(0xFF2563EB)),
+                    trailing: const Icon(Icons.arrow_drop_down),
+                    onTap: _showDivisiPicker,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: const BorderSide(color: Color(0xFFE5E7EB)),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _deskripsiController,
+                    decoration: const InputDecoration(
+                      labelText: 'Deskripsi (Opsional)',
+                      hintText: 'Tulis deskripsi event.',
+                      prefixIcon: Icon(Icons.description_outlined),
+                      alignLabelWithHint: true,
+                    ),
+                    maxLines: 4,
+                    textCapitalization: TextCapitalization.sentences,
+                  ),
+                ],
               ),
-
-              const SizedBox(height: 16),
-
-              TextFormField(
-                controller: _deskripsiController,
-                decoration: const InputDecoration(
-                  labelText: 'Deskripsi (Opsional)',
-                  hintText: 'Tulis deskripsi event.',
-                  prefixIcon: Icon(Icons.description_outlined),
-                  alignLabelWithHint: true,
-                ),
-                maxLines: 4,
-                textCapitalization: TextCapitalization.sentences,
-              ),
-
-              const SizedBox(height: 24),
 
               // ── Info Wajib ──────────────────────────────────
               Container(
+                margin: const EdgeInsets.only(bottom: 24),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: Colors.blue.shade200),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.info_outline, 
-                         size: 20, 
-                         color: Colors.blue.shade700),
+                    Icon(Icons.info_outline, size: 20, color: Colors.blue.shade700),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -534,8 +565,6 @@ class _EventFormViewState extends State<EventFormView> {
                 ),
               ),
 
-              const SizedBox(height: 24),
-
               // ── Tombol Simpan ───────────────────────────────
               SizedBox(
                 width: double.infinity,
@@ -545,9 +574,13 @@ class _EventFormViewState extends State<EventFormView> {
                   label: const Text('Simpan Event'),
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
               ),
+              const SizedBox(height: 24),
             ],
           ),
         ),

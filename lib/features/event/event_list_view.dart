@@ -798,6 +798,10 @@ class _EventListViewState extends State<EventListView> {
       appBar: GradientHeader(
         title: 'Daftar Event',
         subtitle: 'Kelola main event dan sub-event',
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
         actions: [
           if (_canCreateMainEvent)
             IconButton(
