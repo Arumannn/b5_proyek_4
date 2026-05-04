@@ -1,4 +1,7 @@
+// ignore_for_file: deprecated_member_use
+
 import 'dart:io';
+import 'package:b5_proyek_4/widgets/gradient_header.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:b5_proyek_4/features/auth/auth_controller.dart';
