@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../features/event/event_detail_view.dart';
-import ''../models/event_model.dart'';
+import '../models/event_model.dart';
 
 class EventListSection extends StatefulWidget {
   const EventListSection({Key? key}) : super(key: key);
@@ -193,21 +193,23 @@ class _EventListSectionState extends State<EventListSection> {
             location: 'Ruang Meeting 2',
             participants: '25 peserta diharapkan',
             onTap: () {
-                final event = {
-                  'id': 'rapat_mingguan_divisi',
-                  'nama': 'Rapat Mingguan Divisi',
-                  'deskripsi': 'Rapat mingguan untuk membahas progres dan rencana kerja divisi.',
-                  'tanggal': '28 April 2024',
-                  'waktu': '14:00 - 15:30 WIB',
-                  'lokasi': 'Ruang Meeting 2',
-                  'peserta': ['Alice', 'Bob', 'Charlie', 'David', 'Eve'],
-                };
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => EventDetailView(event: event),
-                  ),
-                );
+              final event = EventModel(
+                eventId: 'rapat_mingguan_divisi',
+                nama: 'Rapat Mingguan Divisi',
+                jenis: 'Kegiatan',
+                tanggal: DateTime(2024, 4, 28, 14, 0),
+                createdBy: 'system',
+                deskripsi:
+                    'Rapat mingguan untuk membahas progres dan rencana kerja divisi.',
+                targetPeserta: ['Alice', 'Bob', 'Charlie', 'David', 'Eve'],
+                jamMulai: DateTime(2024, 4, 28, 14, 0),
+              );
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => EventDetailView(event: event),
+                ),
+              );
             }
           ),
           _buildEventCard(
@@ -218,21 +220,23 @@ class _EventListSectionState extends State<EventListSection> {
             location: 'Lab Komputer 2',
             participants: '15 peserta diharapkan',
             onTap: () {
-                final event = {
-                  'id': 'diskusi_proyek_akhir',
-                  'nama': 'Diskusi Proyek Akhir',
-                  'deskripsi': 'Diskusi untuk mempersiapkan proyek akhir yang akan datang.',
-                  'tanggal': '29 April 2024',
-                  'waktu': '10:00 - 12:00 WIB',
-                  'lokasi': 'Lab Komputer 2',
-                  'peserta': ['Alice', 'Bob', 'Charlie', 'David', 'Eve'],
-                };
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => EventDetailView(event: event),
-                  ),
-                );
+              final event = EventModel(
+                eventId: 'diskusi_proyek_akhir',
+                nama: 'Diskusi Proyek Akhir',
+                jenis: 'Kegiatan',
+                tanggal: DateTime(2024, 4, 29, 10, 0),
+                createdBy: 'system',
+                deskripsi:
+                    'Diskusi untuk mempersiapkan proyek akhir yang akan datang.',
+                targetPeserta: ['Alice', 'Bob', 'Charlie', 'David', 'Eve'],
+                jamMulai: DateTime(2024, 4, 29, 10, 0),
+              );
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => EventDetailView(event: event),
+                ),
+              );
             }
           ),
           _buildEventCard(
@@ -243,21 +247,23 @@ class _EventListSectionState extends State<EventListSection> {
             location: 'Aula Utama',
             participants: '80 peserta diharapkan',
             onTap: () {
-                final event = {
-                  'id': 'sosialisasi_event_besar',
-                  'nama': 'Sosialisasi Event Besar',
-                  'deskripsi': 'Sosialisasi untuk mempersiapkan event besar yang akan datang.',
-                  'tanggal': '30 April 2024',
-                  'waktu': '13:00 - 15:00 WIB',
-                  'lokasi': 'Aula Utama',
-                  'peserta': ['Alice', 'Bob', 'Charlie', 'David', 'Eve'],
-                };
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => EventDetailView(event: event),
-                  ),
-                );
+              final event = EventModel(
+                eventId: 'sosialisasi_event_besar',
+                nama: 'Sosialisasi Event Besar',
+                jenis: 'Kegiatan',
+                tanggal: DateTime(2024, 4, 30, 13, 0),
+                createdBy: 'system',
+                deskripsi:
+                    'Sosialisasi untuk mempersiapkan event besar yang akan datang.',
+                targetPeserta: ['Alice', 'Bob', 'Charlie', 'David', 'Eve'],
+                jamMulai: DateTime(2024, 4, 30, 13, 0),
+              );
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => EventDetailView(event: event),
+                ),
+              );
             }
           ),
         ] else ...[

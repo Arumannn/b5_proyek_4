@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../features/laporan/laporan_view.dart';
+import '../features/member/member_list_view.dart';
 
 class CustomDrawer extends StatelessWidget {
   const CustomDrawer({Key? key}) : super(key: key);
@@ -93,7 +94,15 @@ class CustomDrawer extends StatelessWidget {
                     icon: Icons.people_outline,
                     title: 'Anggota',
                     isSelected: false,
-                    onTap: () {},
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const MemberListView(),
+                        ),
+                      );
+                    },
                   ),
                   _buildMenuItem(
                     icon: Icons.description_outlined,
