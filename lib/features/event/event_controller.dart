@@ -185,6 +185,7 @@ class EventController {
     String? parentEventId,
     String createdBy = 'unknown',
     String jenis = 'Kegiatan',
+    String? lokasi,
     String? deskripsi,
     List<String>? targetPeserta,
   }) async {
@@ -241,6 +242,7 @@ class EventController {
         tanggal: tanggal,
         createdBy: actorNim,
         parentEventId: parentEventId,
+        lokasi: lokasi,
         deskripsi: deskripsi,
         targetPeserta: targetPeserta,
         isSynced: false, // akan di-update setelah cloud sync berhasil

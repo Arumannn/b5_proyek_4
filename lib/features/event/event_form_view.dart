@@ -17,6 +17,7 @@ class EventFormValue {
   final bool isSubEvent;
   final String? parentId;
   final String jenis;
+  final String? lokasi;
   final String? deskripsi;
   final List<String> targetPeserta;
 
@@ -26,6 +27,7 @@ class EventFormValue {
     required this.isSubEvent,
     this.parentId,
     this.jenis = 'Kegiatan',
+    this.lokasi,
     this.deskripsi,
     this.targetPeserta = const [],
   });
@@ -58,6 +60,7 @@ class EventFormView extends StatefulWidget {
 
 class _EventFormViewState extends State<EventFormView> {
   late final TextEditingController _nameController;
+  late final TextEditingController _lokasiController;
   late final TextEditingController _deskripsiController;
   late DateTime _selectedDate;
   late bool _isSubEvent;
@@ -103,6 +106,7 @@ class _EventFormViewState extends State<EventFormView> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.initialValue?.name ?? '');
+    _lokasiController = TextEditingController(text: widget.initialValue?.lokasi ?? '');
     _deskripsiController = TextEditingController(text: widget.initialValue?.deskripsi ?? '');
     _selectedDate = widget.initialValue?.date ?? DateTime.now();
     _isSubEvent = widget.initialValue?.isSubEvent ?? false;
@@ -114,6 +118,7 @@ class _EventFormViewState extends State<EventFormView> {
   @override
   void dispose() {
     _nameController.dispose();
+    _lokasiController.dispose();
     _deskripsiController.dispose();
     super.dispose();
   }
@@ -247,6 +252,9 @@ class _EventFormViewState extends State<EventFormView> {
         isSubEvent: _isSubEvent,
         parentId: _isSubEvent ? _parentId : null,
         jenis: _selectedJenis,
+        lokasi: _lokasiController.text.trim().isEmpty
+            ? null
+            : _lokasiController.text.trim(),
         deskripsi: _deskripsiController.text.trim().isEmpty 
             ? null 
             : _deskripsiController.text.trim(),
@@ -449,6 +457,19 @@ class _EventFormViewState extends State<EventFormView> {
 
               const SizedBox(height: 16),
 
+              // ── Lokasi (Opsional) ──────────────────────────
+              TextFormField(
+                controller: _lokasiController,
+                decoration: const InputDecoration(
+                  labelText: 'Lokasi (Opsional)',
+                  hintText: 'Contoh: Ruang Seminar Informatika, Lt. 3',
+                  prefixIcon: Icon(Icons.location_on_outlined),
+                ),
+                textCapitalization: TextCapitalization.sentences,
+              ),
+
+              const SizedBox(height: 16),
+
               // ── Target Peserta (Multi-Select) ──────────────
               ListTile(
                 contentPadding: EdgeInsets.zero,
@@ -472,12 +493,11 @@ class _EventFormViewState extends State<EventFormView> {
 
               const SizedBox(height: 16),
 
-              // ── Deskripsi (Opsional) ────────────────────────
               TextFormField(
                 controller: _deskripsiController,
                 decoration: const InputDecoration(
                   labelText: 'Deskripsi (Opsional)',
-                  hintText: 'Tambahkan detail event...',
+                  hintText: 'Tulis deskripsi event.',
                   prefixIcon: Icon(Icons.description_outlined),
                   alignLabelWithHint: true,
                 ),

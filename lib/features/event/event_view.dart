@@ -102,8 +102,8 @@ class _EventViewState extends State<EventView> {
   }
 
   String _eventLocation(EventModel event) {
-    final raw = event.deskripsi?.trim();
-    if (raw != null && raw.isNotEmpty) return raw;
+    final lokasiValue = event.lokasi?.trim();
+    if (lokasiValue != null && lokasiValue.isNotEmpty) return lokasiValue;
     return 'Lokasi belum diatur';
   }
 
@@ -196,6 +196,7 @@ class _EventViewState extends State<EventView> {
             tanggal: form.date,
             parentEventId: form.parentEventId,
             jenis: form.jenis,
+            lokasi: form.lokasi,
             deskripsi: form.deskripsi,
             targetPeserta: form.targetPeserta,
           )
@@ -205,6 +206,7 @@ class _EventViewState extends State<EventView> {
               tanggal: form.date,
               parentEventId: form.parentEventId,
               jenis: form.jenis,
+              lokasi: form.lokasi,
               deskripsi: form.deskripsi,
               targetPeserta: form.targetPeserta,
             ),

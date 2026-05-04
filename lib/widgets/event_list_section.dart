@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../features/event/event_controller.dart';
 import '../features/event/event_detail_view.dart';
 import '../models/event_model.dart';
 
@@ -13,6 +14,20 @@ class _EventListSectionState extends State<EventListSection> {
   // 0 = Kegiatan Terakhir, 1 = Mendatang
   // Sesuai gambar, kita jadikan 'Mendatang' (1) sebagai default yang aktif
   int _activeTabIndex = 1; 
+  final EventController _eventController = EventController.instance;
+
+  final List<Color> _headerColors = const [
+    Color(0xFF3B82F6),
+    Color(0xFFA855F7),
+    Color(0xFFF97316),
+    Color(0xFF22C55E),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _eventController.loadEvents();
+  }
 
   // Helper untuk membuat tombol tab (Kegiatan Terakhir / Mendatang)
   Widget _buildTabButton(String title, int index) {
@@ -167,6 +182,32 @@ class _EventListSectionState extends State<EventListSection> {
     );
   }
 
+  String _formatShortDate(DateTime date) {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'Mei',
+      'Jun',
+      'Jul',
+      'Agu',
+      'Sep',
+      'Okt',
+      'Nov',
+      'Des',
+    ];
+    final day = date.day.toString().padLeft(2, '0');
+    final month = months[date.month - 1];
+    return '$day $month';
+  }
+
+  String _formatTime(DateTime date) {
+    final hh = date.hour.toString().padLeft(2, '0');
+    final mm = date.minute.toString().padLeft(2, '0');
+    return '$hh:$mm WIB';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -183,101 +224,66 @@ class _EventListSectionState extends State<EventListSection> {
         const SizedBox(height: 20),
 
         // --- DAFTAR EVENT BERDASARKAN TAB ---
-        if (_activeTabIndex == 1) ...[
-          // Tampilan jika tab "Mendatang" ditekan
-          _buildEventCard(
-            headerColor: const Color(0xFF3B82F6), // Biru
-            title: 'Rapat Mingguan Divisi',
-            date: '28 Apr',
-            time: '14:00 WIB',
-            location: 'Ruang Meeting 2',
-            participants: '25 peserta diharapkan',
-            onTap: () {
-              final event = EventModel(
-                eventId: 'rapat_mingguan_divisi',
-                nama: 'Rapat Mingguan Divisi',
-                jenis: 'Kegiatan',
-                tanggal: DateTime(2024, 4, 28, 14, 0),
-                createdBy: 'system',
-                deskripsi:
-                    'Rapat mingguan untuk membahas progres dan rencana kerja divisi.',
-                targetPeserta: ['Alice', 'Bob', 'Charlie', 'David', 'Eve'],
-                jamMulai: DateTime(2024, 4, 28, 14, 0),
-              );
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => EventDetailView(event: event),
+        ValueListenableBuilder<List<EventModel>>(
+          valueListenable: _eventController.events,
+          builder: (context, events, _) {
+            final now = DateTime.now();
+            final rootEvents = events
+                .where((e) => e.parentEventId == null)
+                .toList(growable: false);
+
+            final filtered = rootEvents.where((event) {
+              final isPast = event.tanggal.isBefore(now);
+              return _activeTabIndex == 0 ? isPast : !isPast;
+            }).toList(growable: false);
+
+            if (filtered.isEmpty) {
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32.0),
+                  child: Text(
+                    _activeTabIndex == 0
+                        ? 'Belum ada kegiatan terakhir.'
+                        : 'Belum ada kegiatan mendatang.',
+                    style: TextStyle(color: Colors.grey[500]),
+                  ),
                 ),
               );
             }
-          ),
-          _buildEventCard(
-            headerColor: const Color(0xFFA855F7), // Ungu
-            title: 'Diskusi Proyek Akhir',
-            date: '29 Apr',
-            time: '10:00 WIB',
-            location: 'Lab Komputer 2',
-            participants: '15 peserta diharapkan',
-            onTap: () {
-              final event = EventModel(
-                eventId: 'diskusi_proyek_akhir',
-                nama: 'Diskusi Proyek Akhir',
-                jenis: 'Kegiatan',
-                tanggal: DateTime(2024, 4, 29, 10, 0),
-                createdBy: 'system',
-                deskripsi:
-                    'Diskusi untuk mempersiapkan proyek akhir yang akan datang.',
-                targetPeserta: ['Alice', 'Bob', 'Charlie', 'David', 'Eve'],
-                jamMulai: DateTime(2024, 4, 29, 10, 0),
-              );
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => EventDetailView(event: event),
-                ),
-              );
-            }
-          ),
-          _buildEventCard(
-            headerColor: const Color(0xFFF97316), // Oranye
-            title: 'Sosialisasi Event Besar',
-            date: '30 Apr',
-            time: '13:00 WIB',
-            location: 'Aula Utama',
-            participants: '80 peserta diharapkan',
-            onTap: () {
-              final event = EventModel(
-                eventId: 'sosialisasi_event_besar',
-                nama: 'Sosialisasi Event Besar',
-                jenis: 'Kegiatan',
-                tanggal: DateTime(2024, 4, 30, 13, 0),
-                createdBy: 'system',
-                deskripsi:
-                    'Sosialisasi untuk mempersiapkan event besar yang akan datang.',
-                targetPeserta: ['Alice', 'Bob', 'Charlie', 'David', 'Eve'],
-                jamMulai: DateTime(2024, 4, 30, 13, 0),
-              );
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => EventDetailView(event: event),
-                ),
-              );
-            }
-          ),
-        ] else ...[
-          // Tampilan jika tab "Kegiatan Terakhir" ditekan
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.all(32.0),
-              child: Text(
-                'Belum ada kegiatan terakhir.',
-                style: TextStyle(color: Colors.grey[500]),
-              ),
-            ),
-          ),
-        ],
+
+            return Column(
+              children: List.generate(filtered.length, (index) {
+                final event = filtered[index];
+                final headerColor = _headerColors[
+                    index % _headerColors.length];
+                final timeBase = event.jamMulai ?? event.tanggal;
+                final peserta = event.targetPeserta.isEmpty
+                    ? 'Belum ada peserta'
+                    : '${event.targetPeserta.length} peserta diharapkan';
+                final location = (event.lokasi ?? '').trim().isEmpty
+                    ? 'Lokasi belum ditentukan'
+                    : event.lokasi!.trim();
+
+                return _buildEventCard(
+                  headerColor: headerColor,
+                  title: event.nama,
+                  date: _formatShortDate(event.tanggal),
+                  time: _formatTime(timeBase),
+                  location: location,
+                  participants: peserta,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => EventDetailView(event: event),
+                      ),
+                    );
+                  },
+                );
+              }),
+            );
+          },
+        ),
       ],
     );
   }

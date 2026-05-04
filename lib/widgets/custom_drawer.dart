@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../features/event/event_list_view.dart';
 import '../features/laporan/laporan_view.dart';
 import '../features/member/member_list_view.dart';
 
@@ -88,7 +89,15 @@ class CustomDrawer extends StatelessWidget {
                     icon: Icons.calendar_today_outlined,
                     title: 'Kegiatan',
                     isSelected: false,
-                    onTap: () {},
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const EventListView(),
+                        ),
+                      );
+                    },
                   ),
                   _buildMenuItem(
                     icon: Icons.people_outline,

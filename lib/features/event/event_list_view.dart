@@ -152,6 +152,7 @@ class _EventListViewState extends State<EventListView> {
       tanggal: result.date,
       parentEventId: result.isSubEvent ? result.parentId : null,
       jenis: result.jenis,
+      lokasi: result.lokasi,
       deskripsi: result.deskripsi,
       targetPeserta: result.targetPeserta,
     );
@@ -191,6 +192,7 @@ class _EventListViewState extends State<EventListView> {
             isSubEvent: isSubEvent,
             parentId: target.parentEventId,
             jenis: target.jenis,
+            lokasi: target.lokasi,
           ),
         ),
       ),
@@ -203,6 +205,7 @@ class _EventListViewState extends State<EventListView> {
         nama: result.name,
         tanggal: result.date,
         jenis: result.jenis,
+        lokasi: result.lokasi,
       ),
     );
 
@@ -273,22 +276,35 @@ class _EventListViewState extends State<EventListView> {
   Widget _buildSearchBar() {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: TextField(
-        controller: _searchController,
-        decoration: InputDecoration(
-          hintText: 'Cari event...',
-          prefixIcon: const Icon(Icons.search),
-          suffixIcon: _searchController.text.isNotEmpty
-              ? IconButton(
-                  icon: const Icon(Icons.clear),
-                  onPressed: () => _searchController.clear(),
-                )
-              : null,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: TextField(
+          controller: _searchController,
+          decoration: InputDecoration(
+            hintText: 'Cari event, jenis, atau lokasi...',
+            prefixIcon: const Icon(Icons.search),
+            suffixIcon: _searchController.text.isNotEmpty
+                ? IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => _searchController.clear(),
+                  )
+                : null,
+            border: InputBorder.none,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
           ),
-          filled: true,
-          fillColor: Colors.grey.shade50,
         ),
       ),
     );
@@ -302,6 +318,9 @@ class _EventListViewState extends State<EventListView> {
           valueListenable: _controller.selectedDateRangeFilter,
           builder: (_, dateRange, __) {
             final hasFilters = _controller.hasActiveFilters;
+            final chipShape = RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(999),
+            );
 
             return Padding(
               padding: const EdgeInsets.only(bottom: 12),
@@ -315,6 +334,17 @@ class _EventListViewState extends State<EventListView> {
                     selected: jenisFilter != null,
                     onSelected: (_) => _showJenisFilter(),
                     avatar: const Icon(Icons.category_outlined, size: 18),
+                    shape: chipShape,
+                    showCheckmark: false,
+                    selectedColor: const Color(0xFFDBEAFE),
+                    labelStyle: TextStyle(
+                      fontWeight: jenisFilter != null
+                          ? FontWeight.w700
+                          : FontWeight.w500,
+                      color: jenisFilter != null
+                          ? const Color(0xFF1D4ED8)
+                          : Colors.black87,
+                    ),
                   ),
                   
                   // Filter Tanggal Button
@@ -327,6 +357,17 @@ class _EventListViewState extends State<EventListView> {
                     selected: dateRange != null,
                     onSelected: (_) => _showDateRangeFilter(),
                     avatar: const Icon(Icons.date_range, size: 18),
+                    shape: chipShape,
+                    showCheckmark: false,
+                    selectedColor: const Color(0xFFDCFCE7),
+                    labelStyle: TextStyle(
+                      fontWeight: dateRange != null
+                          ? FontWeight.w700
+                          : FontWeight.w500,
+                      color: dateRange != null
+                          ? const Color(0xFF166534)
+                          : Colors.black87,
+                    ),
                   ),
 
                   // Clear All Filters
@@ -335,6 +376,9 @@ class _EventListViewState extends State<EventListView> {
                       label: const Text('Reset Filter'),
                       onPressed: _clearAllFilters,
                       avatar: const Icon(Icons.clear_all, size: 18),
+                      shape: chipShape,
+                      backgroundColor: const Color(0xFFF3F4F6),
+                      labelStyle: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                 ],
               ),
@@ -350,10 +394,10 @@ class _EventListViewState extends State<EventListView> {
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+        color: const Color(0xFFF8FAFF),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Colors.grey.shade300,
+          color: const Color(0xFFE2E8F0),
           width: 1,
         ),
       ),
@@ -375,6 +419,30 @@ class _EventListViewState extends State<EventListView> {
                         fontWeight: FontWeight.w600,
                       ),
                 ),
+              ),
+              PopupMenuButton<String>(
+                tooltip: 'Aksi',
+                onSelected: (value) {
+                  if (value == 'edit') {
+                    _editEvent(subEvent);
+                  } else if (value == 'delete') {
+                    _deleteEvent(subEvent);
+                  }
+                },
+                itemBuilder: (context) {
+                  return <PopupMenuEntry<String>>[
+                    if (_canUpdateSubEvent)
+                      const PopupMenuItem(
+                        value: 'edit',
+                        child: Text('Edit'),
+                      ),
+                    if (_canDeleteSubEvent)
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Text('Hapus'),
+                      ),
+                  ];
+                },
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -410,7 +478,7 @@ class _EventListViewState extends State<EventListView> {
             runSpacing: 8,
             children: [
               if (_canUpdateSubEvent)
-                OutlinedButton.icon(
+                TextButton.icon(
                   onPressed: () {
                     Navigator.push(
                       context,
@@ -421,30 +489,10 @@ class _EventListViewState extends State<EventListView> {
                   },
                   icon: const Icon(Icons.qr_code_scanner, size: 16),
                   label: const Text('Scan'),
-                  style: OutlinedButton.styleFrom(
+                  style: TextButton.styleFrom(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     minimumSize: Size.zero,
-                  ),
-                ),
-              if (_canUpdateSubEvent)
-                OutlinedButton.icon(
-                  onPressed: () => _editEvent(subEvent),
-                  icon: const Icon(Icons.edit_outlined, size: 16),
-                  label: const Text('Edit'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    minimumSize: Size.zero,
-                  ),
-                ),
-              if (_canDeleteSubEvent)
-                OutlinedButton.icon(
-                  onPressed: () => _deleteEvent(subEvent),
-                  icon: const Icon(Icons.delete_outline, size: 16),
-                  label: const Text('Hapus'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    minimumSize: Size.zero,
-                    foregroundColor: Colors.red,
+                    foregroundColor: const Color(0xFF1D4ED8),
                   ),
                 ),
             ],
@@ -458,15 +506,24 @@ class _EventListViewState extends State<EventListView> {
     final eventId = event.eventId;
     final isExpanded = _expandedState[eventId] ?? false;
     final hasSubEvents = subEvents.isNotEmpty;
+    final hasLocation = (event.lokasi ?? '').trim().isNotEmpty;
+    final dateLabel = _formatDateTime(event.jamMulai ?? event.tanggal);
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         onTap: hasSubEvents
             ? () {
                 setState(() {
@@ -475,10 +532,27 @@ class _EventListViewState extends State<EventListView> {
               }
             : null,
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: _getJenisColor(event.jenis).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  event.jenis.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.6,
+                    color: _getJenisColor(event.jenis),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
               // ── Header Row ────────────────────────────
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -490,42 +564,46 @@ class _EventListViewState extends State<EventListView> {
                         Text(
                           event.nama,
                           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
+                                fontWeight: FontWeight.w800,
+                                height: 1.2,
                               ),
                         ),
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            Icon(Icons.calendar_today, 
-                                 size: 14, 
-                                 color: Colors.grey.shade600),
-                            const SizedBox(width: 4),
-                            Text(
-                              _formatDateTime(event.tanggal),
-                              style: Theme.of(context).textTheme.bodySmall,
+                            Icon(
+                              Icons.schedule,
+                              size: 14,
+                              color: Colors.grey.shade600,
                             ),
-                            const SizedBox(width: 12),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: _getJenisColor(event.jenis)
-                                    .withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                event.jenis,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: _getJenisColor(event.jenis),
-                                ),
-                              ),
+                            const SizedBox(width: 6),
+                            Text(
+                              dateLabel,
+                              style: Theme.of(context).textTheme.bodySmall,
                             ),
                           ],
                         ),
+                        if (hasLocation) ...[
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.location_on_outlined,
+                                size: 14,
+                                color: Colors.grey.shade600,
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  event.lokasi!.trim(),
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -548,6 +626,30 @@ class _EventListViewState extends State<EventListView> {
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
                     ),
+                  PopupMenuButton<String>(
+                    tooltip: 'Aksi',
+                    onSelected: (value) {
+                      if (value == 'edit') {
+                        _editEvent(event);
+                      } else if (value == 'delete') {
+                        _deleteEvent(event);
+                      }
+                    },
+                    itemBuilder: (context) {
+                      return <PopupMenuEntry<String>>[
+                        if (_canUpdateMainEvent)
+                          const PopupMenuItem(
+                            value: 'edit',
+                            child: Text('Edit'),
+                          ),
+                        if (_canDeleteMainEvent)
+                          const PopupMenuItem(
+                            value: 'delete',
+                            child: Text('Hapus'),
+                          ),
+                      ];
+                    },
+                  ),
                 ],
               ),
 
@@ -571,7 +673,7 @@ class _EventListViewState extends State<EventListView> {
                 children: [
                   if (!hasSubEvents)
                     if (_canUpdateMainEvent)
-                      OutlinedButton.icon(
+                      FilledButton.icon(
                         onPressed: () {
                           Navigator.push(
                             context,
@@ -581,23 +683,14 @@ class _EventListViewState extends State<EventListView> {
                           );
                         },
                         icon: const Icon(Icons.qr_code_scanner),
-                        label: const Text('Scan Absensi'),
+                        label: const Text('Scan'),
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 10,
+                          ),
+                        ),
                       ),
-                  if (_canUpdateMainEvent)
-                    OutlinedButton.icon(
-                      onPressed: () => _editEvent(event),
-                      icon: const Icon(Icons.edit_outlined),
-                      label: const Text('Edit'),
-                    ),
-                  if (_canDeleteMainEvent)
-                    OutlinedButton.icon(
-                      onPressed: () => _deleteEvent(event),
-                      icon: const Icon(Icons.delete_outline),
-                      label: const Text('Hapus'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.red,
-                      ),
-                    ),
                 ],
               ),
 
@@ -651,6 +744,7 @@ class _EventListViewState extends State<EventListView> {
       tanggal: result.date,
       parentEventId: parentEvent.eventId,
       jenis: result.jenis,
+      lokasi: result.lokasi,
       deskripsi: result.deskripsi,
       targetPeserta: result.targetPeserta,
     );
@@ -705,11 +799,6 @@ class _EventListViewState extends State<EventListView> {
         title: 'Daftar Event',
         subtitle: 'Kelola main event dan sub-event',
         actions: [
-          IconButton(
-            tooltip: 'Refresh',
-            onPressed: () => _controller.loadEvents(force: true),
-            icon: const Icon(Icons.refresh, color: Colors.white),
-          ),
           if (_canCreateMainEvent)
             IconButton(
               tooltip: 'Tambah Event',

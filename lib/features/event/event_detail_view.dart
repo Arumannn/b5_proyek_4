@@ -1,12 +1,124 @@
 import 'package:flutter/material.dart';
+
+import '../../core/services/hive_service.dart';
+import '../../models/attendance_record.dart';
 import '../../models/event_model.dart';
+import '../../models/member_model.dart';
 
 class EventDetailView extends StatelessWidget {
-const EventDetailView({Key? key, required this.event}) : super(key: key);  
-final EventModel event;
+  const EventDetailView({Key? key, required this.event}) : super(key: key);
+  final EventModel event;
+
+  String _formatDateTime(DateTime value) {
+    final dd = value.day.toString().padLeft(2, '0');
+    final mm = value.month.toString().padLeft(2, '0');
+    final yyyy = value.year.toString();
+    final hh = value.hour.toString().padLeft(2, '0');
+    final min = value.minute.toString().padLeft(2, '0');
+    return '$dd/$mm/$yyyy, $hh:$min WIB';
+  }
+
+  String _eventLocation() {
+    final lokasi = event.lokasi?.trim();
+    if (lokasi != null && lokasi.isNotEmpty) return lokasi;
+    return 'Lokasi belum diatur';
+  }
+
+  List<AttendanceRecord> _attendanceRecords() {
+    return HiveService.attendance.values
+        .where((r) => r.eventId == event.eventId)
+        .toList(growable: false)
+      ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
+  }
+
+  Map<String, MemberModel> _memberByNim() {
+    return {
+      for (final m in HiveService.members.values) m.nim: m,
+    };
+  }
+
+  int _countStatus(List<AttendanceRecord> records, List<String> tokens) {
+    return records.where((r) {
+      final value = r.status.toLowerCase();
+      return tokens.any((t) => value.contains(t));
+    }).length;
+  }
+
+  Widget _buildAgendaContent(String? raw) {
+    final normalized = (raw ?? '').trim();
+    if (normalized.isEmpty) {
+      return Text(
+        'Belum ada agenda.',
+        style: TextStyle(
+          fontSize: 14,
+          color: Colors.grey[600],
+          height: 1.4,
+        ),
+      );
+    }
+
+    final lines = normalized
+        .split('\n')
+        .map((line) => line.trim())
+        .where((line) => line.isNotEmpty)
+        .toList(growable: false);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: lines.map((line) {
+        final isBullet = line.startsWith('- ') ||
+            line.startsWith('* ') ||
+            line.startsWith('• ');
+        final text = isBullet ? line.substring(2).trim() : line;
+        if (!isBullet) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 6.0),
+            child: Text(
+              text,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.black87,
+                height: 1.4,
+              ),
+            ),
+          );
+        }
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 6.0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Padding(
+                padding: EdgeInsets.only(top: 6.0),
+                child: Icon(Icons.circle, size: 6, color: Colors.black54),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  text,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.black87,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(growable: false),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final records = _attendanceRecords();
+    final memberByNim = _memberByNim();
+    final hadirCount = _countStatus(records, ['hadir', 'terlambat']);
+    final izinCount = _countStatus(records, ['izin', 'sakit']);
+    final alphaCount = _countStatus(records, ['alpha']);
+
     return Scaffold(
       // Mengatur warna background dasar menjadi abu-abu sangat muda
       backgroundColor: const Color(0xFFF5F7FA), 
@@ -15,10 +127,10 @@ final EventModel event;
       appBar: AppBar(
         backgroundColor: Colors.blueAccent, // Warna biru AppBar
         elevation: 0,
-        title: const Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            const Text(
               'Detail Kegiatan',
               style: TextStyle(
                 color: Colors.white,
@@ -26,14 +138,16 @@ final EventModel event;
                 fontSize: 20,
               ),
             ),
-            SizedBox(height: 2),
+            const SizedBox(height: 2),
             Text(
-              'Rapat Koordinasi Pengurus',
-              style: TextStyle(
+              event.nama,
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 14,
                 fontWeight: FontWeight.normal,
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -48,7 +162,7 @@ final EventModel event;
       ),
       
       // Body sementara kita biarkan kosong dulu sebelum masuk ke Tahap 2
-    body: SingleChildScrollView(
+      body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
@@ -73,8 +187,8 @@ final EventModel event;
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Rapat Koordinasi Pengurus',
+                    Text(
+                      event.nama,
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -87,21 +201,23 @@ final EventModel event;
                     _buildInfoRow(
                       icon: Icons.access_time,
                       title: 'Waktu',
-                      value: '24 April 2026, 14:00 - 16:00 WIB',
+                      value: _formatDateTime(event.jamMulai ?? event.tanggal),
                     ),
                     const SizedBox(height: 16),
 
                     _buildInfoRow(
                       icon: Icons.location_on_outlined,
                       title: 'Lokasi',
-                      value: 'Ruang Seminar Informatika, Lantai 3',
+                      value: _eventLocation(),
                     ),
                     const SizedBox(height: 16),
 
                     _buildInfoRow(
                       icon: Icons.people_outline,
                       title: 'Peserta',
-                      value: '52 anggota diundang',
+                      value: event.targetPeserta.isEmpty
+                          ? 'Semua anggota'
+                          : '${event.targetPeserta.length} anggota diundang',
                     ),
                     const SizedBox(height: 24),
 
@@ -113,25 +229,18 @@ final EventModel event;
                         color: const Color(0xFFF4F7FB), // Warna biru sangat muda
                         borderRadius: BorderRadius.circular(12.0),
                       ),
-                      child: const Column(
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
+                          const Text(
                             'Agenda Rapat:',
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.black54,
                             ),
                           ),
-                          SizedBox(height: 8),
-                          Text(
-                            'Pembahasan rencana kegiatan semester depan, evaluasi kinerja divisi, dan koordinasi event tahunan HIMAKOM.',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.black87,
-                              height: 1.4, // Memberi jarak antar baris teks agar nyaman dibaca
-                            ),
-                          ),
+                          const SizedBox(height: 8),
+                          _buildAgendaContent(event.deskripsi),
                         ],
                       ),
                     ),
@@ -147,7 +256,7 @@ final EventModel event;
                     iconBgColor: Colors.green.withOpacity(0.15), // Hijau pudar
                     iconColor: Colors.green,
                     icon: Icons.check_circle_outline,
-                    count: '6',
+                    count: hadirCount.toString(),
                     label: 'Hadir',
                   ),
                   const SizedBox(width: 12), // Jarak antar kotak
@@ -155,7 +264,7 @@ final EventModel event;
                     iconBgColor: Colors.orange.withOpacity(0.15), // Oranye pudar
                     iconColor: Colors.orange,
                     icon: Icons.error_outline,
-                    count: '1',
+                    count: izinCount.toString(),
                     label: 'Izin',
                   ),
                   const SizedBox(width: 12), // Jarak antar kotak
@@ -163,7 +272,7 @@ final EventModel event;
                     iconBgColor: Colors.red.withOpacity(0.15), // Merah pudar
                     iconColor: Colors.red,
                     icon: Icons.cancel_outlined,
-                    count: '1',
+                    count: alphaCount.toString(),
                     label: 'Alpha',
                   ),
                 ],
@@ -216,37 +325,49 @@ final EventModel event;
                     ),
                     const SizedBox(height: 16),
 
-                    // Daftar Peserta memanggil helper function
-                    _buildAttendeeItem(
-                      initial: 'A',
-                      avatarColor: Colors.blueAccent,
-                      name: 'Ahmad Fauzi',
-                      nim: 'NIM: 2101001',
-                      status: 'Hadir',
-                      statusTextColor: Colors.green[700]!,
-                      statusBgColor: Colors.green.withOpacity(0.15),
-                      time: '14:02',
-                    ),
-                    _buildAttendeeItem(
-                      initial: 'S',
-                      avatarColor: Colors.blueAccent,
-                      name: 'Siti Nurhaliza',
-                      nim: 'NIM: 2101002',
-                      status: 'Hadir',
-                      statusTextColor: Colors.green[700]!,
-                      statusBgColor: Colors.green.withOpacity(0.15),
-                      time: '14:05',
-                    ),
-                    _buildAttendeeItem(
-                      initial: 'B',
-                      avatarColor: Colors.blueAccent,
-                      name: 'Budi Santoso',
-                      nim: 'NIM: 2101003',
-                      status: 'Izin',
-                      statusTextColor: Colors.orange[800]!,
-                      statusBgColor: Colors.orange.withOpacity(0.15),
-                      time: '', // Kosong karena izin
-                    ),
+                    if (records.isEmpty)
+                      Text(
+                        'Belum ada kehadiran tercatat.',
+                        style: TextStyle(color: Colors.grey[600]),
+                      )
+                    else
+                      ...records.map((record) {
+                        final member = memberByNim[record.nim];
+                        final name = member?.nama ?? 'Anggota';
+                        final initial = name.isNotEmpty
+                            ? name[0].toUpperCase()
+                            : '?';
+                        final time =
+                            '${record.timestamp.hour.toString().padLeft(2, '0')}:${record.timestamp.minute.toString().padLeft(2, '0')}';
+                        final statusLower = record.status.toLowerCase();
+                        final isHadir =
+                            statusLower.contains('hadir') ||
+                            statusLower.contains('terlambat');
+                        final isIzin =
+                            statusLower.contains('izin') ||
+                            statusLower.contains('sakit');
+                        final statusColor = isHadir
+                            ? Colors.green[700]!
+                            : (isIzin
+                                ? Colors.orange[800]!
+                                : Colors.red[700]!);
+                        final statusBgColor = isHadir
+                            ? Colors.green.withOpacity(0.15)
+                            : (isIzin
+                                ? Colors.orange.withOpacity(0.15)
+                                : Colors.red.withOpacity(0.15));
+
+                        return _buildAttendeeItem(
+                          initial: initial,
+                          avatarColor: Colors.blueAccent,
+                          name: name,
+                          nim: 'NIM: ${record.nim}',
+                          status: record.status,
+                          statusTextColor: statusColor,
+                          statusBgColor: statusBgColor,
+                          time: time,
+                        );
+                      }),
                   ],
                 ),
               ),            
