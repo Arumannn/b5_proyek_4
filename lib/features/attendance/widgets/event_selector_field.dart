@@ -19,6 +19,7 @@ class EventSelectorField extends StatelessWidget {
   Widget build(BuildContext context) {
     return DropdownButtonFormField<String>(
       initialValue: selectedEventId,
+      isExpanded: true,
       decoration: const InputDecoration(
         labelText: 'Pilih Event / Sub-Event',
         border: OutlineInputBorder(),
@@ -27,7 +28,11 @@ class EventSelectorField extends StatelessWidget {
           .map(
             (event) => DropdownMenuItem<String>(
               value: event.eventId,
-              child: Text(labelBuilder(event.eventId)),
+              child: Text(
+                labelBuilder(event.eventId),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           )
           .toList(growable: false),

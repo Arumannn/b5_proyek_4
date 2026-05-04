@@ -6,13 +6,15 @@ part 'member_model.g.dart';
 @HiveType(typeId: AppConstants.memberTypeId)
 class MemberModel extends HiveObject {
   @HiveField(0)
-  final String memberId; // UUID unik (saat ini = nim)
+  final String memberId; // Legacy key, nilainya disamakan dengan nim.
 
   @HiveField(1)
   final String nama;
 
   @HiveField(2)
   final String nim;
+
+  String get identifier => nim;
 
   @HiveField(3)
   final String divisi;
@@ -30,19 +32,20 @@ class MemberModel extends HiveObject {
   String? fcmToken; // token FCM perangkat aktif
 
   MemberModel({
-    required this.memberId,
+    String? memberId,
     required this.nama,
-    required this.nim,
+    required String nim,
     required this.divisi,
     required this.role,
     required this.password,
     required this.qrCodeValue,
     this.fcmToken,
-  });
+  })  : nim = nim.trim(),
+        memberId = (memberId ?? nim).trim();
 
   Map<String, dynamic> toMap() {
     return {
-      'memberId': memberId,
+      'memberId': nim,
       'nama': nama,
       'nim': nim,
       'divisi': divisi,
@@ -54,11 +57,9 @@ class MemberModel extends HiveObject {
   }
 
   factory MemberModel.fromMap(Map<String, dynamic> map) {
-    final nim = map['nim']?.toString() ?? '';
+    final nim = map['nim']?.toString() ?? map['memberId']?.toString() ?? '';
     final normalizedNim = nim.trim();
     return MemberModel(
-      // Konsistensi domain: memberId disamakan dengan nim di seluruh app.
-      memberId: normalizedNim,
       nama: map['nama']?.toString() ?? '',
       nim: normalizedNim,
       divisi: map['divisi']?.toString() ?? '',
@@ -81,10 +82,11 @@ class MemberModel extends HiveObject {
     String? qrCodeValue,
     String? fcmToken,
   }) {
+    final nextNim = (nim ?? this.nim).trim();
     return MemberModel(
-      memberId: memberId ?? this.memberId,
+      memberId: memberId ?? nextNim,
       nama: nama ?? this.nama,
-      nim: nim ?? this.nim,
+      nim: nextNim,
       divisi: divisi ?? this.divisi,
       role: role ?? this.role,
       password: password ?? this.password,
@@ -94,6 +96,5 @@ class MemberModel extends HiveObject {
   }
 
   @override
-  String toString() =>
-      'MemberModel(memberId: $memberId, nim: $nim, nama: $nama, role: $role)';
+  String toString() => 'MemberModel(nim: $nim, nama: $nama, role: $role)';
 }

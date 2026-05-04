@@ -1,4 +1,7 @@
+// ignore_for_file: deprecated_member_use
+
 import 'dart:io';
+import 'package:b5_proyek_4/widgets/gradient_header.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:b5_proyek_4/features/auth/auth_controller.dart';
@@ -80,10 +83,10 @@ class _PermissionFormViewState extends State<PermissionFormView> {
 
 void _submitForm() {
   if (_formKey.currentState!.validate()) {
-    final currentMemberId = AuthController.instance.currentUser.value?.memberId;
+    final currentNim = AuthController.instance.currentUser.value?.nim;
     
     final isAlreadySubmitted = HiveService.permissions.values.any(
-      (p) => p.eventId == _selectedEventId && p.memberId == currentMemberId
+      (p) => p.eventId == _selectedEventId && p.nim == currentNim
     );
 
     if (isAlreadySubmitted) {
@@ -116,10 +119,7 @@ void _submitForm() {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Pengajuan Izin / Sakit'),
-        centerTitle: true,
-      ),
+      appBar: const GradientHeader(title: 'Pengajuan Izin / Sakit', subtitle: 'Form pengajuan anggota'),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Form(

@@ -1,3 +1,4 @@
+// ignore_for_file: unused_import
 
 import 'package:flutter/material.dart';
 import '../../core/services/hive_service.dart';
@@ -6,15 +7,14 @@ import '../../features/event/event_controller.dart';
 import '../../models/attendance_record.dart';
 import '../../models/event_model.dart';
 import '../../models/member_model.dart';
+import '../../widgets/gradient_header.dart';
 import '../attendance/widgets/attendance_records_table.dart';
 
 /// Riwayat kehadiran pribadi Member — Implementasi penuh: Week 12
 class AttendanceHistoryView extends StatefulWidget {
-  final String memberId;
   final String nim;
   const AttendanceHistoryView({
     super.key,
-    required this.memberId,
     required this.nim,
   });
 
@@ -48,16 +48,14 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
       ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
     final filtered = allRecords
         .where(
-          (r) =>
-              r.memberId.trim() == widget.memberId.trim() ||
-              r.memberId.trim() == widget.nim.trim(),
+          (r) => r.nim.trim() == widget.nim.trim(),
         )
         .toList(growable: false);
     if (!mounted) return;
     setState(() {
       _records = filtered;
       _eventById = {for (final e in events) e.eventId: e};
-      _memberById = {for (final m in members) m.memberId: m};
+      _memberById = {for (final m in members) m.nim: m};
       _isLoading = false;
     });
   }
@@ -76,13 +74,14 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Riwayat Kehadiran'),
+      appBar: GradientHeader(
+        title: 'Riwayat Kehadiran',
+        subtitle: 'Daftar absensi pribadi',
         actions: [
           IconButton(
             tooltip: 'Refresh',
             onPressed: _refresh,
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh, color: Colors.white),
           ),
         ],
       ),

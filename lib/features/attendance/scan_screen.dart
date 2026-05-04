@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../core/utils/qr_service.dart';
+import '../../widgets/gradient_header.dart';
 import 'attendance_controller.dart';
 // import 'package:b5_proyek_4/features/attendance/attendance_controller.dart';
 // import 'package:b5_proyek_4/widgets/custom_snackbar.dart';
@@ -174,19 +175,17 @@ class _ScanScreenState extends State<ScanScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Scan Absensi'),
-        centerTitle: true,
+      appBar: GradientHeader(
+        title: 'Scan Absensi',
+        subtitle: 'Arahkan kamera ke QR anggota',
         actions: [
-          // Tombol Senter (Flashlight) versi aman untuk semua versi library
           IconButton(
-            icon: const Icon(Icons.flashlight_on, color: Colors.yellow),
+            icon: const Icon(Icons.flashlight_on, color: Colors.white),
             tooltip: 'Nyalakan/Matikan Senter',
             onPressed: () {
               try {
                 _scannerController.toggleTorch();
               } catch (e) {
-                // Mencegah aplikasi crash jika HP tidak memiliki senter
                 debugPrint('Gagal menyalakan senter: $e');
               }
             },

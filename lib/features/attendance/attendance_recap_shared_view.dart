@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+
+import '../../core/constants/app_constants.dart';
+import '../../widgets/gradient_header.dart';
 import '../../core/auth/attendance_role_policy.dart';
 import '../../core/services/hive_service.dart';
 import '../../models/attendance_record.dart';
@@ -31,6 +34,25 @@ class _AttendanceRecapSharedViewState extends State<AttendanceRecapSharedView> {
   List<AttendanceRecord> _records = const [];
   Map<String, MemberModel> _memberById = const {};
   String? _selectedEventId;
+
+  String get _currentRole =>
+      (AuthController.instance.currentUser.value?.role ?? '').trim().toLowerCase();
+
+  bool get _hasAccess {
+    if (_currentRole == AppConstants.roleExecutive.toLowerCase() ||
+        _currentRole == 'executive' ||
+        _currentRole == 'eksekutif' ||
+        _currentRole == 'admin') {
+      return true;
+    }
+    if (_currentRole == AppConstants.roleManager.toLowerCase()) {
+      return widget.policy.canEditStatus || widget.policy.canDeleteRecord;
+    }
+    if (_currentRole == AppConstants.roleOrganizer.toLowerCase()) {
+      return !widget.policy.canEditStatus && !widget.policy.canDeleteRecord;
+    }
+    return false;
+  }
   @override
   void initState() {
     super.initState();
@@ -50,7 +72,7 @@ class _AttendanceRecapSharedViewState extends State<AttendanceRecapSharedView> {
     final records = HiveService.attendance.values.toList(growable: false)
       ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
     final members = HiveService.members.values.toList(growable: false);
-    final map = <String, MemberModel>{for (final m in members) m.memberId: m};
+    final map = <String, MemberModel>{for (final m in members) m.nim: m};
     String? selected = _selectedEventId ?? widget.initialEventId;
     if (selected == null && events.isNotEmpty) {
       selected = events.first.eventId;
@@ -139,10 +161,7 @@ class _AttendanceRecapSharedViewState extends State<AttendanceRecapSharedView> {
       },
     );
     if (confirmed != true) return;
-    final managerId =
-        AuthController.instance.currentUser.value?.memberId ??
-        AuthController.instance.currentUser.value?.nim ??
-        'system';
+    final managerId = AuthController.instance.currentUser.value?.nim ?? 'system';
     final ok = await AttendanceController.instance.overrideAttendanceStatus(
       recordId: record.recordId,
       newStatus: selected,
@@ -194,14 +213,33 @@ class _AttendanceRecapSharedViewState extends State<AttendanceRecapSharedView> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_hasAccess) {
+      return Scaffold(
+        appBar: GradientHeader(
+          title: widget.title,
+          subtitle: 'Akses terbatas',
+        ),
+        body: const Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Text(
+              'Role Anda tidak memiliki akses ke halaman rekap ini.',
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
+      appBar: GradientHeader(
+        title: widget.title,
+        subtitle: 'Ringkasan rekap kehadiran',
         actions: [
           IconButton(
             tooltip: 'Refresh',
             onPressed: _refresh,
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh, color: Colors.white),
           ),
         ],
       ),

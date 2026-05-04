@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../core/constants/app_constants.dart';
+import '../../widgets/gradient_header.dart';
+import '../auth/auth_controller.dart';
+
 class EventParentOption {
   final String id;
   final String name;
@@ -13,6 +17,7 @@ class EventFormValue {
   final bool isSubEvent;
   final String? parentId;
   final String jenis;
+  final String? lokasi;
   final String? deskripsi;
   final List<String> targetPeserta;
 
@@ -22,6 +27,7 @@ class EventFormValue {
     required this.isSubEvent,
     this.parentId,
     this.jenis = 'Kegiatan',
+    this.lokasi,
     this.deskripsi,
     this.targetPeserta = const [],
   });
@@ -54,6 +60,7 @@ class EventFormView extends StatefulWidget {
 
 class _EventFormViewState extends State<EventFormView> {
   late final TextEditingController _nameController;
+  late final TextEditingController _lokasiController;
   late final TextEditingController _deskripsiController;
   late DateTime _selectedDate;
   late bool _isSubEvent;
@@ -62,6 +69,16 @@ class _EventFormViewState extends State<EventFormView> {
   late Set<String> _selectedDivisi;
 
   final _formKey = GlobalKey<FormState>();
+
+    String get _currentRole =>
+      (AuthController.instance.currentUser.value?.role ?? '').trim().toLowerCase();
+
+    bool get _hasAccess =>
+      _currentRole == AppConstants.roleExecutive.toLowerCase() ||
+      _currentRole == 'executive' ||
+      _currentRole == 'eksekutif' ||
+      _currentRole == 'admin' ||
+      _currentRole == AppConstants.roleManager.toLowerCase();
 
   // Daftar divisi yang tersedia (bisa di-customize sesuai organisasi)
   static const List<String> _availableDivisi = [
@@ -89,6 +106,7 @@ class _EventFormViewState extends State<EventFormView> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.initialValue?.name ?? '');
+    _lokasiController = TextEditingController(text: widget.initialValue?.lokasi ?? '');
     _deskripsiController = TextEditingController(text: widget.initialValue?.deskripsi ?? '');
     _selectedDate = widget.initialValue?.date ?? DateTime.now();
     _isSubEvent = widget.initialValue?.isSubEvent ?? false;
@@ -100,6 +118,7 @@ class _EventFormViewState extends State<EventFormView> {
   @override
   void dispose() {
     _nameController.dispose();
+    _lokasiController.dispose();
     _deskripsiController.dispose();
     super.dispose();
   }
@@ -233,6 +252,9 @@ class _EventFormViewState extends State<EventFormView> {
         isSubEvent: _isSubEvent,
         parentId: _isSubEvent ? _parentId : null,
         jenis: _selectedJenis,
+        lokasi: _lokasiController.text.trim().isEmpty
+            ? null
+            : _lokasiController.text.trim(),
         deskripsi: _deskripsiController.text.trim().isEmpty 
             ? null 
             : _deskripsiController.text.trim(),
@@ -266,12 +288,31 @@ class _EventFormViewState extends State<EventFormView> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_hasAccess) {
+      return Scaffold(
+        appBar: const GradientHeader(
+          title: 'Form Event',
+          subtitle: 'Akses terbatas',
+        ),
+        body: const Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Text(
+              'Halaman form event hanya dapat diakses oleh Executive atau Manager.',
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
+      appBar: GradientHeader(
+        title: widget.title,
+        subtitle: 'Form pembuatan dan pengeditan event',
         actions: [
           IconButton(
-            icon: const Icon(Icons.check),
+            icon: const Icon(Icons.check, color: Colors.white),
             onPressed: _submit,
             tooltip: 'Simpan',
           ),
@@ -416,6 +457,19 @@ class _EventFormViewState extends State<EventFormView> {
 
               const SizedBox(height: 16),
 
+              // ── Lokasi (Opsional) ──────────────────────────
+              TextFormField(
+                controller: _lokasiController,
+                decoration: const InputDecoration(
+                  labelText: 'Lokasi (Opsional)',
+                  hintText: 'Contoh: Ruang Seminar Informatika, Lt. 3',
+                  prefixIcon: Icon(Icons.location_on_outlined),
+                ),
+                textCapitalization: TextCapitalization.sentences,
+              ),
+
+              const SizedBox(height: 16),
+
               // ── Target Peserta (Multi-Select) ──────────────
               ListTile(
                 contentPadding: EdgeInsets.zero,
@@ -439,12 +493,11 @@ class _EventFormViewState extends State<EventFormView> {
 
               const SizedBox(height: 16),
 
-              // ── Deskripsi (Opsional) ────────────────────────
               TextFormField(
                 controller: _deskripsiController,
                 decoration: const InputDecoration(
                   labelText: 'Deskripsi (Opsional)',
-                  hintText: 'Tambahkan detail event...',
+                  hintText: 'Tulis deskripsi event.',
                   prefixIcon: Icon(Icons.description_outlined),
                   alignLabelWithHint: true,
                 ),

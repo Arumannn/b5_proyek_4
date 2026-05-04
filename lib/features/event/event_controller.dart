@@ -45,8 +45,8 @@ class EventController {
       AuthController.instance.currentUser.value?.role ?? AppConstants.roleMember;
 
   // RBAC: createdBy wajib otomatis dari user login agar jejak audit konsisten.
-  String? get _currentMemberId {
-    final raw = AuthController.instance.currentUser.value?.memberId;
+  String? get _currentNim {
+    final raw = AuthController.instance.currentUser.value?.nim;
     final normalized = raw?.trim();
     if (normalized == null || normalized.isEmpty) {
       return null;
@@ -185,6 +185,7 @@ class EventController {
     String? parentEventId,
     String createdBy = 'unknown',
     String jenis = 'Kegiatan',
+    String? lokasi,
     String? deskripsi,
     List<String>? targetPeserta,
   }) async {
@@ -202,8 +203,8 @@ class EventController {
     }
 
     // RBAC: createdBy harus otomatis berasal dari memberId user login.
-    final actorMemberId = _currentMemberId;
-    if (actorMemberId == null) {
+    final actorNim = _currentNim;
+    if (actorNim == null) {
       errorMessage.value = 'User login tidak valid untuk membuat event.';
       return false;
     }
@@ -239,8 +240,9 @@ class EventController {
         nama: trimmed,
         jenis: jenis,
         tanggal: tanggal,
-        createdBy: actorMemberId,
+        createdBy: actorNim,
         parentEventId: parentEventId,
+        lokasi: lokasi,
         deskripsi: deskripsi,
         targetPeserta: targetPeserta,
         isSynced: false, // akan di-update setelah cloud sync berhasil

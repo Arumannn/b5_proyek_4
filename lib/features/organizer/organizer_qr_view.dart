@@ -1,3 +1,4 @@
+import 'package:b5_proyek_4/widgets/gradient_header.dart';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
@@ -44,7 +45,7 @@ class _OrganizerQrViewState extends State<OrganizerQrView> {
   bool _isAlreadyPresent(MemberModel user) {
     final eventId = _selectedEventId;
     if (eventId == null) return false;
-    final compositeKey = '${eventId}_${user.memberId}';
+    final compositeKey = '${eventId}_${user.nim}';
     return HiveService.attendance.values.any(
       (r) => r.compositeKey == compositeKey,
     );
@@ -65,7 +66,7 @@ class _OrganizerQrViewState extends State<OrganizerQrView> {
     final statusText = alreadyPresent ? 'Sudah Absen' : 'Belum Absen';
 
     return Scaffold(
-      appBar: AppBar(title: const Text('QR Organizer Saya')),
+      appBar: const GradientHeader(title: 'QR Organizer Saya', subtitle: 'QR unik untuk absensi'),
       body: RefreshIndicator(
         onRefresh: () async => _loadEvents(),
         child: ListView(

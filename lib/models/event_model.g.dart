@@ -28,13 +28,14 @@ class EventModelAdapter extends TypeAdapter<EventModel> {
       isSynced: fields[8] as bool,
       createdAt: fields[9] as DateTime?,
       jamMulai: fields[10] as DateTime?,
+      lokasi: fields[11] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, EventModel obj) {
     writer
-      ..writeByte(11)
+      ..writeByte(12)
       ..writeByte(0)
       ..write(obj.eventId)
       ..writeByte(1)
@@ -55,8 +56,10 @@ class EventModelAdapter extends TypeAdapter<EventModel> {
       ..write(obj.isSynced)
       ..writeByte(9)
       ..write(obj.createdAt)
-      ..writeByte(10)
-      ..write(obj.jamMulai);
+        ..writeByte(10)
+        ..write(obj.jamMulai)
+        ..writeByte(11)
+        ..write(obj.lokasi);
   }
 
   @override

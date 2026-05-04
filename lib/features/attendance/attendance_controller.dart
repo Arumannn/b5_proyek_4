@@ -99,13 +99,13 @@ class AttendanceController {
       }
 
       // 4. Buat compositeKey & cek duplikasi di Hive
-      final compositeKey = '${eventId}_${member.memberId}';
+      final compositeKey = '${eventId}_${member.nim}';
       final isDuplicate = HiveService.attendance.values.any(
         (r) => r.compositeKey == compositeKey,
       );
       if (isDuplicate) {
         lastFailureReason.value =
-            'Duplikat absensi untuk member ${member.memberId} pada event $eventId';
+          'Duplikat absensi untuk member ${member.nim} pada event $eventId';
         lastResult.value = AttendanceResult.duplicate;
         return AttendanceResult.duplicate;
       }
@@ -121,7 +121,7 @@ class AttendanceController {
       final record = AttendanceRecord.create(
         recordId: const Uuid().v4(),
         eventId: eventId,
-        memberId: member.memberId,
+        nim: member.nim,
         status: status,
       );
       await HiveService.attendance.add(record);
@@ -154,9 +154,9 @@ class AttendanceController {
   }
 
   /// Ambil semua record kehadiran untuk satu member
-  List<AttendanceRecord> getAttendanceByMember(String memberId) {
+  List<AttendanceRecord> getAttendanceByMember(String nim) {
     return HiveService.attendance.values
-        .where((r) => r.memberId == memberId)
+        .where((r) => r.nim == nim)
         .toList()
       ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
   }
@@ -188,9 +188,9 @@ class AttendanceController {
       return localByNim;
     }
 
-    // Priority 2b: fallback by memberId di Hive.
+    // Priority 2b: fallback by identifier yang dinormalisasi di Hive.
     for (final m in HiveService.members.values) {
-      if (_normalizeIdentifier(m.memberId) == normalizedIdentifier) {
+      if (_normalizeIdentifier(m.nim) == normalizedIdentifier) {
         if (_normalizeIdentifier(m.qrCodeValue) != _normalizeIdentifier(normalizedScan)) {
           final repaired = m.copyWith(qrCodeValue: normalizedScan);
           await HiveService.members.put(m.nim, repaired);
@@ -376,7 +376,7 @@ class AttendanceController {
       }
 
       final existingRecords = getAttendanceByEvent(eventId);
-      final existingMemberIds = existingRecords.map((r) => r.memberId).toSet();
+      final existingNims = existingRecords.map((r) => r.nim).toSet();
 
       Iterable<MemberModel> targetMembers = HiveService.members.values;
       if (event.targetPeserta.isNotEmpty) {
@@ -389,11 +389,11 @@ class AttendanceController {
       int alphaCount = 0;
 
       for (final member in targetMembers) {
-        if (!existingMemberIds.contains(member.memberId)) {
+        if (!existingNims.contains(member.nim)) {
           final alphaRecord = AttendanceRecord.create(
             recordId: uuid.v4(),
             eventId: eventId,
-            memberId: member.memberId,
+            nim: member.nim,
             status: 'Alpha',
           );
           await HiveService.attendance.add(alphaRecord);
@@ -413,7 +413,7 @@ class AttendanceController {
   /// Tetap menerapkan validasi anti-duplikasi 1 user per event.
   Future<bool> addManualAttendance({
     required String eventId,
-    required String memberId,
+    required String nim,
     required String status,
   }) async {
     try {
@@ -427,11 +427,11 @@ class AttendanceController {
       }
 
       final memberExists = HiveService.members.values.any(
-        (m) => m.memberId == memberId,
+        (m) => m.nim == nim,
       );
       if (!memberExists) return false;
 
-      final compositeKey = '${eventId}_$memberId';
+      final compositeKey = '${eventId}_$nim';
       final isDuplicate = HiveService.attendance.values.any(
         (r) => r.compositeKey == compositeKey,
       );
@@ -440,7 +440,7 @@ class AttendanceController {
       final record = AttendanceRecord.create(
         recordId: const Uuid().v4(),
         eventId: eventId,
-        memberId: memberId,
+        nim: nim,
         status: status,
       );
 
