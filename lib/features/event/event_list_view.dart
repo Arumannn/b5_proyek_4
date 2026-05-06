@@ -3,6 +3,9 @@ import '../../core/constants/app_constants.dart';
 import '../../models/event_model.dart';
 import '../attendance/scan_screen.dart';
 import '../auth/auth_controller.dart';
+import '../dashboard/dashboard_view.dart';
+import '../laporan/laporan_view.dart';
+import '../member/member_list_view.dart';
 import '../../widgets/gradient_header.dart';
 import '../../widgets/loading_overlay.dart';
 import '../../widgets/custom_snackbar.dart';
@@ -21,7 +24,9 @@ import 'event_permission.dart';
 /// - Chip untuk menampilkan filter aktif
 /// - Better UX dengan animasi smooth
 class EventListView extends StatefulWidget {
-  const EventListView({super.key});
+  final bool showBottomNav;
+
+  const EventListView({super.key, this.showBottomNav = true});
 
   @override
   State<EventListView> createState() => _EventListViewState();
@@ -319,10 +324,10 @@ class _EventListViewState extends State<EventListView> {
   Widget _buildFilterChips() {
     return ValueListenableBuilder<String?>(
       valueListenable: _controller.selectedJenisFilter,
-      builder: (_, jenisFilter, __) {
+      builder: (_, jenisFilter, _) {
         return ValueListenableBuilder<DateTimeRange?>(
           valueListenable: _controller.selectedDateRangeFilter,
-          builder: (_, dateRange, __) {
+          builder: (_, dateRange, _) {
             final hasFilters = _controller.hasActiveFilters;
             final chipShape = RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(999),
