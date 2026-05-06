@@ -48,7 +48,8 @@ void main() {
         parentEventId: 'p-1',
         nama: 'Rapat Mingguan',
         jenis: 'Rapat',
-        tanggal: DateTime(2026, 4, 22),
+        tanggalMulai: DateTime(2026, 4, 22),
+        tanggalSelesai: null,
         deskripsi: 'Agenda rutin',
         targetPeserta: const ['Core', 'Media'],
         createdBy: '241511001',
@@ -70,12 +71,12 @@ void main() {
       final parsed = EventModel.fromMap({
         'eventId': 'e-2',
         'nama': 'Fallback Date',
-        'tanggal': 'invalid-date',
+        'tanggalMulai': 'invalid-date',
       });
 
       expect(parsed.jenis, equals('Kegiatan'));
       expect(parsed.createdBy, equals('system'));
-      expect(parsed.tanggal, isA<DateTime>());
+      expect(parsed.tanggalMulai, isA<DateTime>());
     });
   });
 

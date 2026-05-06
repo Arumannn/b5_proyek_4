@@ -36,13 +36,25 @@ class GradientHeader extends StatelessWidget implements PreferredSizeWidget {
                 if (leading != null)
                   leading!
                 else
-                  IconButton(
-                    icon: const Icon(Icons.menu, color: Colors.white),
-                    onPressed: () {
-                      final scaffold = Scaffold.maybeOf(context);
-                      if (scaffold != null && scaffold.hasDrawer) {
-                        scaffold.openDrawer();
+                  Builder(
+                    builder: (innerContext) {
+                      final scaffold = Scaffold.maybeOf(innerContext);
+                      final hasDrawer = scaffold?.hasDrawer ?? false;
+                      final canPop = Navigator.of(innerContext).canPop();
+
+                      if (hasDrawer) {
+                        return IconButton(
+                          icon: const Icon(Icons.menu, color: Colors.white),
+                          onPressed: () => scaffold!.openDrawer(),
+                        );
+                      } else if (canPop) {
+                        return IconButton(
+                          icon: const Icon(Icons.arrow_back, color: Colors.white),
+                          onPressed: () => Navigator.of(innerContext).pop(),
+                        );
                       }
+                      // If no drawer and cannot pop, just show some spacing
+                      return const SizedBox(width: 16);
                     },
                   ),
                 const SizedBox(width: 8),

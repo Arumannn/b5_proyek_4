@@ -294,28 +294,38 @@ class _MemberListViewState extends State<MemberListView> {
   }
 
   Widget _buildMemberList() {
-    return ValueListenableBuilder<List<MemberModel>>(
-      valueListenable: _controller.filteredMembers,
-      builder: (context, filtered, child) {
-        if (filtered.isEmpty) {
-          return const Center(
-            child: Text('Tidak ada anggota yang cocok', style: TextStyle(color: Colors.grey, fontSize: 16)),
-          );
-        }
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: filtered.length,
-          itemBuilder: (context, index) {
-            final member = filtered[index];
-            return _MemberCardDesign(
-              member: member,
-              isExecutive: _isExecutive,
-              onEdit: () => _editMember(member),
-              onDelete: () => _deleteMember(member),
+    return RefreshIndicator(
+      onRefresh: () => _loadMembers(syncFromCloud: true),
+      child: ValueListenableBuilder<List<MemberModel>>(
+        valueListenable: _controller.filteredMembers,
+        builder: (context, filtered, child) {
+          if (filtered.isEmpty) {
+            return ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: [
+                SizedBox(height: MediaQuery.of(context).size.height * 0.3),
+                const Center(
+                  child: Text('Tidak ada anggota yang cocok', style: TextStyle(color: Colors.grey, fontSize: 16)),
+                ),
+              ],
             );
-          },
-        );
-      },
+          }
+          return ListView.builder(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16),
+            itemCount: filtered.length,
+            itemBuilder: (context, index) {
+              final member = filtered[index];
+              return _MemberCardDesign(
+                member: member,
+                isExecutive: _isExecutive,
+                onEdit: () => _editMember(member),
+                onDelete: () => _deleteMember(member),
+              );
+            },
+          );
+        },
+      ),
     );
   }
 }

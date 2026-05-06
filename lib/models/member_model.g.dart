@@ -17,7 +17,7 @@ class MemberModelAdapter extends TypeAdapter<MemberModel> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return MemberModel(
-      memberId: fields[0] as String,
+      memberId: fields[0] as String?,
       nama: fields[1] as String,
       nim: fields[2] as String,
       divisi: fields[3] as String,

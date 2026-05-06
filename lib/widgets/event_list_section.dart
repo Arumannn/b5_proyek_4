@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../features/event/event_controller.dart';
 import '../features/event/event_detail_view.dart';
 import '../models/event_model.dart';
+import '../core/services/hive_service.dart';
+import '../models/attendance_record.dart';
 
 class EventListSection extends StatefulWidget {
   const EventListSection({Key? key}) : super(key: key);
@@ -12,8 +14,7 @@ class EventListSection extends StatefulWidget {
 
 class _EventListSectionState extends State<EventListSection> {
   // 0 = Kegiatan Terakhir, 1 = Mendatang
-  // Sesuai gambar, kita jadikan 'Mendatang' (1) sebagai default yang aktif
-  int _activeTabIndex = 1; 
+  int _activeTabIndex = 0; 
   final EventController _eventController = EventController.instance;
 
   final List<Color> _headerColors = const [
@@ -62,8 +63,197 @@ class _EventListSectionState extends State<EventListSection> {
     );
   }
 
+  // --- LOGIC FOR ATTENDANCE CARDS ---
+  List<AttendanceRecord> _attendanceForEvent(String eventId) {
+    return HiveService.attendance.values
+        .where((record) => record.eventId == eventId)
+        .toList(growable: false);
+  }
+
+  int _targetCount(EventModel event, int presentCount) {
+    final target = event.targetPeserta.length;
+    if (target > 0) return target;
+    return presentCount > 0 ? presentCount : 1;
+  }
+
+  String _formatDateFull(DateTime value) {
+    final dd = value.day.toString().padLeft(2, '0');
+    final mm = value.month.toString().padLeft(2, '0');
+    final yyyy = value.year.toString();
+    return '$dd/$mm/$yyyy';
+  }
+
+  String _formatTimeOptional(DateTime? value) {
+    if (value == null) return '--:--';
+    final hh = value.hour.toString().padLeft(2, '0');
+    final mm = value.minute.toString().padLeft(2, '0');
+    return '$hh:$mm';
+  }
+
+  Color _eventStatusColor(EventModel event) {
+    return event.statusEvent == 'Selesai' ? const Color(0xFF16A34A) : const Color(0xFF2563EB);
+  }
+
+  Color _eventStatusBgColor(EventModel event) {
+    return event.statusEvent == 'Selesai' ? const Color(0xFFDCFCE7) : const Color(0xFFDBEAFE);
+  }
+
+  String _eventLocation(EventModel event) {
+    final raw = event.deskripsi?.trim();
+    if (raw != null && raw.isNotEmpty) return raw;
+    return 'Lokasi belum diatur';
+  }
+
+  Widget _buildAttendanceEventCard(BuildContext context, EventModel event) {
+    final attendance = _attendanceForEvent(event.eventId);
+    final presentCount = attendance
+        .where((record) => record.status.toLowerCase().contains('hadir'))
+        .length;
+    final targetCount = _targetCount(event, presentCount);
+    final attendancePercent =
+        targetCount == 0 ? 0.0 : (presentCount / targetCount).clamp(0.0, 1.0);
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 14),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(22),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute<void>(builder: (_) => EventDetailView(event: event)),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      event.nama,
+                      style: const TextStyle(
+                        fontSize: 34 / 2,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF283548),
+                        height: 1.2,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                    decoration: BoxDecoration(
+                      color: _eventStatusBgColor(event),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.check_circle_outline,
+                          size: 17,
+                          color: _eventStatusColor(event),
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          event.statusEvent,
+                          style: TextStyle(
+                            color: _eventStatusColor(event),
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  const Icon(Icons.schedule_outlined, size: 22, color: Color(0xFF98A2B3)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      '${_formatDateFull(event.tanggalMulai)} • ${_formatTimeOptional(event.jamMulai)} WIB',
+                      style: const TextStyle(fontSize: 15, color: Color(0xFF566377)),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  const Icon(Icons.location_on_outlined, size: 22, color: Color(0xFF98A2B3)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      _eventLocation(event),
+                      style: const TextStyle(fontSize: 15, color: Color(0xFF566377)),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  const Icon(Icons.groups_outlined, size: 22, color: Color(0xFF98A2B3)),
+                  const SizedBox(width: 10),
+                  Text(
+                    '$presentCount/$targetCount hadir',
+                    style: const TextStyle(fontSize: 15, color: Color(0xFF566377)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              const Divider(height: 1),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  const Text(
+                    'Kehadiran',
+                    style: TextStyle(fontSize: 15, color: Color(0xFF667085)),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(999),
+                      child: LinearProgressIndicator(
+                        minHeight: 10,
+                        value: attendancePercent,
+                        backgroundColor: const Color(0xFFE5E7EB),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          attendancePercent >= 0.9
+                              ? const Color(0xFF22C55E)
+                              : const Color(0xFF2563EB),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    '${(attendancePercent * 100).round()}%',
+                    style: const TextStyle(
+                      fontSize: 31 / 2,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF1F2937),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   // Helper untuk membuat Kartu Event yang warna-warni
-  Widget _buildEventCard({
+  Widget _buildColoredEventCard({
     required Color headerColor,
     required String title,
     required String date,
@@ -233,7 +423,7 @@ class _EventListSectionState extends State<EventListSection> {
                 .toList(growable: false);
 
             final filtered = rootEvents.where((event) {
-              final isPast = event.tanggal.isBefore(now);
+              final isPast = event.tanggalMulai.isBefore(now);
               return _activeTabIndex == 0 ? isPast : !isPast;
             }).toList(growable: false);
 
@@ -254,9 +444,15 @@ class _EventListSectionState extends State<EventListSection> {
             return Column(
               children: List.generate(filtered.length, (index) {
                 final event = filtered[index];
-                final headerColor = _headerColors[
-                    index % _headerColors.length];
-                final timeBase = event.jamMulai ?? event.tanggal;
+                
+                // Jika Kegiatan Terakhir (tab 0), tampilkan card dengan bar kehadiran
+                if (_activeTabIndex == 0) {
+                  return _buildAttendanceEventCard(context, event);
+                }
+
+                // Jika Mendatang (tab 1), tampilkan card berwarna
+                final headerColor = _headerColors[index % _headerColors.length];
+                final timeBase = event.jamMulai ?? event.tanggalMulai;
                 final peserta = event.targetPeserta.isEmpty
                     ? 'Belum ada peserta'
                     : '${event.targetPeserta.length} peserta diharapkan';
@@ -264,10 +460,10 @@ class _EventListSectionState extends State<EventListSection> {
                     ? 'Lokasi belum ditentukan'
                     : event.lokasi!.trim();
 
-                return _buildEventCard(
+                return _buildColoredEventCard(
                   headerColor: headerColor,
                   title: event.nama,
-                  date: _formatShortDate(event.tanggal),
+                  date: _formatShortDate(event.tanggalMulai),
                   time: _formatTime(timeBase),
                   location: location,
                   participants: peserta,

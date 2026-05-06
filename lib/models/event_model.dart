@@ -18,44 +18,85 @@ class EventModel extends HiveObject {
   final String jenis;
 
   @HiveField(4)
-  final DateTime tanggal;
+  final DateTime tanggalMulai;
 
   @HiveField(5)
-  final String? deskripsi;
+  final DateTime? tanggalSelesai;
 
   @HiveField(6)
-  final List<String> targetPeserta;
+  final String? deskripsi;
 
   @HiveField(7)
-  final String createdBy;
+  final List<String> targetPeserta;
 
   @HiveField(8)
-  bool isSynced;
+  final String createdBy;
 
   @HiveField(9)
-  final DateTime createdAt;
+  bool isSynced;
 
   @HiveField(10)
-  final DateTime? jamMulai;
+  final DateTime createdAt;
 
   @HiveField(11)
+  final DateTime? jamMulai;
+
+  @HiveField(12)
+  final DateTime? jamSelesai;
+
+  @HiveField(13)
   final String? lokasi;
+
+  @HiveField(14)
+  String statusEvent;
 
   EventModel({
     required this.eventId,
     this.parentEventId,
     required this.nama,
     required this.jenis,
-    required this.tanggal,
+    required this.tanggalMulai,
+    required this.tanggalSelesai,
     this.deskripsi,
     List<String>? targetPeserta,
     required this.createdBy,
     this.isSynced = false,
     DateTime? createdAt,
     this.jamMulai,
+    this.jamSelesai,
     this.lokasi,
+    String? statusEvent,
   })  : targetPeserta = targetPeserta ?? [],
-        createdAt = createdAt ?? DateTime.now();
+        createdAt = createdAt ?? DateTime.now(),
+        statusEvent = statusEvent ??
+            _calculateInitialStatus(
+                DateTime.now(), tanggalMulai, tanggalSelesai, jamMulai, jamSelesai);
+
+  static String _calculateInitialStatus(DateTime now, DateTime tanggalMulai,
+      DateTime? tanggalSelesai, DateTime? jamMulai, DateTime? jamSelesai) {
+    DateTime endTime;
+    if (jamSelesai != null) {
+      endTime = jamSelesai;
+    } else if (tanggalSelesai != null) {
+      endTime = DateTime(tanggalSelesai.year, tanggalSelesai.month,
+          tanggalSelesai.day, 23, 59, 59);
+    } else if (jamMulai != null) {
+      endTime = DateTime(jamMulai.year, jamMulai.month, jamMulai.day, 23, 59, 59);
+    } else {
+      endTime = DateTime(tanggalMulai.year, tanggalMulai.month, tanggalMulai.day, 23, 59, 59);
+    }
+    return now.isAfter(endTime) ? 'Selesai' : 'Berlangsung';
+  }
+
+  /// Memperbarui status event berdasarkan waktu saat ini.
+  /// Panggil metode ini dan `save()` jika ingin memaksa update status di DB.
+  void refreshStatus() {
+    final expectedStatus = _calculateInitialStatus(
+        DateTime.now(), tanggalMulai, tanggalSelesai, jamMulai, jamSelesai);
+    if (statusEvent != expectedStatus) {
+      statusEvent = expectedStatus;
+    }
+  }
 
   Map<String, dynamic> toMap() {
     return {
@@ -63,7 +104,8 @@ class EventModel extends HiveObject {
       'parentEventId': parentEventId,
       'nama': nama,
       'jenis': jenis,
-      'tanggal': tanggal.toIso8601String(),
+      'tanggalMulai': tanggalMulai.toIso8601String(),
+      'tanggalSelesai': tanggalSelesai?.toIso8601String(),
       'deskripsi': deskripsi,
       'targetPeserta': targetPeserta,
       'createdBy': createdBy,
@@ -71,6 +113,7 @@ class EventModel extends HiveObject {
       'createdAt': createdAt.toIso8601String(),
       'jamMulai': jamMulai?.toIso8601String(),
       'lokasi': lokasi,
+      'statusEvent': statusEvent,
     };
   }
 
@@ -80,23 +123,25 @@ class EventModel extends HiveObject {
       return [];
     }
 
+    final parsedTanggalMulai = DateTime.tryParse((map['tanggalMulai'] ?? '').toString()) ?? DateTime.now();
+    final parsedTanggalSelesai = DateTime.tryParse((map['tanggalSelesai'] ?? '').toString());
+    final parsedJamMulai = map['jamMulai'] != null ? DateTime.tryParse(map['jamMulai'].toString()) : null;
+
     return EventModel(
       eventId: (map['eventId'] ?? '').toString(),
       parentEventId: map['parentEventId']?.toString(),
       nama: (map['nama'] ?? '').toString(),
       jenis: (map['jenis'] ?? 'Kegiatan').toString(),
-      tanggal: DateTime.tryParse((map['tanggal'] ?? '').toString()) ??
-          DateTime.now(),
+      tanggalMulai: parsedTanggalMulai,
+      tanggalSelesai: parsedTanggalSelesai,
       deskripsi: map['deskripsi']?.toString(),
       targetPeserta: parsePeserta(map['targetPeserta']),
       createdBy: (map['createdBy'] ?? 'system').toString(),
       isSynced: map['isSynced'] == true,
-      createdAt: DateTime.tryParse((map['createdAt'] ?? '').toString()) ??
-          DateTime.now(),
-      jamMulai: map['jamMulai'] != null
-          ? DateTime.tryParse(map['jamMulai'].toString())
-          : null,
-        lokasi: map['lokasi']?.toString(),
+      createdAt: DateTime.tryParse((map['createdAt'] ?? '').toString()) ?? DateTime.now(),
+      jamMulai: parsedJamMulai,
+      lokasi: map['lokasi']?.toString(),
+      statusEvent: map['statusEvent']?.toString(),
     );
   }
 
@@ -105,28 +150,34 @@ class EventModel extends HiveObject {
     String? parentEventId,
     String? nama,
     String? jenis,
-    DateTime? tanggal,
+    DateTime? tanggalMulai,
+    DateTime? tanggalSelesai,
     String? deskripsi,
     List<String>? targetPeserta,
     String? createdBy,
     bool? isSynced,
     DateTime? createdAt,
     DateTime? jamMulai,
+    DateTime? jamSelesai,
     String? lokasi,
+    String? statusEvent,
   }) {
     return EventModel(
       eventId: eventId ?? this.eventId,
       parentEventId: parentEventId ?? this.parentEventId,
       nama: nama ?? this.nama,
       jenis: jenis ?? this.jenis,
-      tanggal: tanggal ?? this.tanggal,
+      tanggalMulai: tanggalMulai ?? this.tanggalMulai,
+      tanggalSelesai: tanggalSelesai ?? this.tanggalSelesai,
       deskripsi: deskripsi ?? this.deskripsi,
       targetPeserta: targetPeserta ?? this.targetPeserta,
       createdBy: createdBy ?? this.createdBy,
       isSynced: isSynced ?? this.isSynced,
       createdAt: createdAt ?? this.createdAt,
       jamMulai: jamMulai ?? this.jamMulai,
+      jamSelesai: jamSelesai ?? this.jamSelesai,
       lokasi: lokasi ?? this.lokasi,
+      statusEvent: statusEvent ?? this.statusEvent,
     );
   }
 }

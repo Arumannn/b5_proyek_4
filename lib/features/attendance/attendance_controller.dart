@@ -112,7 +112,7 @@ class AttendanceController {
 
       // 5. Tentukan status: Hadir atau Terlambat berdasarkan waktu mulai event
       final now = DateTime.now();
-      final baseTime = event.jamMulai ?? event.tanggal;
+      final baseTime = event.jamMulai ?? event.tanggalMulai;
       final lateThreshold = baseTime.add(const Duration(minutes: 15));
       final isLate = now.isAfter(lateThreshold);
       final status = isLate ? 'Terlambat' : 'Hadir';

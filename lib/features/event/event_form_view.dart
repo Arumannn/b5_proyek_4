@@ -14,6 +14,8 @@ class EventParentOption {
 class EventFormValue {
   final String name;
   final DateTime date;
+  final DateTime? endDate;
+  final DateTime? jamSelesai;
   final bool isSubEvent;
   final String? parentId;
   final String jenis;
@@ -24,6 +26,8 @@ class EventFormValue {
   const EventFormValue({
     required this.name,
     required this.date,
+    required this.endDate,
+    this.jamSelesai,
     required this.isSubEvent,
     this.parentId,
     this.jenis = 'Kegiatan',
@@ -63,6 +67,8 @@ class _EventFormViewState extends State<EventFormView> {
   late final TextEditingController _lokasiController;
   late final TextEditingController _deskripsiController;
   late DateTime _selectedDate;
+  late DateTime _selectedEndDate;
+  DateTime? _selectedJamSelesai;
   late bool _isSubEvent;
   String? _parentId;
   late String _selectedJenis;
@@ -109,6 +115,8 @@ class _EventFormViewState extends State<EventFormView> {
     _lokasiController = TextEditingController(text: widget.initialValue?.lokasi ?? '');
     _deskripsiController = TextEditingController(text: widget.initialValue?.deskripsi ?? '');
     _selectedDate = widget.initialValue?.date ?? DateTime.now();
+    _selectedEndDate = widget.initialValue?.endDate ?? DateTime.now();
+    _selectedJamSelesai = widget.initialValue?.jamSelesai;
     _isSubEvent = widget.initialValue?.isSubEvent ?? false;
     _parentId = widget.initialValue?.parentId;
     _selectedJenis = widget.initialValue?.jenis ?? 'Kegiatan';
@@ -163,6 +171,33 @@ class _EventFormViewState extends State<EventFormView> {
           _selectedDate.year,
           _selectedDate.month,
           _selectedDate.day,
+          picked.hour,
+          picked.minute,
+        );
+      });
+    }
+  }
+
+  Future<void> _pickEndTime() async {
+    final initial = _selectedJamSelesai ?? _selectedDate;
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(
+        hour: initial.hour,
+        minute: initial.minute,
+      ),
+      helpText: 'Pilih Waktu Selesai',
+      cancelText: 'Batal',
+      confirmText: 'OK',
+    );
+    if (picked != null) {
+      setState(() {
+        // Gabungkan jam yang dipilih dengan tanggal dari _selectedEndDate (atau _selectedDate jika null)
+        final baseDate = _selectedEndDate;
+        _selectedJamSelesai = DateTime(
+          baseDate.year,
+          baseDate.month,
+          baseDate.day,
           picked.hour,
           picked.minute,
         );
@@ -249,6 +284,8 @@ class _EventFormViewState extends State<EventFormView> {
       EventFormValue(
         name: name,
         date: _selectedDate,
+        endDate: _selectedEndDate,
+        jamSelesai: _selectedJamSelesai,
         isSubEvent: _isSubEvent,
         parentId: _isSubEvent ? _parentId : null,
         jenis: _selectedJenis,
@@ -484,6 +521,31 @@ class _EventFormViewState extends State<EventFormView> {
                     leading: const Icon(Icons.schedule_outlined, color: Color(0xFF2563EB)),
                     trailing: const Icon(Icons.edit_outlined),
                     onTap: _pickTime,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: const BorderSide(color: Color(0xFFE5E7EB)),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ListTile(
+                    title: const Text('Waktu Selesai'),
+                    subtitle: Text(
+                      _selectedJamSelesai != null 
+                          ? _formatTime(_selectedJamSelesai!)
+                          : 'Tidak ditentukan',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600, 
+                        color: _selectedJamSelesai != null ? Colors.black87 : Colors.grey.shade600,
+                      ),
+                    ),
+                    leading: const Icon(Icons.update_outlined, color: Color(0xFF2563EB)),
+                    trailing: _selectedJamSelesai != null
+                        ? IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () => setState(() => _selectedJamSelesai = null),
+                          )
+                        : const Icon(Icons.edit_outlined),
+                    onTap: _pickEndTime,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                       side: const BorderSide(color: Color(0xFFE5E7EB)),

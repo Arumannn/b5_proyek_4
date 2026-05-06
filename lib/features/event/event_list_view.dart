@@ -149,7 +149,9 @@ class _EventListViewState extends State<EventListView> {
 
     final success = await _controller.createEvent(
       nama: result.name,
-      tanggal: result.date,
+      tanggalMulai: result.date,
+      tanggalSelesai: result.endDate,
+      jamSelesai: result.jamSelesai,
       parentEventId: result.isSubEvent ? result.parentId : null,
       jenis: result.jenis,
       lokasi: result.lokasi,
@@ -188,7 +190,9 @@ class _EventListViewState extends State<EventListView> {
           parentOptions: _parentOptions,
           initialValue: EventFormValue(
             name: target.nama,
-            date: target.tanggal,
+            date: target.tanggalMulai,
+            endDate: target.tanggalSelesai,
+            jamSelesai: target.jamSelesai,
             isSubEvent: isSubEvent,
             parentId: target.parentEventId,
             jenis: target.jenis,
@@ -203,7 +207,9 @@ class _EventListViewState extends State<EventListView> {
     final success = await _controller.updateEvent(
       target.copyWith(
         nama: result.name,
-        tanggal: result.date,
+        tanggalMulai: result.date,
+        tanggalSelesai: result.endDate,
+        jamSelesai: result.jamSelesai,
         jenis: result.jenis,
         lokasi: result.lokasi,
       ),
@@ -467,7 +473,7 @@ class _EventListViewState extends State<EventListView> {
               Icon(Icons.calendar_today, size: 14, color: Colors.grey.shade600),
               const SizedBox(width: 4),
               Text(
-                _formatDateTime(subEvent.tanggal),
+                _formatDateTime(subEvent.tanggalMulai),
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ],
@@ -507,7 +513,7 @@ class _EventListViewState extends State<EventListView> {
     final isExpanded = _expandedState[eventId] ?? false;
     final hasSubEvents = subEvents.isNotEmpty;
     final hasLocation = (event.lokasi ?? '').trim().isNotEmpty;
-    final dateLabel = _formatDateTime(event.jamMulai ?? event.tanggal);
+    final dateLabel = _formatDateTime(event.jamMulai ?? event.tanggalMulai);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
@@ -730,6 +736,7 @@ class _EventListViewState extends State<EventListView> {
           initialValue: EventFormValue(
             name: '',
             date: DateTime.now(),
+            endDate: DateTime.now().add(const Duration(hours: 1)),
             isSubEvent: true,
             parentId: parentEvent.eventId,
           ),
@@ -741,7 +748,8 @@ class _EventListViewState extends State<EventListView> {
 
     final success = await _controller.createEvent(
       nama: result.name,
-      tanggal: result.date,
+      tanggalMulai: result.date,
+      tanggalSelesai: result.endDate,
       parentEventId: parentEvent.eventId,
       jenis: result.jenis,
       lokasi: result.lokasi,
@@ -798,10 +806,6 @@ class _EventListViewState extends State<EventListView> {
       appBar: GradientHeader(
         title: 'Daftar Event',
         subtitle: 'Kelola main event dan sub-event',
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
         actions: [
           if (_canCreateMainEvent)
             IconButton(
@@ -841,37 +845,47 @@ class _EventListViewState extends State<EventListView> {
 
                       // ── Event List ──────────────────────
                       Expanded(
-                        child: rootEvents.isEmpty
-                            ? EmptyStateWidget(
-                                icon: _controller.hasActiveFilters
-                                    ? Icons.filter_list_off
-                                    : Icons.event_busy,
-                                title: _controller.hasActiveFilters
-                                    ? 'Tidak ada event yang cocok'
-                                    : 'Belum ada event',
-                                subtitle: _controller.hasActiveFilters
-                                    ? 'Coba ubah filter atau reset untuk melihat semua event'
-                                    : 'Tekan tombol + untuk menambah event pertama',
-                                action: _controller.hasActiveFilters
-                                    ? FilledButton.icon(
-                                        onPressed: _clearAllFilters,
-                                        icon: const Icon(Icons.clear_all),
-                                        label: const Text('Reset Filter'),
-                                      )
-                                    : null,
-                              )
-                            : ListView.builder(
-                                itemCount: rootEvents.length,
-                                itemBuilder: (context, index) {
-                                  final event = rootEvents[index];
-                                  final subEvents = _controller.getSubEvents(event.eventId);
+                        child: RefreshIndicator(
+                          onRefresh: () => _controller.loadEvents(force: true, cloudSync: true),
+                          child: rootEvents.isEmpty
+                              ? ListView(
+                                  physics: const AlwaysScrollableScrollPhysics(),
+                                  children: [
+                                    SizedBox(height: MediaQuery.of(context).size.height * 0.2),
+                                    EmptyStateWidget(
+                                      icon: _controller.hasActiveFilters
+                                          ? Icons.filter_list_off
+                                          : Icons.event_busy,
+                                      title: _controller.hasActiveFilters
+                                          ? 'Tidak ada event yang cocok'
+                                          : 'Belum ada event',
+                                      subtitle: _controller.hasActiveFilters
+                                          ? 'Coba ubah filter atau reset untuk melihat semua event'
+                                          : 'Tekan tombol + untuk menambah event pertama',
+                                      action: _controller.hasActiveFilters
+                                          ? FilledButton.icon(
+                                              onPressed: _clearAllFilters,
+                                              icon: const Icon(Icons.clear_all),
+                                              label: const Text('Reset Filter'),
+                                            )
+                                          : null,
+                                    ),
+                                  ],
+                                )
+                              : ListView.builder(
+                                  physics: const AlwaysScrollableScrollPhysics(),
+                                  itemCount: rootEvents.length,
+                                  itemBuilder: (context, index) {
+                                    final event = rootEvents[index];
+                                    final subEvents = _controller.getSubEvents(event.eventId);
 
-                                  return _buildEventCard(
-                                    event,
-                                    subEvents: subEvents,
-                                  );
-                                },
-                              ),
+                                    return _buildEventCard(
+                                      event,
+                                      subEvents: subEvents,
+                                    );
+                                  },
+                                ),
+                        ),
                       ),
                     ],
                   ),
