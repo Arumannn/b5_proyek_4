@@ -101,7 +101,7 @@ class AppConstants {
   static const String defaultManagerNim = '41';
   static const String defaultManagerPassword = '123';
   static const String defaultManagerName = 'Manager Biasa';
-  static const String defaultManagerDivision = 'Kadep & Wakadep';
+  static const String defaultManagerDivision = 'Administrasi dan Kesekretariatan';
   static const String managerSeedFlagKey = '__seed_manager_done__';
 
   // ─── Event Types ─────────────────────────────────

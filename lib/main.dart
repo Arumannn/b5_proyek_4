@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'core/constants/app_constants.dart';
+import 'core/constants/design_system.dart';
 import 'features/auth/auth_controller.dart';
 import 'features/auth/login_view.dart';
 import 'core/services/hive_service.dart';
@@ -10,47 +11,48 @@ import 'core/services/fcm_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'core/services/sync_manager.dart';
 
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
 
-  Future<void> main() async {
-    WidgetsFlutterBinding.ensureInitialized();
+  // Step 1: Load environment variables
+  await dotenv.load(fileName: '.env');
+  debugPrint('✅ Step 1: .env loaded');
 
-    // Step 1: Load environment variables
-    await dotenv.load(fileName: '.env');
-    debugPrint('✅ Step 1: .env loaded');
+  // Step 2: Initialize Firebase
+  await Firebase.initializeApp();
+  debugPrint('✅ Step 2: Firebase initialized');
 
-    // Step 2: Initialize Firebase
-    await Firebase.initializeApp();
-    debugPrint('✅ Step 2: Firebase initialized');
+  // Step 3: Initialize Hive (local database)
+  await HiveService.init();
+  debugPrint('✅ Step 3: HiveService initialized — 4 boxes open');
 
-    // Step 3: Initialize Hive (local database)
-    await HiveService.init();
-    debugPrint('✅ Step 3: HiveService initialized — 4 boxes open');
-
-    // Step 4: Connect MongoDB Atlas (background, non-blocking agar app tetap jalan offline)
-    MongoService.instance.init().then((connected) {
-      debugPrint(connected
+  // Step 4: Connect MongoDB Atlas (background, non-blocking agar app tetap jalan offline)
+  MongoService.instance.init().then((connected) {
+    debugPrint(
+      connected
           ? '✅ Step 4: MongoDB connected to Atlas'
-          : '⚠️ Step 4: MongoDB offline — app tetap berjalan (Hive mode)');
-    });
+          : '⚠️ Step 4: MongoDB offline — app tetap berjalan (Hive mode)',
+    );
+  });
 
-    // Step 5: Start network monitoring
-    await NetworkStatusController.instance.startListening();
-    debugPrint('✅ Step 5: Network monitoring started');
+  // Step 5: Start network monitoring
+  await NetworkStatusController.instance.startListening();
+  debugPrint('✅ Step 5: Network monitoring started');
 
-    // Step 6: Seed default accounts (Executive, member, organizer, manager)
-    await AuthController.instance.initializeAuth();
-    debugPrint('✅ Step 6: Default accounts seeded');
+  // Step 6: Seed default accounts (Executive, member, organizer, manager)
+  await AuthController.instance.initializeAuth();
+  debugPrint('✅ Step 6: Default accounts seeded');
 
-    // Step 7: FCM — stub untuk sekarang, implementasi penuh Week 11
-    await FcmService.instance.init();
+  // Step 7: FCM — stub untuk sekarang, implementasi penuh Week 11
+  await FcmService.instance.init();
 
-    // Step 8: Start SyncManager — auto-sync saat koneksi tersedia
-    SyncManager.instance.startListening();
-    debugPrint('✅ Step 8: SyncManager listening aktif');
+  // Step 8: Start SyncManager — auto-sync saat koneksi tersedia
+  SyncManager.instance.startListening();
+  debugPrint('✅ Step 8: SyncManager listening aktif');
 
-    debugPrint('🚀 PRASASTI App starting...');
-    runApp(const PRASASTIApp());
-  }
+  debugPrint('🚀 PRASASTI App starting...');
+  runApp(const PRASASTIApp());
+}
 
 // ──────────────────────────────────────────────────────────────────
 // HALAMAN VERIFIKASI SETUP WEEK 7
@@ -83,13 +85,13 @@ class _Week7SetupVerifierState extends State<_Week7SetupVerifier> {
         _mongoSuccess = isConnected;
         _mongoStatus = isConnected
             ? '✅ Berhasil terhubung ke MongoDB Atlas!\n'
-                'Database: ${const String.fromEnvironment('MONGO_DATABASE', defaultValue: 'prasasti_db')}'
+                  'Database: ${const String.fromEnvironment('MONGO_DATABASE', defaultValue: 'prasasti_db')}'
             : '❌ Gagal terhubung.\n\n'
-                'Checklist:\n'
-                '1. MONGO_URI di .env sudah diisi?\n'
-                '2. <username> & <password> sudah diganti?\n'
-                '3. IP 0.0.0.0/0 sudah di-allow di Atlas?\n'
-                '4. Cluster tidak dalam kondisi paused?';
+                  'Checklist:\n'
+                  '1. MONGO_URI di .env sudah diisi?\n'
+                  '2. <username> & <password> sudah diganti?\n'
+                  '3. IP 0.0.0.0/0 sudah di-allow di Atlas?\n'
+                  '4. Cluster tidak dalam kondisi paused?';
       });
     }
   }
@@ -142,13 +144,34 @@ class _Week7SetupVerifierState extends State<_Week7SetupVerifier> {
                 ),
               ),
               const SizedBox(height: 16),
-              _ChecklistItem(label: 'Flutter project initialized', isDone: true),
-              _ChecklistItem(label: 'Dependencies terinstall (incl. mongo_dart)', isDone: true),
-              _ChecklistItem(label: 'Clean Architecture folder structure', isDone: true),
-              _ChecklistItem(label: 'HiveService initialized (Local DB)', isDone: true),
-              _ChecklistItem(label: 'flutter_dotenv loaded (.env)', isDone: true),
-              _ChecklistItem(label: 'NetworkStatusController started', isDone: true),
-              _ChecklistItem(label: 'MongoService menggunakan mongo_dart driver', isDone: true),
+              _ChecklistItem(
+                label: 'Flutter project initialized',
+                isDone: true,
+              ),
+              _ChecklistItem(
+                label: 'Dependencies terinstall (incl. mongo_dart)',
+                isDone: true,
+              ),
+              _ChecklistItem(
+                label: 'Clean Architecture folder structure',
+                isDone: true,
+              ),
+              _ChecklistItem(
+                label: 'HiveService initialized (Local DB)',
+                isDone: true,
+              ),
+              _ChecklistItem(
+                label: 'flutter_dotenv loaded (.env)',
+                isDone: true,
+              ),
+              _ChecklistItem(
+                label: 'NetworkStatusController started',
+                isDone: true,
+              ),
+              _ChecklistItem(
+                label: 'MongoService menggunakan mongo_dart driver',
+                isDone: true,
+              ),
 
               const SizedBox(height: 24),
 
@@ -162,8 +185,8 @@ class _Week7SetupVerifierState extends State<_Week7SetupVerifier> {
                     color: _mongoSuccess
                         ? Colors.green.shade400
                         : _isTestingMongo
-                            ? Colors.amber
-                            : Colors.white24,
+                        ? Colors.amber
+                        : Colors.white24,
                     width: _isTestingMongo ? 2 : 1,
                   ),
                 ),
@@ -199,7 +222,9 @@ class _Week7SetupVerifierState extends State<_Week7SetupVerifier> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
-                        onPressed: _isTestingMongo ? null : _testMongoConnection,
+                        onPressed: _isTestingMongo
+                            ? null
+                            : _testMongoConnection,
                         icon: _isTestingMongo
                             ? const SizedBox(
                                 width: 18,
@@ -210,14 +235,16 @@ class _Week7SetupVerifierState extends State<_Week7SetupVerifier> {
                                 ),
                               )
                             : Icon(
-                                _mongoSuccess ? Icons.check_circle : Icons.cloud_sync,
+                                _mongoSuccess
+                                    ? Icons.check_circle
+                                    : Icons.cloud_sync,
                               ),
                         label: Text(
                           _isTestingMongo
                               ? 'Menghubungkan...'
                               : _mongoSuccess
-                                  ? 'Terhubung! Test Ulang'
-                                  : 'Test Koneksi Atlas',
+                              ? 'Terhubung! Test Ulang'
+                              : 'Test Koneksi Atlas',
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: _mongoSuccess
@@ -307,32 +334,216 @@ class PRASASTIApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF1B3A6B),
+          seedColor: AppColors.primary,
           brightness: Brightness.light,
+          background: AppColors.background,
+          surface: AppColors.surface,
+          error: AppColors.error,
         ),
         useMaterial3: true,
         fontFamily: 'Roboto',
-        appBarTheme: const AppBarTheme(
-          centerTitle: true,
+        scaffoldBackgroundColor: AppColors.background,
+        appBarTheme: AppBarTheme(
+          centerTitle: false,
           elevation: 0,
-          backgroundColor: Color(0xFF1B3A6B),
-          foregroundColor: Colors.white,
+          scrolledUnderElevation: 0,
+          backgroundColor: AppColors.primary,
+          foregroundColor: AppColors.textOnPrimary,
+          surfaceTintColor: Colors.transparent,
+          iconTheme: const IconThemeData(color: AppColors.textOnPrimary),
+          titleTextStyle: AppTypography.headlineMedium.copyWith(
+            color: AppColors.textOnPrimary,
+          ),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            minimumSize: const Size(double.infinity, 48),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+            backgroundColor: AppColors.primary,
+            foregroundColor: AppColors.textOnPrimary,
+            minimumSize: const Size(double.infinity, AppSpacing.buttonHeightMd),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg,
+              vertical: AppSpacing.md,
             ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+            ),
+            textStyle: AppTypography.labelLarge,
           ),
         ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppColors.primary,
+            side: const BorderSide(color: AppColors.primary, width: 1),
+            minimumSize: const Size(double.infinity, AppSpacing.buttonHeightMd),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg,
+              vertical: AppSpacing.md,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+            ),
+            textStyle: AppTypography.labelLarge,
+          ),
+        ),
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(
+            foregroundColor: AppColors.primary,
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg,
+              vertical: AppSpacing.md,
+            ),
+            textStyle: AppTypography.labelLarge,
+          ),
+        ),
+        chipTheme: ChipThemeData(
+          backgroundColor: AppColors.surface,
+          selectedColor: AppColors.primary,
+          secondarySelectedColor: AppColors.primarySurface,
+          labelStyle: AppTypography.labelLarge.copyWith(
+            color: AppColors.textPrimary,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+            side: const BorderSide(color: AppColors.border),
+          ),
+          side: const BorderSide(color: AppColors.border),
+        ),
         inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: AppColors.surface,
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+            borderSide: const BorderSide(color: AppColors.border),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+            borderSide: const BorderSide(color: AppColors.border),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+            borderSide: const BorderSide(color: AppColors.primary, width: 2),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+            borderSide: const BorderSide(color: AppColors.error),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+            borderSide: const BorderSide(color: AppColors.error, width: 2),
           ),
           contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 14,
+            horizontal: AppSpacing.lg,
+            vertical: AppSpacing.md,
+          ),
+          hintStyle: AppTypography.bodyMedium.copyWith(
+            color: AppColors.textTertiary,
+          ),
+          labelStyle: AppTypography.labelMedium.copyWith(
+            color: AppColors.textSecondary,
+          ),
+        ),
+        cardTheme: CardThemeData(
+          color: AppColors.surface,
+          elevation: 1,
+          margin: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+        ),
+        navigationBarTheme: NavigationBarThemeData(
+          backgroundColor: AppColors.surface,
+          indicatorColor: AppColors.primarySurface,
+          iconTheme: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return const IconThemeData(color: AppColors.primary, size: 24);
+            }
+            return const IconThemeData(color: AppColors.textTertiary, size: 24);
+          }),
+          labelTextStyle: WidgetStateProperty.resolveWith((states) {
+            final selected = states.contains(WidgetState.selected);
+            return AppTypography.labelSmall.copyWith(
+              color: selected ? AppColors.primary : AppColors.textTertiary,
+              fontWeight: FontWeight.w600,
+            );
+          }),
+        ),
+        floatingActionButtonTheme: FloatingActionButtonThemeData(
+          backgroundColor: AppColors.primary,
+          foregroundColor: AppColors.textOnPrimary,
+          elevation: 4,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+          ),
+        ),
+        textTheme: TextTheme(
+          displayLarge: AppTypography.displayLarge.copyWith(
+            color: AppColors.textPrimary,
+          ),
+          displayMedium: AppTypography.displayMedium.copyWith(
+            color: AppColors.textPrimary,
+          ),
+          displaySmall: AppTypography.displaySmall.copyWith(
+            color: AppColors.textPrimary,
+          ),
+          headlineLarge: AppTypography.headlineLarge.copyWith(
+            color: AppColors.textPrimary,
+          ),
+          headlineMedium: AppTypography.headlineMedium.copyWith(
+            color: AppColors.textPrimary,
+          ),
+          headlineSmall: AppTypography.headlineSmall.copyWith(
+            color: AppColors.textPrimary,
+          ),
+          titleLarge: AppTypography.titleLarge.copyWith(
+            color: AppColors.textPrimary,
+          ),
+          titleMedium: AppTypography.titleMedium.copyWith(
+            color: AppColors.textPrimary,
+          ),
+          titleSmall: AppTypography.titleSmall.copyWith(
+            color: AppColors.textPrimary,
+          ),
+          bodyLarge: AppTypography.bodyLarge.copyWith(
+            color: AppColors.textPrimary,
+          ),
+          bodyMedium: AppTypography.bodyMedium.copyWith(
+            color: AppColors.textSecondary,
+          ),
+          bodySmall: AppTypography.bodySmall.copyWith(
+            color: AppColors.textSecondary,
+          ),
+          labelLarge: AppTypography.labelLarge.copyWith(
+            color: AppColors.textPrimary,
+          ),
+          labelMedium: AppTypography.labelMedium.copyWith(
+            color: AppColors.textPrimary,
+          ),
+          labelSmall: AppTypography.labelSmall.copyWith(
+            color: AppColors.textSecondary,
+          ),
+        ),
+        // ─── Icon Theme ──────────────────────────
+        iconTheme: const IconThemeData(
+          color: AppColors.textPrimary,
+          size: AppSpacing.iconMd,
+        ),
+        dividerTheme: const DividerThemeData(
+          color: AppColors.divider,
+          thickness: 1,
+          space: 1,
+        ),
+        // ─── Dialog Theme ────────────────────────
+        dialogTheme: DialogThemeData(
+          backgroundColor: AppColors.surface,
+          elevation: 4,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+          ),
+          titleTextStyle: AppTypography.headlineSmall.copyWith(
+            color: AppColors.textPrimary,
+          ),
+          contentTextStyle: AppTypography.bodyMedium.copyWith(
+            color: AppColors.textSecondary,
           ),
         ),
       ),

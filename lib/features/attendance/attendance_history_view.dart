@@ -1,7 +1,6 @@
 
 import 'package:flutter/material.dart';
 import '../../core/services/hive_service.dart';
-import '../../features/attendance/attendance_controller.dart';
 import '../../features/event/event_controller.dart';
 import '../../models/attendance_record.dart';
 import '../../models/event_model.dart';

@@ -12,7 +12,7 @@ import '../../core/services/mongo_service.dart';
 import '../../core/utils/network_status_controller.dart';
 import '../../core/utils/qr_service.dart';
 import '../../models/member_model.dart';
-import '../dashboard/dashboard_view.dart';
+import '../navigation/main_navigation_screen.dart';
 import 'login_view.dart';
 import '../../core/services/fcm_service.dart';
 
@@ -788,7 +788,7 @@ class AuthController {
   void _navigateByRole(BuildContext context, String role) {
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute<void>(builder: (_) => const DashboardView()),
+      MaterialPageRoute<void>(builder: (_) => const MainNavigationScreen()),
       (route) => false,
     );
   }
