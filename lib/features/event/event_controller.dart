@@ -7,6 +7,7 @@ import '../../core/constants/app_constants.dart';
 import '../../core/services/hive_service.dart';
 import '../../core/services/mongo_service.dart';
 import '../../models/event_model.dart';
+import '../../models/event_invitation.dart';
 import '../auth/auth_controller.dart';
 import 'event_permission.dart';
 
@@ -297,6 +298,25 @@ class EventController {
       await HiveService.events.put(created.eventId, created);
       _allEvents.add(created);
       _applyFilters();
+
+      // Step 1b: Buat undangan lokal untuk peserta terpilih (jika ada)
+      if (targetPeserta != null && targetPeserta.isNotEmpty) {
+        final now = DateTime.now();
+        for (final memberId in targetPeserta) {
+          final invitationId =
+              'INV-${created.eventId}-${now.microsecondsSinceEpoch}-$memberId';
+          final invitation = EventInvitation(
+            invitationId: invitationId,
+            eventId: created.eventId,
+            memberId: memberId,
+            attendanceTime: now,
+            invitedBy: actorNim,
+            invitedAt: now,
+            isSynced: false,
+          );
+          await HiveService.invitations.put(invitationId, invitation);
+        }
+      }
 
       debugPrint('[EventCtrl] create: saved to Hive — id=${created.eventId}');
 

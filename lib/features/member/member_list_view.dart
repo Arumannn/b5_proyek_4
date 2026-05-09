@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_constants.dart';
@@ -223,7 +222,7 @@ class _MemberListViewState extends State<MemberListView> {
             decoration: BoxDecoration(
               color: const Color(0xFF3B66E0),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white.withOpacity(0.2)),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
             ),
             child: ValueListenableBuilder<TextEditingValue>(
               valueListenable: _searchController,
@@ -341,7 +340,6 @@ class _MemberCardDesign extends StatelessWidget {
   final VoidCallback onDelete;
 
   const _MemberCardDesign({
-    super.key,
     required this.member,
     required this.isExecutive,
     required this.onEdit,
@@ -361,7 +359,7 @@ class _MemberCardDesign extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
         border: Border.all(color: Colors.grey.shade200),
       ),
       child: Padding(

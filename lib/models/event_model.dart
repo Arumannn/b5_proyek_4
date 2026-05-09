@@ -45,7 +45,7 @@ class EventModel extends HiveObject {
   final DateTime? jamSelesai;
 
   @HiveField(13)
-  final String? lokasi;
+  String? lokasi;
 
   @HiveField(14)
   String statusEvent;

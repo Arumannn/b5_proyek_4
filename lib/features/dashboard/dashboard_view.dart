@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_constants.dart';
-import '../../core/services/hive_service.dart';
-import '../../models/attendance_record.dart';
-import '../../models/event_model.dart';
 import '../../widgets/gradient_header.dart';
 import '../../widgets/stats_grid.dart';
 import '../../widgets/quick_actions.dart';
@@ -11,9 +8,9 @@ import '../attendance/attendance_history_view.dart';
 import '../attendance/scan_screen.dart';
 import '../auth/auth_controller.dart';
 import '../event/event_controller.dart';
-import '../event/event_detail_view.dart';
 import '../../widgets/event_list_section.dart';
 import '../laporan/laporan_view.dart';
+import 'widgets/my_invitation_section.dart';
 
 class DashboardView extends StatefulWidget {
   const DashboardView({super.key});
@@ -119,6 +116,8 @@ class _DashboardViewState extends State<DashboardView> {
               const EventListSection(),
               if (role == AppConstants.roleMember) ...[
                 const SizedBox(height: 4),
+                MyInvitationSection(currentMemberId: currentUser.nim),
+                const SizedBox(height: 16),
                 OutlinedButton.icon(
                   onPressed: () {
                     Navigator.push(

@@ -70,7 +70,7 @@ class _SubEventViewState extends State<SubEventView> {
       text: subEvent.deskripsi ?? '',
     );
     final formKey = GlobalKey<FormState>();
-    DateTime selectedDate = subEvent.tanggal;
+    DateTime selectedDate = subEvent.tanggalMulai;
 
     final saved = await showDialog<bool>(
       context: context,
@@ -153,7 +153,7 @@ class _SubEventViewState extends State<SubEventView> {
     final ok = await _controller.updateEvent(
       subEvent.copyWith(
         nama: nameController.text.trim(),
-        tanggal: selectedDate,
+        tanggalMulai: selectedDate,
         deskripsi: descController.text.trim().isEmpty
             ? null
             : descController.text.trim(),
@@ -214,7 +214,7 @@ class _SubEventViewState extends State<SubEventView> {
                   child: ExpansionTile(
                     title: Text(mainEvent.nama),
                     subtitle: Text(
-                      'Main Event • ${_formatDate(mainEvent.tanggal)}',
+                      'Main Event • ${_formatDate(mainEvent.tanggalMulai)}',
                     ),
                     childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                     children: [
@@ -233,7 +233,7 @@ class _SubEventViewState extends State<SubEventView> {
                               ),
                               title: Text(sub.nama),
                               subtitle: Text(
-                                '${sub.jenis} • ${_formatDate(sub.tanggal)}',
+                                '${sub.jenis} • ${_formatDate(sub.tanggalMulai)}',
                               ),
                                 trailing: _canManageSubEvent
                                   ? Wrap(

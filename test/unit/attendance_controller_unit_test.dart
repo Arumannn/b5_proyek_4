@@ -44,7 +44,8 @@ void main() {
 
   Future<void> seedMemberAndEvent({
     required String eventId,
-    required DateTime tanggalEvent,
+    required DateTime tanggalMulaiEvent,
+    required DateTime tanggalSelesaiEvent,
     String nim = '241511999',
     String nama = 'Tester',
   }) async {
@@ -69,7 +70,8 @@ void main() {
         eventId: eventId,
         nama: 'Event Test',
         jenis: 'Rapat',
-        tanggal: tanggalEvent,
+        tanggalMulai: tanggalMulaiEvent,
+        tanggalSelesai: tanggalSelesaiEvent,
         createdBy: 'Executive',
       ),
     );
@@ -112,7 +114,8 @@ void main() {
     test('berhasil hadir untuk event masa depan dan menyimpan record', () async {
       await seedMemberAndEvent(
         eventId: 'event-future',
-        tanggalEvent: DateTime.now().add(const Duration(days: 1)),
+        tanggalMulaiEvent: DateTime.now().add(const Duration(days: 1)),
+        tanggalSelesaiEvent: DateTime.now().add(const Duration(days: 1)),
         nim: '241511123',
         nama: 'Member Hadir',
       );
@@ -131,7 +134,8 @@ void main() {
     test('scan kedua dengan member & event sama menjadi duplicate', () async {
       await seedMemberAndEvent(
         eventId: 'event-dup',
-        tanggalEvent: DateTime.now().add(const Duration(days: 1)),
+        tanggalMulaiEvent: DateTime.now().add(const Duration(days: 1)),
+        tanggalSelesaiEvent: DateTime.now().add(const Duration(days: 1)),
         nim: '241511124',
       );
 
@@ -153,7 +157,8 @@ void main() {
     test('event lampau menghasilkan status terlambat', () async {
       await seedMemberAndEvent(
         eventId: 'event-past',
-        tanggalEvent: DateTime.now().subtract(const Duration(days: 1)),
+        tanggalMulaiEvent: DateTime.now().subtract(const Duration(days: 1)),
+        tanggalSelesaiEvent: DateTime.now().subtract(const Duration(days: 1)),
         nim: '241511125',
       );
 

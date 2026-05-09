@@ -6,7 +6,7 @@ import '../core/services/hive_service.dart';
 import '../models/attendance_record.dart';
 
 class EventListSection extends StatefulWidget {
-  const EventListSection({Key? key}) : super(key: key);
+  const EventListSection({super.key});
 
   @override
   State<EventListSection> createState() => _EventListSectionState();
@@ -270,7 +270,7 @@ class _EventListSectionState extends State<EventListSection> {
         border: Border.all(color: Colors.grey[200]!),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),

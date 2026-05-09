@@ -6,7 +6,7 @@ class GradientHeader extends StatelessWidget implements PreferredSizeWidget {
   final Widget? leading;
   final List<Widget>? actions;
 
-  const GradientHeader({Key? key, required this.title, this.subtitle, this.leading, this.actions}) : super(key: key);
+  const GradientHeader({super.key, required this.title, this.subtitle, this.leading, this.actions});
 
   @override
   Size get preferredSize => const Size.fromHeight(80);

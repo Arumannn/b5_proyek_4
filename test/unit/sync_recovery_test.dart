@@ -14,7 +14,7 @@ import 'package:mongo_dart/mongo_dart.dart';
 class MockMongoService extends Mock implements MongoService {
   int insertOneCallCount = 0;
   bool shouldThrow = false;
-  bool _isConnected = true;
+  final bool _isConnected = true;
 
   @override
   bool get isConnected => _isConnected;

@@ -414,6 +414,7 @@ class AuthController {
       final loggedNim = (userDoc['nim'] ?? normalizedNim).toString().trim();
       unawaited(_updateFcmTokenInBackground(loggedNim));
 
+      if (!context.mounted) return false;
       _navigateByRole(context, currentUser.value?.role ?? '');
       return true;
     } catch (e, st) {

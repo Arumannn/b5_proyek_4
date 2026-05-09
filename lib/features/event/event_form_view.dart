@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/constants/app_constants.dart';
 import '../../widgets/gradient_header.dart';
 import '../auth/auth_controller.dart';
+import 'widgets/participant_selector.dart';
 
 class EventParentOption {
   final String id;
@@ -72,7 +73,7 @@ class _EventFormViewState extends State<EventFormView> {
   late bool _isSubEvent;
   String? _parentId;
   late String _selectedJenis;
-  late Set<String> _selectedDivisi;
+  late List<String> _selectedTargetIds;
 
   final _formKey = GlobalKey<FormState>();
 
@@ -85,20 +86,6 @@ class _EventFormViewState extends State<EventFormView> {
       _currentRole == 'eksekutif' ||
       _currentRole == 'admin' ||
       _currentRole == AppConstants.roleManager.toLowerCase();
-
-  // Daftar divisi yang tersedia (bisa di-customize sesuai organisasi)
-  static const List<String> _availableDivisi = [
-    'Core',
-    'Kadep & Wakadep',
-    'Pengembangan Aplikasi',
-    'UI/UX Design',
-    'Data Science',
-    'Cyber Security',
-    'Networking',
-    'Multimedia',
-    'Public Relations',
-    'Anggota',
-  ];
 
   // Jenis event dari AppConstants
   static const List<String> _jenisOptions = [
@@ -120,7 +107,7 @@ class _EventFormViewState extends State<EventFormView> {
     _isSubEvent = widget.initialValue?.isSubEvent ?? false;
     _parentId = widget.initialValue?.parentId;
     _selectedJenis = widget.initialValue?.jenis ?? 'Kegiatan';
-    _selectedDivisi = Set<String>.from(widget.initialValue?.targetPeserta ?? []);
+    _selectedTargetIds = List<String>.from(widget.initialValue?.targetPeserta ?? []);
   }
 
   @override
@@ -205,60 +192,6 @@ class _EventFormViewState extends State<EventFormView> {
     }
   }
 
-  Future<void> _showDivisiPicker() async {
-    final tempSelected = Set<String>.from(_selectedDivisi);
-    
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: const Text('Pilih Target Peserta'),
-              content: SizedBox(
-                width: double.maxFinite,
-                child: ListView(
-                  shrinkWrap: true,
-                  children: _availableDivisi.map((divisi) {
-                    final isSelected = tempSelected.contains(divisi);
-                    return CheckboxListTile(
-                      title: Text(divisi),
-                      value: isSelected,
-                      onChanged: (bool? value) {
-                        setDialogState(() {
-                          if (value == true) {
-                            tempSelected.add(divisi);
-                          } else {
-                            tempSelected.remove(divisi);
-                          }
-                        });
-                      },
-                    );
-                  }).toList(),
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogContext),
-                  child: const Text('Batal'),
-                ),
-                FilledButton(
-                  onPressed: () {
-                    setState(() {
-                      _selectedDivisi = tempSelected;
-                    });
-                    Navigator.pop(dialogContext);
-                  },
-                  child: const Text('Simpan'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
   void _submit() {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -295,7 +228,7 @@ class _EventFormViewState extends State<EventFormView> {
         deskripsi: _deskripsiController.text.trim().isEmpty 
             ? null 
             : _deskripsiController.text.trim(),
-        targetPeserta: _selectedDivisi.toList(),
+        targetPeserta: _selectedTargetIds,
       ),
     );
   }
@@ -313,16 +246,6 @@ class _EventFormViewState extends State<EventFormView> {
     return '$hh:$mm';
   }
 
-  String _getSelectedDivisiText() {
-    if (_selectedDivisi.isEmpty) {
-      return 'Semua Divisi';
-    } else if (_selectedDivisi.length <= 2) {
-      return _selectedDivisi.join(', ');
-    } else {
-      return '${_selectedDivisi.length} divisi dipilih';
-    }
-  }
-
   Widget _buildSectionCard({required String title, required List<Widget> children}) {
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
@@ -332,7 +255,7 @@ class _EventFormViewState extends State<EventFormView> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -416,7 +339,7 @@ class _EventFormViewState extends State<EventFormView> {
                   ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
-                    value: _selectedJenis,
+                    initialValue: _selectedJenis,
                     decoration: const InputDecoration(
                       labelText: 'Jenis Event *',
                       prefixIcon: Icon(Icons.category_outlined),
@@ -448,7 +371,7 @@ class _EventFormViewState extends State<EventFormView> {
                           ? const Text('Event ini merupakan bagian dari event utama')
                           : null,
                       value: _isSubEvent,
-                      activeColor: const Color(0xFF2563EB),
+                      activeThumbColor: const Color(0xFF2563EB),
                       onChanged: widget.canChangeHierarchy
                           ? (value) {
                               setState(() {
@@ -462,7 +385,7 @@ class _EventFormViewState extends State<EventFormView> {
                   if (_isSubEvent) ...[
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
-                      value: _parentId,
+                      initialValue: _parentId,
                       decoration: const InputDecoration(
                         labelText: 'Parent Event *',
                         prefixIcon: Icon(Icons.account_tree_outlined),
@@ -567,24 +490,13 @@ class _EventFormViewState extends State<EventFormView> {
               _buildSectionCard(
                 title: 'Peserta & Deskripsi',
                 children: [
-                  ListTile(
-                    title: const Text('Target Peserta'),
-                    subtitle: Text(
-                      _getSelectedDivisiText(),
-                      style: TextStyle(
-                        fontWeight: FontWeight.w500,
-                        color: _selectedDivisi.isEmpty 
-                            ? Colors.grey 
-                            : const Color(0xFF2563EB),
-                      ),
-                    ),
-                    leading: const Icon(Icons.people_outline, color: Color(0xFF2563EB)),
-                    trailing: const Icon(Icons.arrow_drop_down),
-                    onTap: _showDivisiPicker,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: const BorderSide(color: Color(0xFFE5E7EB)),
-                    ),
+                  ParticipantSelector(
+                    initialSelectedIds: _selectedTargetIds,
+                    onSelectionChanged: (selectedIds) {
+                      setState(() {
+                        _selectedTargetIds = selectedIds;
+                      });
+                    },
                   ),
                   const SizedBox(height: 16),
                   TextFormField(

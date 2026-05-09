@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class QuickActions extends StatelessWidget {
   final VoidCallback? onFillAttendance;
   final VoidCallback? onReports;
-  const QuickActions({Key? key, this.onFillAttendance, this.onReports}) : super(key: key);
+  const QuickActions({super.key, this.onFillAttendance, this.onReports});
 
   @override
   Widget build(BuildContext context) {

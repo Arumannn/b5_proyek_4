@@ -26,7 +26,7 @@ class _OrganizerQrViewState extends State<OrganizerQrView> {
 
   void _loadEvents() {
     final events = HiveService.events.values.toList(growable: false)
-      ..sort((a, b) => a.tanggal.compareTo(b.tanggal));
+      ..sort((a, b) => a.tanggalMulai.compareTo(b.tanggalMulai));
 
     String? selected = _selectedEventId;
     if (selected == null && events.isNotEmpty) {

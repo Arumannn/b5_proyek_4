@@ -292,6 +292,7 @@ class _UserManagementViewState extends State<UserManagementView> {
 
 class UserFormDialog extends StatefulWidget {
   const UserFormDialog({
+    super.key,
     required this.authController,
     required this.roleLabelBuilder,
     required this.dbuItemsBuilder,
@@ -318,14 +319,6 @@ class _UserFormDialogState extends State<UserFormDialog> {
   bool _isSaving = false;
 
   bool get _isEdit => widget.existing != null;
-
-  bool _isExecutiveRole(String role) {
-    final normalized = role.trim().toLowerCase();
-    return normalized == AppConstants.roleExecutive.toLowerCase() ||
-        normalized == 'executive' ||
-        normalized == 'eksekutif' ||
-        normalized == 'admin';
-  }
 
   @override
   void initState() {

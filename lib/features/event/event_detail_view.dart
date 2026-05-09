@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:flutter/material.dart';
 
 import '../../core/services/hive_service.dart';
@@ -8,7 +6,7 @@ import '../../models/event_model.dart';
 import '../../models/member_model.dart';
 
 class EventDetailView extends StatelessWidget {
-  const EventDetailView({Key? key, required this.event}) : super(key: key);
+  const EventDetailView({super.key, required this.event});
   final EventModel event;
 
   String _formatDateTime(DateTime value) {
@@ -180,7 +178,7 @@ class EventDetailView extends StatelessWidget {
                   // Menambahkan bayangan halus agar kartu terlihat timbul
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.04),
+                      color: Colors.black.withValues(alpha: 0.04),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
@@ -255,7 +253,7 @@ class EventDetailView extends StatelessWidget {
               Row(
                 children: [
                   _buildStatCard(
-                    iconBgColor: Colors.green.withOpacity(0.15), // Hijau pudar
+                    iconBgColor: Colors.green.withValues(alpha: 0.15), // Hijau pudar
                     iconColor: Colors.green,
                     icon: Icons.check_circle_outline,
                     count: hadirCount.toString(),
@@ -263,7 +261,7 @@ class EventDetailView extends StatelessWidget {
                   ),
                   const SizedBox(width: 12), // Jarak antar kotak
                   _buildStatCard(
-                    iconBgColor: Colors.orange.withOpacity(0.15), // Oranye pudar
+                    iconBgColor: Colors.orange.withValues(alpha: 0.15), // Oranye pudar
                     iconColor: Colors.orange,
                     icon: Icons.error_outline,
                     count: izinCount.toString(),
@@ -271,7 +269,7 @@ class EventDetailView extends StatelessWidget {
                   ),
                   const SizedBox(width: 12), // Jarak antar kotak
                   _buildStatCard(
-                    iconBgColor: Colors.red.withOpacity(0.15), // Merah pudar
+                    iconBgColor: Colors.red.withValues(alpha: 0.15), // Merah pudar
                     iconColor: Colors.red,
                     icon: Icons.cancel_outlined,
                     count: alphaCount.toString(),
@@ -289,7 +287,7 @@ class EventDetailView extends StatelessWidget {
                   borderRadius: BorderRadius.circular(16.0),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.04),
+                      color: Colors.black.withValues(alpha: 0.04),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
@@ -354,10 +352,10 @@ class EventDetailView extends StatelessWidget {
                                 ? Colors.orange[800]!
                                 : Colors.red[700]!);
                         final statusBgColor = isHadir
-                            ? Colors.green.withOpacity(0.15)
+                            ? Colors.green.withValues(alpha: 0.15)
                             : (isIzin
-                                ? Colors.orange.withOpacity(0.15)
-                                : Colors.red.withOpacity(0.15));
+                                ? Colors.orange.withValues(alpha: 0.15)
+                                : Colors.red.withValues(alpha: 0.15));
 
                         return _buildAttendeeItem(
                           initial: initial,
@@ -428,7 +426,7 @@ class EventDetailView extends StatelessWidget {
           borderRadius: BorderRadius.circular(16.0),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),

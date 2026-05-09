@@ -3,9 +3,6 @@ import '../../core/constants/app_constants.dart';
 import '../../models/event_model.dart';
 import '../attendance/scan_screen.dart';
 import '../auth/auth_controller.dart';
-import '../dashboard/dashboard_view.dart';
-import '../laporan/laporan_view.dart';
-import '../member/member_list_view.dart';
 import '../../widgets/gradient_header.dart';
 import '../../widgets/loading_overlay.dart';
 import '../../widgets/custom_snackbar.dart';
@@ -202,6 +199,7 @@ class _EventListViewState extends State<EventListView> {
             parentId: target.parentEventId,
             jenis: target.jenis,
             lokasi: target.lokasi,
+            targetPeserta: target.targetPeserta,
           ),
         ),
       ),
@@ -217,6 +215,7 @@ class _EventListViewState extends State<EventListView> {
         jamSelesai: result.jamSelesai,
         jenis: result.jenis,
         lokasi: result.lokasi,
+        targetPeserta: result.targetPeserta,
       ),
     );
 
@@ -293,7 +292,7 @@ class _EventListViewState extends State<EventListView> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.06),
+              color: Colors.black.withValues(alpha: 0.06),
               blurRadius: 18,
               offset: const Offset(0, 8),
             ),
@@ -527,7 +526,7 @@ class _EventListViewState extends State<EventListView> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withValues(alpha: 0.06),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),

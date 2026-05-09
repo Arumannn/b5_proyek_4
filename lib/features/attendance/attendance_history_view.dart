@@ -142,7 +142,7 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
             decoration: BoxDecoration(
               color: const Color(0xFF3B66E0), // Biru dropdown yang sedikit lebih terang
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.white.withOpacity(0.3)),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
             ),
             child: ValueListenableBuilder<String>(
               valueListenable: _selectedMonth,
@@ -213,7 +213,7 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
   Widget _buildSummaryCards() {
     return ValueListenableBuilder<String>(
       valueListenable: _selectedMonth,
-      builder: (context, _, __) {
+      builder: (context, _month, _) {
         final stats = _getStats(_recordsForSelectedMonth);
         final percent = stats['total']! == 0 ? 0 : ((stats['hadir']! / stats['total']!) * 100).round();
 
@@ -280,7 +280,7 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
   Widget _buildFilterChips() {
     return ValueListenableBuilder<String>(
       valueListenable: _selectedMonth,
-      builder: (context, _, __) {
+      builder: (context, _month, _) {
         final stats = _getStats(_recordsForSelectedMonth);
         
         return ValueListenableBuilder<String>(
@@ -330,7 +330,7 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
   Widget _buildRecordList() {
     return ValueListenableBuilder<String>(
       valueListenable: _selectedFilter,
-      builder: (context, _, __) {
+      builder: (context, _filter, _) {
         final records = _filteredRecords;
 
         if (records.isEmpty) {
