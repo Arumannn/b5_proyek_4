@@ -1,22 +1,18 @@
-// ignore_for_file: deprecated_member_use
-
-import 'dart:io';
-import 'package:b5_proyek_4/widgets/gradient_header.dart';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:b5_proyek_4/features/auth/auth_controller.dart';
-import 'package:b5_proyek_4/core/services/hive_service.dart';
+import '../../core/services/hive_service.dart';
+import '../../features/auth/auth_controller.dart';
 import '../../models/permission_record.dart';
 
 class PermissionFormView extends StatefulWidget {
   final String eventId;
   final String eventTitle;
   final VoidCallback onSuccessSubmit;
+
   const PermissionFormView({
-    super.key, 
-    required this.eventId, 
-    required this.eventTitle, 
-    required this.onSuccessSubmit
+    super.key,
+    required this.eventId,
+    required this.eventTitle,
+    required this.onSuccessSubmit,
   });
 
   @override
@@ -24,20 +20,11 @@ class PermissionFormView extends StatefulWidget {
 }
 
 class _PermissionFormViewState extends State<PermissionFormView> {
-  // UI State Controllers
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _alasanController = TextEditingController();
-  bool _isLoading = false;
-  
-  String? _selectedEventId;
-  String _jenisIzin = 'Izin'; // Default value
-  File? _selectedImage;
+  final _reasonController = TextEditingController();
 
-  // Mock Data Event (Nanti ini diambil dari EventController.events.value)
-  final List<Map<String, String>> _dummyEvents = [
-    {'id': 'evt-1', 'nama': 'Rapat Pleno HIMAKOM'},
-    {'id': 'evt-2', 'nama': 'Kaderisasi Tahap 1'},
-  ];
+  String _selectedType = 'Izin';
+  bool _isLoading = false;
 
   Future<void> _submitPermission() async {
     if (!_formKey.currentState!.validate()) return;
@@ -45,30 +32,31 @@ class _PermissionFormViewState extends State<PermissionFormView> {
     setState(() => _isLoading = true);
 
     try {
-      //1. Buat record izin baru (Permission Record)
-      final permissionId = 'PERM-${DateTime.now().milliseconsSinceEpoch}';
+      final currentNim = AuthController.instance.currentUser.value?.nim ?? 'unknown';
+
+      final permissionId = 'PERM-${DateTime.now().millisecondsSinceEpoch}';
+
       final newPermission = PermissionRecord(
-        id: permissionId,
+        permissionId: permissionId,
         eventId: widget.eventId,
-        memberId: AuthController.instance.currentUser.value!.nim,
-        reason: _reasonController.text,
-        timestamp: DateTime.now(),
+        memberId: currentNim,
+        jenisIzin: _selectedType,
+        alasan: _reasonController.text.trim(),
         status: 'Pending',
         isSynced: false,
       );
 
-      // 2. Simpan ke HiveBox Permission
+      // Simpan ke Hive
       await HiveService.permissions.put(permissionId, newPermission);
 
-      // 3. Panggil callback untuk mengubah status di MyInvitationSection menjadi 'permission_requested
       widget.onSuccessSubmit();
 
-      // 4. Tutup halaman dengan pesan sukses
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Pengajuan izin berhasil dikirim!'),
             backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
           ),
         );
         Navigator.pop(context);
@@ -76,220 +64,190 @@ class _PermissionFormViewState extends State<PermissionFormView> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Terjadi kesalahan: $e'),
             backgroundColor: Colors.red,
           ),
         );
       }
-    } finally{
+    } finally {
       if (mounted) {
         setState(() => _isLoading = false);
       }
-    }    
+    }
   }
 
   @override
   void dispose() {
-    _alasanController.dispose();
+    _reasonController.dispose();
     super.dispose();
-  }
-
-
-  // Fungsi untuk membuka Kamera / Galeri
-  Future<void> _pickImage(ImageSource source) async {
-    final picker = ImagePicker();
-    try {
-      final pickedFile = await picker.pickImage(
-        source: source,
-        imageQuality: 70, // Kompres ukuran agar tidak berat di Hive/Firebase
-      );
-      if (pickedFile != null) {
-        setState(() {
-          _selectedImage = File(pickedFile.path);
-        });
-      }
-    } catch (e) {
-      debugPrint('Gagal mengambil gambar: $e');
-    }
-  }
-
-  void _showImagePickerModal() {
-    showModalBottomSheet(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: Wrap(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.camera_alt),
-              title: const Text('Ambil Foto dari Kamera'),
-              onTap: () {
-                Navigator.pop(ctx);
-                _pickImage(ImageSource.camera);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library),
-              title: const Text('Pilih dari Galeri'),
-              onTap: () {
-                Navigator.pop(ctx);
-                _pickImage(ImageSource.gallery);
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-void _submitForm() {
-  if (_formKey.currentState!.validate()) {
-    final currentNim = AuthController.instance.currentUser.value?.nim;
-    
-    final isAlreadySubmitted = HiveService.permissions.values.any(
-      (p) => p.eventId == _selectedEventId && p.nim == currentNim
-    );
-
-    if (isAlreadySubmitted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Anda sudah mengajukan izin untuk event ini!'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-      // TODO: Panggil PermissionController di sini nantinya
-      // PermissionController.instance.submitPermission(
-      //   eventId: _selectedEventId!,
-      //   jenisIzin: _jenisIzin,
-      //   alasan: _alasanController.text,
-      //   buktiFotoPath: _selectedImage!.path,
-      // );
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Mode UI: Form valid. Menunggu Controller Backend.'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FA),
-      appBar: const GradientHeader(
-        title: 'Pengajuan Izin / Sakit', style: TextStyle(color: Colors.black87)),
+      appBar: AppBar(
+        title: const Text(
+          'Pengajuan Izin',
+          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600),
+        ),
+        backgroundColor: Colors.white,
+        iconTheme: const IconThemeData(color: Colors.black87),
+        elevation: 0,
+      ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.all(16.0),
         child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1. Pilih Event
-              const Text('Pilih Event', style: TextStyle(fontWeight: FontWeight.bold)),
+              // Event Info Card
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.blueAccent.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.blueAccent.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Event Tujuan',
+                      style: TextStyle(
+                        color: Colors.blueGrey,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      widget.eventTitle,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: Colors.blueAccent,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // Jenis Izin
+              const Text(
+                'Jenis Izin',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               const SizedBox(height: 8),
-              DropdownButtonFormField<String>(
-                decoration: const InputDecoration(border: OutlineInputBorder()),
-                hint: const Text('Pilih event yang tidak bisa dihadiri'),
-                value: _selectedEventId,
-                items: _dummyEvents.map((e) {
-                  return DropdownMenuItem<String>(
-                    value: e['id'],
-                    child: Text(e['nama']!),
-                  );
-                }).toList(),
-                onChanged: (val) => setState(() => _selectedEventId = val),
-                validator: (val) => val == null ? 'Pilih event terlebih dahulu' : null,
-              ),
-              const SizedBox(height: 20),
-
-              // 2. Jenis Izin (Radio Buttons)
-              const Text('Jenis Pengajuan', style: TextStyle(fontWeight: FontWeight.bold)),
-              Row(
-                children: [
-                  Expanded(
-                    child: RadioListTile<String>(
-                      title: const Text('Izin'),
+              Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey[300]!),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: DropdownButtonFormField<String>(
+                  value: _selectedType,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.symmetric(horizontal: 16),
+                  ),
+                  items: const [
+                    DropdownMenuItem(
                       value: 'Izin',
-                      groupValue: _jenisIzin,
-                      onChanged: (val) => setState(() => _jenisIzin = val!),
-                      contentPadding: EdgeInsets.zero,
+                      child: Text('Izin (Keperluan Lain)'),
                     ),
-                  ),
-                  Expanded(
-                    child: RadioListTile<String>(
-                      title: const Text('Sakit'),
+                    DropdownMenuItem(
                       value: 'Sakit',
-                      groupValue: _jenisIzin,
-                      onChanged: (val) => setState(() => _jenisIzin = val!),
-                      contentPadding: EdgeInsets.zero,
+                      child: Text('Sakit'),
                     ),
-                  ),
-                ],
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() => _selectedType = value);
+                    }
+                  },
+                ),
               ),
-              const SizedBox(height: 10),
 
-              // 3. Alasan
-              const Text('Alasan Detail', style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 24),
+
+              // Alasan
+              const Text(
+                'Alasan Ketidakhadiran',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               const SizedBox(height: 8),
               TextFormField(
-                controller: _alasanController,
-                maxLines: 4,
-                decoration: const InputDecoration(
-                  hintText: 'Tuliskan alasan lengkapmu di sini...',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (val) => val == null || val.trim().isEmpty 
-                    ? 'Alasan tidak boleh kosong' : null,
-              ),
-              const SizedBox(height: 20),
-
-              // 4. Bukti Foto (UI Kotak Upload)
-              const Text('Bukti Foto (Surat Dokter/Lainnya)', style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              InkWell(
-                onTap: _showImagePickerModal,
-                child: Container(
-                  height: 150,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade200,
-                    border: Border.all(color: Colors.grey.shade400, style: BorderStyle.solid),
-                    borderRadius: BorderRadius.circular(8),
+                controller: _reasonController,
+                maxLines: 5,
+                decoration: InputDecoration(
+                  hintText: 'Tuliskan alasan lengkap Anda di sini (Sakit, acara keluarga, dll)...',
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
                   ),
-                  child: _selectedImage != null
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.file(_selectedImage!, fit: BoxFit.cover),
-                        )
-                      : const Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.add_a_photo, size: 40, color: Colors.grey),
-                            SizedBox(height: 8),
-                            Text('Ketuk untuk upload foto', style: TextStyle(color: Colors.grey)),
-                          ],
-                        ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Colors.blueAccent),
+                  ),
+                  contentPadding: const EdgeInsets.all(16),
                 ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Alasan tidak boleh kosong';
+                  }
+                  if (value.trim().length < 10) {
+                    return 'Mohon berikan alasan yang lebih jelas (minimal 10 karakter)';
+                  }
+                  return null;
+                },
               ),
-              const SizedBox(height: 30),
 
-              // 5. Tombol Submit
+              const SizedBox(height: 32),
+
+              // Submit Button
               SizedBox(
                 width: double.infinity,
-                height: 50,
+                height: 52,
                 child: ElevatedButton(
+                  onPressed: _isLoading ? null : _submitPermission,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).primaryColor,
-                    foregroundColor: Colors.white,
+                    backgroundColor: Colors.blueAccent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
                   ),
-                  onPressed: _submitForm,
-                  child: const Text('Kirim Pengajuan', style: TextStyle(fontSize: 16)),
+                  child: _isLoading
+                      ? const CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 3,
+                        )
+                      : const Text(
+                          'Kirim Pengajuan Izin',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                 ),
               ),
             ],

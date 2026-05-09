@@ -4,6 +4,7 @@ import '../../../core/services/hive_service.dart';
 import '../../../models/event_invitation.dart';
 import '../../../widgets/custom_snackbar.dart';
 import '../../../widgets/invitation_card.dart';
+import '../../member/permission_form_view.dart';
 
 class MyInvitationSection extends StatelessWidget {
     final String currentMemberId;
@@ -93,12 +94,23 @@ class MyInvitationSection extends StatelessWidget {
                                         'decline',
                                     ),
                                     onPermit: () {
-                                        // Jika izin, idealnya navigasi ke halaman form izin dulu,
-                                        // Tapi sementara kita ubah statusnya langsung:
-                                        _handleInvitationResponse(
+                                        // Navigate to permission form
+                                        Navigator.push(
                                             context,
-                                            invitation,
-                                            'permission_requested',
+                                            MaterialPageRoute(
+                                                builder: (context) => PermissionFormView(
+                                                    eventId: invitation.eventId,
+                                                    eventTitle: eventTitle,
+                                                    onSuccessSubmit: () {
+                                                        // Update invitation status after permission submitted
+                                                        _handleInvitationResponse(
+                                                            context,
+                                                            invitation,
+                                                            'permission_requested',
+                                                        );
+                                                    },
+                                                ),
+                                            ),
                                         );
                                     },
                                 );
