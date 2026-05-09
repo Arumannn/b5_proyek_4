@@ -6,9 +6,18 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:b5_proyek_4/features/auth/auth_controller.dart';
 import 'package:b5_proyek_4/core/services/hive_service.dart';
+import '../../models/permission_record.dart';
 
 class PermissionFormView extends StatefulWidget {
-  const PermissionFormView({super.key});
+  final String eventId;
+  final String eventTitle;
+  final VoidCallback onSuccessSubmit;
+  const PermissionFormView({
+    super.key, 
+    required this.eventId, 
+    required this.eventTitle, 
+    required this.onSuccessSubmit
+  });
 
   @override
   State<PermissionFormView> createState() => _PermissionFormViewState();
@@ -18,6 +27,7 @@ class _PermissionFormViewState extends State<PermissionFormView> {
   // UI State Controllers
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _alasanController = TextEditingController();
+  bool _isLoading = false;
   
   String? _selectedEventId;
   String _jenisIzin = 'Izin'; // Default value
@@ -29,11 +39,62 @@ class _PermissionFormViewState extends State<PermissionFormView> {
     {'id': 'evt-2', 'nama': 'Kaderisasi Tahap 1'},
   ];
 
+  Future<void> _submitPermission() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      //1. Buat record izin baru (Permission Record)
+      final permissionId = 'PERM-${DateTime.now().milliseconsSinceEpoch}';
+      final newPermission = PermissionRecord(
+        id: permissionId,
+        eventId: widget.eventId,
+        memberId: AuthController.instance.currentUser.value!.nim,
+        reason: _reasonController.text,
+        timestamp: DateTime.now(),
+        status: 'Pending',
+        isSynced: false,
+      );
+
+      // 2. Simpan ke HiveBox Permission
+      await HiveService.permissions.put(permissionId, newPermission);
+
+      // 3. Panggil callback untuk mengubah status di MyInvitationSection menjadi 'permission_requested
+      widget.onSuccessSubmit();
+
+      // 4. Tutup halaman dengan pesan sukses
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Pengajuan izin berhasil dikirim!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Terjadi kesalahan: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally{
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }    
+  }
+
   @override
   void dispose() {
     _alasanController.dispose();
     super.dispose();
   }
+
 
   // Fungsi untuk membuka Kamera / Galeri
   Future<void> _pickImage(ImageSource source) async {
@@ -119,7 +180,9 @@ void _submitForm() {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const GradientHeader(title: 'Pengajuan Izin / Sakit', subtitle: 'Form pengajuan anggota'),
+      backgroundColor: const Color(0xFFF5F7FA),
+      appBar: const GradientHeader(
+        title: 'Pengajuan Izin / Sakit', style: TextStyle(color: Colors.black87)),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Form(

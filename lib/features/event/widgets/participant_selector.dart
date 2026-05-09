@@ -43,24 +43,35 @@ class _ParticipantSelectorState extends State<ParticipantSelector> {
 		super.dispose();
 	}
 
-	bool _isDivisionFullySelected(String division) {
+	bool? _getDivisionCheckboxState(String division) {
 		final membersInDiv = _allMembers
 				.where((m) => m.divisi == division)
 				.toList(growable: false);
 		if (membersInDiv.isEmpty) return false;
-		return membersInDiv.every((m) => _selectedIds.contains(m.nim));
+
+		var selectedCount = 0;
+		for (final m in membersInDiv) {
+			if (_selectedIds.contains(m.nim)) {
+				selectedCount++;
+			}
+		}
+
+		if (selectedCount == 0) return false;
+		if (selectedCount == membersInDiv.length) return true;
+		return null;
 	}
 
 	void _toggleDivision(
 		String division,
-		bool isSelected,
+		bool? newValue,
 		StateSetter setModalState,
 	) {
 		final membersInDiv = _allMembers
 				.where((m) => m.divisi == division)
 				.toList(growable: false);
 		setModalState(() {
-			if (isSelected) {
+			final checkAll = newValue ?? true;
+			if (checkAll) {
 				for (final m in membersInDiv) {
 					if (!_selectedIds.contains(m.nim)) {
 						_selectedIds.add(m.nim);
@@ -216,25 +227,58 @@ class _ParticipantSelectorState extends State<ParticipantSelector> {
 														itemCount: _divisions.length,
 														itemBuilder: (context, index) {
 															final division = _divisions[index];
-															final isSelected =
-																	_isDivisionFullySelected(division);
-															final memberCount = _allMembers
+															final checkboxState =
+																	_getDivisionCheckboxState(division);
+															final membersInDiv = _allMembers
 																	.where((m) => m.divisi == division)
-																	.length;
+																	.toList(growable: false);
 
-															return CheckboxListTile(
-																value: isSelected,
-																activeColor: Colors.blueAccent,
-																title: Text(division),
-																subtitle: Text('$memberCount anggota'),
-																secondary: const Icon(Icons.groups_outlined),
-																onChanged: (bool? checked) {
-																	_toggleDivision(
-																		division,
-																		checked ?? false,
-																		setModalState,
+															return ExpansionTile(
+																key: PageStorageKey<String>(division),
+																leading: Checkbox(
+																	tristate: true,
+																	value: checkboxState,
+																	activeColor: Colors.blueAccent,
+																	onChanged: (bool? checked) {
+																		_toggleDivision(division, checked, setModalState);
+																	},
+																),
+																title: Text(
+																	division,
+																	style: const TextStyle(fontWeight: FontWeight.bold),
+																),
+																subtitle: Text('${membersInDiv.length} anggota'),
+																children: membersInDiv.map((member) {
+																	final isSelected =
+																			_selectedIds.contains(member.nim);
+																	return Padding(
+																		padding: const EdgeInsets.only(left: 48.0, right: 8.0),
+																		child: CheckboxListTile(
+																			value: isSelected,
+																			activeColor: Colors.blueAccent,
+																			dense: true,
+																			title: Text(
+																				member.nama,
+																				style: const TextStyle(fontSize: 14),
+																			),
+																			subtitle: Text(
+																				member.nim,
+																				style: const TextStyle(fontSize: 12),
+																			),
+																			onChanged: (bool? checked) {
+																				setModalState(() {
+																					if (checked == true) {
+																						if (!_selectedIds.contains(member.nim)) {
+																							_selectedIds.add(member.nim);
+																						}
+																					} else {
+																						_selectedIds.remove(member.nim);
+																					}
+																				});
+																			},
+																		),
 																	);
-																},
+																}).toList(growable: false),
 															);
 														},
 													),
