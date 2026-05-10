@@ -129,7 +129,7 @@ class _OrganizerQrViewState extends State<OrganizerQrView> {
                       ),
                       const SizedBox(height: 12),
                       DropdownButtonFormField<String>(
-                        value: _selectedEventId,
+                        initialValue: _selectedEventId,
                         decoration: const InputDecoration(
                           labelText: 'Pilih Event',
                           border: OutlineInputBorder(),

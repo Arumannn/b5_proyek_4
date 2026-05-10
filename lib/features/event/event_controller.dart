@@ -40,6 +40,7 @@ class EventController {
 
   bool _hasLoaded = false;
   List<EventModel> _allEvents = [];
+  Timer? _statusRefreshTimer;
 
   // RBAC: Ambil role user login saat ini untuk evaluasi izin di layer logic.
   String get _currentRole =>
@@ -84,6 +85,18 @@ class EventController {
     }
   }
 
+  void _startStatusRefreshTimer() {
+    if (_statusRefreshTimer?.isActive == true) {
+      return;
+    }
+
+    _statusRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (_allEvents.isEmpty) return;
+      _refreshAllStatuses();
+      _applyFilters();
+    });
+  }
+
   /// Mem-push data yang isSynced=false ke cloud secara background.
   Future<void> _pushPendingUpdatesToCloudInBackground() async {
     if (!await _isOnline()) return;
@@ -113,6 +126,7 @@ class EventController {
       
       _applyFilters();
       _hasLoaded = true;
+      _startStatusRefreshTimer();
 
       debugPrint('[EventCtrl] load Hive: ${_allEvents.length} event dimuat.');
     } catch (e) {
@@ -246,7 +260,7 @@ class EventController {
       return false;
     }
 
-    // RBAC: createdBy harus otomatis berasal dari memberId user login.
+    // RBAC: createdBy harus otomatis berasal dari nim user login.
     final actorNim = _currentNim;
     if (actorNim == null) {
       errorMessage.value = 'User login tidak valid untuk membuat event.';
@@ -302,13 +316,13 @@ class EventController {
       // Step 1b: Buat undangan lokal untuk peserta terpilih (jika ada)
       if (targetPeserta != null && targetPeserta.isNotEmpty) {
         final now = DateTime.now();
-        for (final memberId in targetPeserta) {
+        for (final targetNim in targetPeserta) {
           final invitationId =
-              'INV-${created.eventId}-${now.microsecondsSinceEpoch}-$memberId';
+              'INV-${created.eventId}-${now.microsecondsSinceEpoch}-$targetNim';
           final invitation = EventInvitation(
             invitationId: invitationId,
             eventId: created.eventId,
-            memberId: memberId,
+            nim: targetNim,
             attendanceTime: now,
             invitedBy: actorNim,
             invitedAt: now,

@@ -7,6 +7,7 @@ import '../../core/utils/network_status_controller.dart';
 import '../../widgets/custom_snackbar.dart';
 import '../auth/auth_controller.dart';
 import '../auth/user_management_view.dart';
+import 'member_form_view.dart';
 import 'member_controller.dart';
 import '../../models/member_model.dart';
 
@@ -62,6 +63,20 @@ class _MemberListViewState extends State<MemberListView> {
       await _loadMembers();
       if (!mounted) return;
       CustomSnackbar.showSuccess(context, 'Data anggota berhasil diperbarui.');
+    }
+  }
+
+  Future<void> _addMember() async {
+    final saved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => const MemberFormView(),
+      ),
+    );
+
+    if (saved == true) {
+      await _loadMembers();
+      if (!mounted) return;
+      CustomSnackbar.showSuccess(context, 'Anggota baru berhasil ditambahkan.');
     }
   }
 
@@ -183,109 +198,219 @@ class _MemberListViewState extends State<MemberListView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
-      appBar: _buildAppBar(),
-      body: Column(
-        children: [
-          _buildFilterChips(),
-          Expanded(
-            child: _buildMemberList(),
-          ),
-        ],
+      backgroundColor: const Color(0xFFF3F7FD),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
+                ),
+              ),
+              child: ValueListenableBuilder<List<MemberModel>>(
+                valueListenable: _controller.members,
+                builder: (context, membersList, child) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          GestureDetector(
+                            onTap: () => Navigator.pop(context),
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.14),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.chevron_left, color: Colors.white, size: 24),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Text(
+                              'Daftar Anggota',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (_isExecutive)
+                            GestureDetector(
+                              onTap: _addMember,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(999),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.12),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 6),
+                                    ),
+                                  ],
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.person_add_alt_1, size: 18, color: Color(0xFF2563EB)),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'Tambah',
+                                      style: TextStyle(
+                                        color: Color(0xFF2563EB),
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 18),
+                      Center(
+                        child: Column(
+                          children: [
+                            Container(
+                              width: 88,
+                              height: 88,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(24),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.12),
+                                    blurRadius: 18,
+                                    offset: const Offset(0, 8),
+                                  ),
+                                ],
+                              ),
+                              child: const Icon(Icons.groups_2_outlined, size: 44, color: Color(0xFF2563EB)),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              '${membersList.length} anggota aktif',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Kelola anggota, role, dan data DBU dari satu tempat.',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.85),
+                                fontSize: 12,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+              child: _buildSearchBarCard(),
+            ),
+            _buildFilterChips(),
+            Expanded(
+              child: _buildMemberList(),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  PreferredSizeWidget _buildAppBar() {
-    return AppBar(
-      backgroundColor: const Color(0xFF1D4ED8),
-      elevation: 0,
-      title: ValueListenableBuilder<List<MemberModel>>(
-        valueListenable: _controller.members,
-        builder: (context, membersList, child) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Daftar Anggota', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22)),
-              Text('${membersList.length} anggota aktif',
-                  style: const TextStyle(fontSize: 12, color: Colors.white70)),
-            ],
+  Widget _buildSearchBarCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: ValueListenableBuilder<TextEditingValue>(
+        valueListenable: _searchController,
+        builder: (context, value, _) {
+          return TextField(
+            controller: _searchController,
+            decoration: InputDecoration(
+              hintText: 'Cari nama atau NIM...',
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: value.text.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => _searchController.clear(),
+                    )
+                  : null,
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            ),
           );
         },
-      ),
-      bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(68),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          child: Container(
-            height: 48,
-            decoration: BoxDecoration(
-              color: const Color(0xFF3B66E0),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-            ),
-            child: ValueListenableBuilder<TextEditingValue>(
-              valueListenable: _searchController,
-              builder: (context, value, _) {
-                return TextField(
-                  controller: _searchController,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    hintText: 'Cari nama atau NIM...',
-                    hintStyle: const TextStyle(color: Color.fromARGB(150, 107, 107, 107)),
-                    prefixIcon: const Icon(Icons.search, color: Color.fromARGB(150, 107, 107, 107)),
-                    suffixIcon: value.text.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.close, color: Color.fromARGB(150, 107, 107, 107)),
-                            onPressed: () => _searchController.clear(),
-                          )
-                        : null,
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-                  ),
-                );
-              },
-            ),
-          ),
-        ),
       ),
     );
   }
 
   Widget _buildFilterChips() {
     return Container(
-      color: Colors.white,
-      height: 60,
+      color: const Color(0xFFF3F7FD),
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
       child: ValueListenableBuilder<List<String>>(
         valueListenable: _controller.availableDivisions,
         builder: (context, divisions, _) {
           return ValueListenableBuilder<String>(
             valueListenable: _controller.selectedDivision,
             builder: (context, selectedDiv, _) {
-              return ListView.builder(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                itemCount: divisions.length,
-                itemBuilder: (context, index) {
-                  final div = divisions[index];
-                  final isSelected = div == selectedDiv;
-                  final count = _controller.getDivisionCount(div);
+              return SizedBox(
+                height: 44,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: divisions.length,
+                  itemBuilder: (context, index) {
+                    final div = divisions[index];
+                    final isSelected = div == selectedDiv;
+                    final count = _controller.getDivisionCount(div);
 
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ChoiceChip(
-                      label: Text('$div ($count)'),
-                      selected: isSelected,
-                      onSelected: (_) => _controller.setDivision(div),
-                      selectedColor: const Color(0xFF1D4ED8),
-                      backgroundColor: const Color(0xFFF0F2F5),
-                      labelStyle: TextStyle(
-                        color: isSelected ? Colors.white : Colors.black87,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ChoiceChip(
+                        label: Text('$div ($count)'),
+                        selected: isSelected,
+                        onSelected: (_) => _controller.setDivision(div),
+                        selectedColor: const Color(0xFFDBEAFE),
+                        backgroundColor: Colors.white,
+                        side: BorderSide(color: isSelected ? const Color(0xFF2563EB) : Colors.grey.shade200),
+                        labelStyle: TextStyle(
+                          color: isSelected ? const Color(0xFF1D4ED8) : Colors.black87,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               );
             },
           );
@@ -313,7 +438,7 @@ class _MemberListViewState extends State<MemberListView> {
           }
           return ListView.builder(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
             itemCount: filtered.length,
             itemBuilder: (context, index) {
               final member = filtered[index];
@@ -358,12 +483,12 @@ class _MemberCardDesign extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 18, offset: const Offset(0, 8))],
         border: Border.all(color: Colors.grey.shade200),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(18),
         child: Column(
           children: [
             Row(
@@ -371,7 +496,7 @@ class _MemberCardDesign extends StatelessWidget {
               children: [
                 CircleAvatar(
                   radius: 28,
-                  backgroundColor: const Color(0xFF1D4ED8),
+                  backgroundColor: const Color(0xFF2563EB),
                   child: Text(
                     member.nama.isNotEmpty ? member.nama[0].toUpperCase() : '?',
                     style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),

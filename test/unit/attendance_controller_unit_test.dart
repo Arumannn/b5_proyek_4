@@ -12,16 +12,22 @@ import 'package:b5_proyek_4/models/member_model.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   const pathProviderChannel = MethodChannel('plugins.flutter.io/path_provider');
+  late final Directory testDocumentsDir;
 
   final controller = AttendanceController.instance;
 
   setUpAll(() async {
+    testDocumentsDir = Directory(
+      '${Directory.systemTemp.path}${Platform.pathSeparator}attendance_controller_${DateTime.now().microsecondsSinceEpoch}',
+    );
+    testDocumentsDir.createSync(recursive: true);
+
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(pathProviderChannel, (methodCall) async {
       if (methodCall.method == 'getApplicationDocumentsDirectory') {
-        return Directory.systemTemp.path;
+        return testDocumentsDir.path;
       }
-      return Directory.systemTemp.path;
+      return testDocumentsDir.path;
     });
 
     await HiveService.init();
@@ -54,7 +60,6 @@ void main() {
     await HiveService.members.put(
       nim,
       MemberModel(
-        memberId: nim,
         nama: nama,
         nim: nim,
         divisi: 'Core',
@@ -93,7 +98,6 @@ void main() {
       await HiveService.members.put(
         nim,
         MemberModel(
-          memberId: nim,
           nama: 'No Event',
           nim: nim,
           divisi: 'Core',
@@ -178,14 +182,14 @@ void main() {
         AttendanceRecord(
           recordId: 'r2',
           eventId: 'event-1',
-          memberId: 'm2',
+          nim: 'm2',
           timestamp: DateTime(2026, 4, 23, 10, 0),
           compositeKey: 'event-1_m2',
         ),
         AttendanceRecord(
           recordId: 'r1',
           eventId: 'event-1',
-          memberId: 'm1',
+          nim: 'm1',
           timestamp: DateTime(2026, 4, 23, 9, 0),
           compositeKey: 'event-1_m1',
         ),
@@ -201,14 +205,14 @@ void main() {
         AttendanceRecord(
           recordId: 'r-old',
           eventId: 'e1',
-          memberId: 'member-1',
+          nim: 'member-1',
           timestamp: DateTime(2026, 4, 22, 10, 0),
           compositeKey: 'e1_member-1',
         ),
         AttendanceRecord(
           recordId: 'r-new',
           eventId: 'e2',
-          memberId: 'member-1',
+          nim: 'member-1',
           timestamp: DateTime(2026, 4, 23, 10, 0),
           compositeKey: 'e2_member-1',
         ),

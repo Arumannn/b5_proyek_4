@@ -43,86 +43,158 @@ class InvitationMonitoringSection extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Pantauan Undangan',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: Colors.grey.shade100),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 18,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Pantauan Undangan',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black54,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildStatItem('Approved', approved, Colors.green),
+                      _buildStatItem('Rejected', rejected, Colors.red),
+                      _buildStatItem('Pending', pending, Colors.grey),
+                      _buildStatItem('Izin', permission, Colors.orange),
+                    ],
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 16),
-
-            // --- STATISTICS SUMMARY ---
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildStatItem('Approved', approved, Colors.green),
-                _buildStatItem('Rejected', rejected, Colors.red),
-                _buildStatItem('Pending', pending, Colors.grey),
-                _buildStatItem('Izin', permission, Colors.orange),
-              ],
-            ),
-            const SizedBox(height: 24),
-
-            // --- PARTICIPANT LIST ---
-            const Text(
-              'Daftar Respons Peserta:',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: invitations.length,
-              itemBuilder: (context, index) {
-                final invitation = invitations[index];
-                final member = HiveService.members.get(invitation.memberId);
-
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  child: ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: _getStatusColor(invitation.responseStatus)
-                          .withValues(alpha: 0.2),
-                      child: Text(
-                        member?.nama[0] ?? '?',
-                        style: TextStyle(
-                          color: _getStatusColor(invitation.responseStatus),
-                        ),
-                      ),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: Colors.grey.shade100),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 18,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Daftar Respons Peserta',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black54,
+                      letterSpacing: 0.8,
                     ),
-                    title: Text(member?.nama ?? 'Unknown Member'),
-                    subtitle:
-                        Text(invitation.responseStatus.replaceAll('_', ' ')),
-                    trailing:
-                        invitation.responseStatus == 'permission_requested'
-                            ? ElevatedButton(
-                                onPressed: () =>
-                                    _showPermissionApprovalDialog(
+                  ),
+                  const SizedBox(height: 12),
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: invitations.length,
+                    itemBuilder: (context, index) {
+                      final invitation = invitations[index];
+                      final member = HiveService.members.get(invitation.nim);
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[50],
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: Colors.grey.shade200),
+                        ),
+                        child: Row(
+                          children: [
+                            CircleAvatar(
+                              backgroundColor: _getStatusColor(invitation.responseStatus)
+                                  .withValues(alpha: 0.18),
+                              child: Text(
+                                (member?.nama.isNotEmpty ?? false) ? member!.nama[0].toUpperCase() : '?',
+                                style: TextStyle(
+                                  color: _getStatusColor(invitation.responseStatus),
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    member?.nama ?? 'Unknown Member',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    invitation.responseStatus.replaceAll('_', ' '),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            invitation.responseStatus == 'permission_requested'
+                                ? ElevatedButton(
+                                    onPressed: () => _showPermissionApprovalDialog(
                                       context,
                                       invitation,
                                     ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.orange,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFFF59E0B),
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(14),
+                                      ),
+                                      elevation: 0,
+                                    ),
+                                    child: const Text(
+                                      'Cek Izin',
+                                      style: TextStyle(fontSize: 11, color: Colors.white),
+                                    ),
+                                  )
+                                : Icon(
+                                    Icons.circle,
+                                    size: 12,
+                                    color: _getStatusColor(invitation.responseStatus),
                                   ),
-                                ),
-                                child: const Text(
-                                  'Cek Izin',
-                                  style: TextStyle(fontSize: 11),
-                                ),
-                              )
-                            : Icon(
-                                Icons.circle,
-                                size: 12,
-                                color: _getStatusColor(
-                                  invitation.responseStatus,
-                                ),
-                              ),
+                          ],
+                        ),
+                      );
+                    },
                   ),
-                );
-              },
+                ],
+              ),
             ),
           ],
         );
@@ -138,7 +210,7 @@ class InvitationMonitoringSection extends StatelessWidget {
         Text(
           '$value',
           style: TextStyle(
-            fontSize: 20,
+            fontSize: 18,
             fontWeight: FontWeight.bold,
             color: color,
           ),
@@ -146,7 +218,7 @@ class InvitationMonitoringSection extends StatelessWidget {
         Text(
           label,
           style: const TextStyle(
-            fontSize: 12,
+            fontSize: 11,
             color: Colors.grey,
           ),
         ),
@@ -178,7 +250,7 @@ class InvitationMonitoringSection extends StatelessWidget {
     final permissionRecords = HiveService.permissions.values
         .where((p) =>
             p.eventId == invitation.eventId &&
-            p.memberId == invitation.memberId)
+            p.nim == invitation.nim)
         .toList();
 
     final reason = permissionRecords.isNotEmpty

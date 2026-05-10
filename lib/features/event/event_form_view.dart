@@ -119,10 +119,14 @@ class _EventFormViewState extends State<EventFormView> {
   }
 
   Future<void> _pickDate() async {
+    final today = DateTime.now();
+    final firstDate = DateTime(today.year, today.month, today.day);
+    final initialDate = _selectedDate.isBefore(firstDate) ? firstDate : _selectedDate;
+
     final picked = await showDatePicker(
       context: context,
-      initialDate: _selectedDate,
-      firstDate: DateTime.now().subtract(const Duration(days: 1)),
+      initialDate: initialDate,
+      firstDate: firstDate,
       lastDate: DateTime(2100),
       helpText: 'Pilih Tanggal Event',
       cancelText: 'Batal',
@@ -246,37 +250,41 @@ class _EventFormViewState extends State<EventFormView> {
     return '$hh:$mm';
   }
 
-  Widget _buildSectionCard({required String title, required List<Widget> children}) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 20),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-        border: Border.all(color: Colors.grey.shade100),
+  Widget _buildInputLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Text(
+        text.toUpperCase(),
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+          color: Colors.grey[700],
+          letterSpacing: 0.5,
+        ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF1D4ED8),
-            ),
-          ),
-          const SizedBox(height: 16),
-          ...children,
-        ],
+    );
+  }
+
+  InputDecoration _inputDecoration({String? hintText, Widget? suffixIcon}) {
+    return InputDecoration(
+      hintText: hintText,
+      hintStyle: const TextStyle(color: Colors.black38, fontSize: 14),
+      filled: true,
+      fillColor: Colors.grey[50],
+      contentPadding: const EdgeInsets.all(16),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.grey[200]!),
       ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.grey[200]!),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Colors.blue, width: 2),
+      ),
+      suffixIcon: suffixIcon,
     );
   }
 
@@ -301,262 +309,295 @@ class _EventFormViewState extends State<EventFormView> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
-      appBar: GradientHeader(
-        title: widget.title,
-        subtitle: 'Form pembuatan dan pengeditan event',
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.check, color: Colors.white),
-            onPressed: _submit,
-            tooltip: 'Simpan',
-          ),
-        ],
-      ),
+      backgroundColor: Colors.white,
       body: SafeArea(
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              _buildSectionCard(
-                title: 'Informasi Umum',
+        child: Column(
+          children: [
+            // Custom Header
+            Container(
+              padding: const EdgeInsets.all(16),
+              child: Row(
                 children: [
-                  TextFormField(
-                    controller: _nameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Nama Event *',
-                      hintText: 'Contoh: Rapat Evaluasi Bulanan',
-                      prefixIcon: Icon(Icons.event),
-                    ),
-                    textCapitalization: TextCapitalization.words,
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Nama event wajib diisi';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  DropdownButtonFormField<String>(
-                    initialValue: _selectedJenis,
-                    decoration: const InputDecoration(
-                      labelText: 'Jenis Event *',
-                      prefixIcon: Icon(Icons.category_outlined),
-                    ),
-                    items: _jenisOptions
-                        .map((jenis) => DropdownMenuItem<String>(
-                              value: jenis,
-                              child: Text(jenis),
-                            ))
-                        .toList(),
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() {
-                          _selectedJenis = value;
-                        });
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  Container(
-                    decoration: BoxDecoration(
-                      border: Border.all(color: const Color(0xFFE5E7EB)),
-                      borderRadius: BorderRadius.circular(12),
-                      color: Colors.white,
-                    ),
-                    child: SwitchListTile(
-                      title: const Text('Jadikan Sub Event', style: TextStyle(fontWeight: FontWeight.w500)),
-                      subtitle: _isSubEvent 
-                          ? const Text('Event ini merupakan bagian dari event utama')
-                          : null,
-                      value: _isSubEvent,
-                      activeThumbColor: const Color(0xFF2563EB),
-                      onChanged: widget.canChangeHierarchy
-                          ? (value) {
-                              setState(() {
-                                _isSubEvent = value;
-                                if (!_isSubEvent) _parentId = null;
-                              });
-                            }
-                          : null,
-                    ),
-                  ),
-                  if (_isSubEvent) ...[
-                    const SizedBox(height: 16),
-                    DropdownButtonFormField<String>(
-                      initialValue: _parentId,
-                      decoration: const InputDecoration(
-                        labelText: 'Parent Event *',
-                        prefixIcon: Icon(Icons.account_tree_outlined),
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        shape: BoxShape.circle,
                       ),
-                      hint: const Text('Pilih parent event'),
-                      items: widget.parentOptions
-                          .map(
-                            (event) => DropdownMenuItem<String>(
-                              value: event.id,
-                              child: Text(event.name),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: widget.canChangeHierarchy
-                          ? (value) {
-                              setState(() {
-                                _parentId = value;
-                              });
-                            }
-                          : null,
+                      child: Icon(Icons.chevron_left, color: Colors.grey[600], size: 24),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    widget.title,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: Form(
+                key: _formKey,
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  children: [
+                    _buildInputLabel('Nama Kegiatan'),
+                    TextFormField(
+                      controller: _nameController,
+                      decoration: _inputDecoration(hintText: 'Contoh: Musyawarah Besar'),
+                      textCapitalization: TextCapitalization.words,
                       validator: (value) {
-                        if (_isSubEvent && (value == null || value.isEmpty)) {
-                          return 'Parent event wajib dipilih untuk sub event';
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Nama event wajib diisi';
                         }
                         return null;
                       },
                     ),
-                  ],
-                ],
-              ),
+                    const SizedBox(height: 16),
 
-              _buildSectionCard(
-                title: 'Waktu & Lokasi',
-                children: [
-                  ListTile(
-                    title: const Text('Tanggal Event *'),
-                    subtitle: Text(
-                      _formatDate(_selectedDate),
-                      style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black87),
+                    _buildInputLabel('Jenis Kegiatan'),
+                    DropdownButtonFormField<String>(
+                      initialValue: _selectedJenis,
+                      decoration: _inputDecoration(),
+                      items: _jenisOptions
+                          .map((jenis) => DropdownMenuItem<String>(
+                                value: jenis,
+                                child: Text(jenis, style: const TextStyle(fontSize: 14)),
+                              ))
+                          .toList(),
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() {
+                            _selectedJenis = value;
+                          });
+                        }
+                      },
                     ),
-                    leading: const Icon(Icons.calendar_today_outlined, color: Color(0xFF2563EB)),
-                    trailing: const Icon(Icons.edit_calendar_outlined),
-                    onTap: _pickDate,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: const BorderSide(color: Color(0xFFE5E7EB)),
+                    const SizedBox(height: 16),
+
+                    // Grid untuk Tanggal dan Waktu Mulai
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildInputLabel('Tanggal'),
+                              GestureDetector(
+                                onTap: _pickDate,
+                                child: AbsorbPointer(
+                                  child: TextFormField(
+                                    controller: TextEditingController(text: _formatDate(_selectedDate)),
+                                    decoration: _inputDecoration(
+                                      suffixIcon: const Icon(Icons.calendar_today, size: 18),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildInputLabel('Waktu (Mulai)'),
+                              GestureDetector(
+                                onTap: _pickTime,
+                                child: AbsorbPointer(
+                                  child: TextFormField(
+                                    controller: TextEditingController(text: _formatTime(_selectedDate)),
+                                    decoration: _inputDecoration(
+                                      suffixIcon: const Icon(Icons.access_time, size: 18),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  ListTile(
-                    title: const Text('Waktu Dimulai *'),
-                    subtitle: Text(
-                      _formatTime(_selectedDate),
-                      style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black87),
+                    const SizedBox(height: 16),
+                    
+                    _buildInputLabel('Waktu Selesai (Opsional)'),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: _pickEndTime,
+                            child: AbsorbPointer(
+                              child: TextFormField(
+                                controller: TextEditingController(
+                                  text: _selectedJamSelesai != null ? _formatTime(_selectedJamSelesai!) : 'Tidak ditentukan'
+                                ),
+                                decoration: _inputDecoration(
+                                  suffixIcon: const Icon(Icons.access_time, size: 18),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        if (_selectedJamSelesai != null) ...[
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: const Icon(Icons.clear, color: Colors.grey),
+                            onPressed: () => setState(() => _selectedJamSelesai = null),
+                          ),
+                        ],
+                      ],
                     ),
-                    leading: const Icon(Icons.schedule_outlined, color: Color(0xFF2563EB)),
-                    trailing: const Icon(Icons.edit_outlined),
-                    onTap: _pickTime,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: const BorderSide(color: Color(0xFFE5E7EB)),
+                    const SizedBox(height: 16),
+
+                    _buildInputLabel('Lokasi / Tempat'),
+                    TextFormField(
+                      controller: _lokasiController,
+                      decoration: _inputDecoration(hintText: 'Contoh: Ruang Sidang Utama'),
+                      textCapitalization: TextCapitalization.sentences,
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  ListTile(
-                    title: const Text('Waktu Selesai'),
-                    subtitle: Text(
-                      _selectedJamSelesai != null 
-                          ? _formatTime(_selectedJamSelesai!)
-                          : 'Tidak ditentukan',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600, 
-                        color: _selectedJamSelesai != null ? Colors.black87 : Colors.grey.shade600,
+                    const SizedBox(height: 16),
+
+                    _buildInputLabel('Deskripsi'),
+                    TextFormField(
+                      controller: _deskripsiController,
+                      decoration: _inputDecoration(hintText: 'Tulis deskripsi event...'),
+                      maxLines: 3,
+                      textCapitalization: TextCapitalization.sentences,
+                    ),
+                    const SizedBox(height: 16),
+
+                    Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey[200]!),
+                        borderRadius: BorderRadius.circular(12),
+                        color: Colors.grey[50],
+                      ),
+                      child: SwitchListTile(
+                        title: const Text('Jadikan Sub Event', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                        subtitle: _isSubEvent 
+                            ? const Text('Bagian dari event utama', style: TextStyle(fontSize: 12))
+                            : null,
+                        value: _isSubEvent,
+                        activeThumbColor: Colors.blue[600],
+                        onChanged: widget.canChangeHierarchy
+                            ? (value) {
+                                setState(() {
+                                  _isSubEvent = value;
+                                  if (!_isSubEvent) _parentId = null;
+                                });
+                              }
+                            : null,
                       ),
                     ),
-                    leading: const Icon(Icons.update_outlined, color: Color(0xFF2563EB)),
-                    trailing: _selectedJamSelesai != null
-                        ? IconButton(
-                            icon: const Icon(Icons.clear),
-                            onPressed: () => setState(() => _selectedJamSelesai = null),
-                          )
-                        : const Icon(Icons.edit_outlined),
-                    onTap: _pickEndTime,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: const BorderSide(color: Color(0xFFE5E7EB)),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _lokasiController,
-                    decoration: const InputDecoration(
-                      labelText: 'Lokasi (Opsional)',
-                      hintText: 'Contoh: Ruang Seminar Informatika, Lt. 3',
-                      prefixIcon: Icon(Icons.location_on_outlined),
-                    ),
-                    textCapitalization: TextCapitalization.sentences,
-                  ),
-                ],
-              ),
+                    if (_isSubEvent) ...[
+                      const SizedBox(height: 16),
+                      _buildInputLabel('Parent Event'),
+                      DropdownButtonFormField<String>(
+                        initialValue: _parentId,
+                        decoration: _inputDecoration(hintText: 'Pilih parent event'),
+                        items: widget.parentOptions
+                            .map(
+                              (event) => DropdownMenuItem<String>(
+                                value: event.id,
+                                child: Text(event.name, style: const TextStyle(fontSize: 14)),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: widget.canChangeHierarchy
+                            ? (value) {
+                                setState(() {
+                                  _parentId = value;
+                                });
+                              }
+                            : null,
+                        validator: (value) {
+                          if (_isSubEvent && (value == null || value.isEmpty)) {
+                            return 'Parent event wajib dipilih';
+                          }
+                          return null;
+                        },
+                      ),
+                    ],
+                    const SizedBox(height: 16),
 
-              _buildSectionCard(
-                title: 'Peserta & Deskripsi',
-                children: [
-                  ParticipantSelector(
-                    initialSelectedIds: _selectedTargetIds,
-                    onSelectionChanged: (selectedIds) {
-                      setState(() {
-                        _selectedTargetIds = selectedIds;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _deskripsiController,
-                    decoration: const InputDecoration(
-                      labelText: 'Deskripsi (Opsional)',
-                      hintText: 'Tulis deskripsi event.',
-                      prefixIcon: Icon(Icons.description_outlined),
-                      alignLabelWithHint: true,
+                    _buildInputLabel('Target Peserta'),
+                    Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey[200]!),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: ParticipantSelector(
+                        initialSelectedIds: _selectedTargetIds,
+                        onSelectionChanged: (selectedIds) {
+                          setState(() {
+                            _selectedTargetIds = selectedIds;
+                          });
+                        },
+                      ),
                     ),
-                    maxLines: 4,
-                    textCapitalization: TextCapitalization.sentences,
-                  ),
-                ],
-              ),
+                    const SizedBox(height: 24),
 
-              // ── Info Wajib ──────────────────────────────────
-              Container(
-                margin: const EdgeInsets.only(bottom: 24),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.blue.shade200),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.info_outline, size: 20, color: Colors.blue.shade700),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Field bertanda * wajib diisi',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.blue.shade700,
+                    // Info Box
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.blue[50],
+                        border: Border.all(color: Colors.blue[100]!),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.info, color: Colors.blue[600], size: 20),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: RichText(
+                              text: TextSpan(
+                                style: TextStyle(fontSize: 12, color: Colors.blue[800], height: 1.5),
+                                children: const [
+                                  TextSpan(text: 'Karena sistem menggunakan konsep '),
+                                  TextSpan(text: 'Offline-First', style: TextStyle(fontWeight: FontWeight.bold)),
+                                  TextSpan(text: ', data event akan disimpan di memori lokal terlebih dahulu dan otomatis disinkronkan ke cloud saat koneksi tersedia.'),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Submit Button
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: _submit,
+                        icon: const Icon(Icons.save, color: Colors.white, size: 20),
+                        label: const Text('Simpan Event', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue[600],
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 4,
+                          shadowColor: Colors.blue[200],
                         ),
                       ),
                     ),
+                    const SizedBox(height: 32),
                   ],
                 ),
               ),
-
-              // ── Tombol Simpan ───────────────────────────────
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: _submit,
-                  icon: const Icon(Icons.save_outlined),
-                  label: const Text('Simpan Event'),
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

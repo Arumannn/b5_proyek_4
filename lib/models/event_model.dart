@@ -74,18 +74,34 @@ class EventModel extends HiveObject {
 
   static String _calculateInitialStatus(DateTime now, DateTime tanggalMulai,
       DateTime? tanggalSelesai, DateTime? jamMulai, DateTime? jamSelesai) {
+    final startTime = jamMulai ?? DateTime(
+      tanggalMulai.year,
+      tanggalMulai.month,
+      tanggalMulai.day,
+      0,
+      0,
+      0,
+    );
+
     DateTime endTime;
     if (jamSelesai != null) {
       endTime = jamSelesai;
     } else if (tanggalSelesai != null) {
       endTime = DateTime(tanggalSelesai.year, tanggalSelesai.month,
           tanggalSelesai.day, 23, 59, 59);
-    } else if (jamMulai != null) {
-      endTime = DateTime(jamMulai.year, jamMulai.month, jamMulai.day, 23, 59, 59);
     } else {
       endTime = DateTime(tanggalMulai.year, tanggalMulai.month, tanggalMulai.day, 23, 59, 59);
     }
-    return now.isAfter(endTime) ? 'Selesai' : 'Berlangsung';
+
+    if (now.isBefore(startTime)) {
+      return 'Mendatang';
+    }
+
+    if (now.isAfter(endTime)) {
+      return 'Selesai';
+    }
+
+    return 'Berlangsung';
   }
 
   /// Memperbarui status event berdasarkan waktu saat ini.

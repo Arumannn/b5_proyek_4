@@ -3,22 +3,19 @@ import 'package:flutter/material.dart';
 class LaporanView extends StatefulWidget {
   final bool showBottomNav;
 
-  const LaporanView({Key? key, this.showBottomNav = true}) : super(key: key);
+  const LaporanView({super.key, this.showBottomNav = true});
 
   @override
   State<LaporanView> createState() => _LaporanViewState();
 }
 
 class _LaporanViewState extends State<LaporanView> {
-  // Variabel untuk menyimpan tab mana yang sedang aktif
-  // 0 = Minggu Ini, 1 = Bulan Ini, 2 = Tahun Ini
   int _activeTabIndex = 1;
 
-  // Helper function untuk membuat tombol Tab Filter
   Widget _buildTabButton(String title, int index) {
-    bool isActive = _activeTabIndex == index;
+    final isActive = _activeTabIndex == index;
     return Expanded(
-      child: GestureDetector(
+      child: InkWell(
         onTap: () {
           setState(() {
             _activeTabIndex = index;
@@ -27,14 +24,14 @@ class _LaporanViewState extends State<LaporanView> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12.0),
           decoration: BoxDecoration(
-            color: isActive ? Colors.blueAccent : Colors.grey[100],
-            borderRadius: BorderRadius.circular(8.0),
+            color: isActive ? const Color(0xFF2563EB) : const Color(0xFFF1F5F9),
+            borderRadius: BorderRadius.circular(16.0),
           ),
           child: Center(
             child: Text(
               title,
               style: TextStyle(
-                color: isActive ? Colors.white : Colors.blueGrey[700],
+                color: isActive ? Colors.white : const Color(0xFF475569),
                 fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
                 fontSize: 14,
               ),
@@ -48,232 +45,274 @@ class _LaporanViewState extends State<LaporanView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA), // Abu-abu sangat muda
-      
-      // --- TAHAP 1: APPBAR ---
-      appBar: AppBar(
-        backgroundColor: Colors.blueAccent,
-        elevation: 0,
-        title: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Laporan Kehadiran',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
-              ),
-            ),
-            SizedBox(height: 2),
-            Text(
-              'Analisis & statistik kegiatan',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.normal,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.file_download_outlined, color: Colors.white),
-            onPressed: () {
-              // TODO: Fungsi download laporan
-            },
-          ),
-        ],
-      ),
-
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // --- TAHAP 1.5: TAB FILTER BLOK PUTIH ---
-            Container(
-              color: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-              child: Row(
-                children: [
-                  _buildTabButton('Minggu Ini', 0),
-                  const SizedBox(width: 8),
-                  _buildTabButton('Bulan Ini', 1),
-                  const SizedBox(width: 8),
-                  _buildTabButton('Tahun Ini', 2),
-                ],
-              ),
-            ),
-            
-            // Jarak sebelum masuk ke konten grid statistik
-            const SizedBox(height: 16),
-            
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Column(
-                children: [
-// --- TAHAP 2: KOTAK STATISTIK GRID ---
-                  Column(
-                    children: [
-                      // Baris Pertama (Total Kegiatan & Rata-rata Hadir)
-                      Row(
-                        children: [
-                          _buildGridStatCard(
-                            icon: Icons.calendar_today_outlined,
-                            iconColor: Colors.blueAccent,
-                            iconBgColor: Colors.blueAccent.withOpacity(0.1),
-                            value: '42',
-                            label: 'Total Kegiatan',
+      backgroundColor: const Color(0xFFF3F7FD),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 22),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        GestureDetector(
+                          onTap: () => Navigator.pop(context),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.14),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.chevron_left, color: Colors.white, size: 24),
                           ),
-                          const SizedBox(width: 16), // Jarak antar kolom
-                          _buildGridStatCard(
-                            icon: Icons.trending_up,
-                            iconColor: Colors.green,
-                            iconBgColor: Colors.green.withOpacity(0.1),
-                            value: '87%',
-                            label: 'Rata-rata Hadir',
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Laporan Kehadiran',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 20,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Analisis & statistik kegiatan',
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.84),
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
+                        Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.14),
+                            shape: BoxShape.circle,
+                          ),
+                          child: IconButton(
+                            padding: EdgeInsets.zero,
+                            icon: const Icon(Icons.file_download_outlined, color: Colors.white),
+                            onPressed: () {},
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    Center(
+                      child: Container(
+                        width: 88,
+                        height: 88,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(24),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.12),
+                              blurRadius: 18,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(Icons.bar_chart_rounded, size: 42, color: Color(0xFF2563EB)),
                       ),
-                      const SizedBox(height: 16), // Jarak antar baris
-                      // Baris Kedua (Total Anggota & Partisipasi)
-                      Row(
-                        children: [
-                          _buildGridStatCard(
-                            icon: Icons.people_outline,
-                            iconColor: Colors.purpleAccent,
-                            iconBgColor: Colors.purpleAccent.withOpacity(0.1),
-                            value: '156',
-                            label: 'Total Anggota',
-                          ),
-                          const SizedBox(width: 16),
-                          _buildGridStatCard(
-                            icon: Icons.bar_chart,
-                            iconColor: Colors.orange,
-                            iconBgColor: Colors.orange.withOpacity(0.1),
-                            value: '92%',
-                            label: 'Partisipasi',
-                          ),
-                        ],
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: Colors.grey.shade100),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 18,
+                        offset: const Offset(0, 8),
                       ),
                     ],
                   ),
-                  
-                  const SizedBox(height: 24),               
-// --- TAHAP 3: TREN KEHADIRAN BULANAN ---
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(20.0),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16.0),
-                      border: Border.all(color: Colors.grey.withOpacity(0.2)),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.02),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Tren Kehadiran Bulanan',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        
-                        // Memanggil helper function untuk setiap bulan
-                        _buildTrendItem(
-                          month: 'Jan',
-                          percentage: 0.85, // 85%
-                          percentText: '85%',
-                          subtitle: '12 rapat',
-                        ),
-                        _buildTrendItem(
-                          month: 'Feb',
-                          percentage: 0.88, // 88%
-                          percentText: '88%',
-                          subtitle: '10 rapat',
-                        ),
-                        _buildTrendItem(
-                          month: 'Mar',
-                          percentage: 0.82, // 82%
-                          percentText: '82%',
-                          subtitle: '14 rapat',
-                        ),
-                        _buildTrendItem(
-                          month: 'Apr',
-                          percentage: 0.87, // 87%
-                          percentText: '87%',
-                          subtitle: '8 rapat',
-                        ),
-                      ],
-                    ),
+                  child: Row(
+                    children: [
+                      _buildTabButton('Minggu Ini', 0),
+                      const SizedBox(width: 8),
+                      _buildTabButton('Bulan Ini', 1),
+                      const SizedBox(width: 8),
+                      _buildTabButton('Tahun Ini', 2),
+                    ],
                   ),
-                  const SizedBox(height: 24), // Jarak sebelum masuk ke Tahap 4                  
-// --- TAHAP 4: ANGGOTA TERAKTIF ---
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(20.0),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16.0),
-                      border: Border.all(color: Colors.grey.withOpacity(0.2)),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.02),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Anggota Teraktif',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        
-                        // Memanggil helper function untuk anggota urutan 1
-                        _buildActiveMemberItem(
-                          rank: '1',
-                          avatarColor: Colors.amber, // Warna kuning keemasan
-                          name: 'Maya Wijaya',
-                          role: 'Medinfo',
-                          percentage: '97%',
-                          progress: 0.97,
-                          progressColor: Colors.greenAccent[700]!, // Warna hijau
-                        ),
-                        
-                        // Kamu bisa menambahkan anggota ke-2, ke-3, dst di bawah sini nanti
-                      ],
-                    ),
-                  ),
-                  
-                  // Memberikan jarak ekstra di bagian paling bawah agar nyaman saat di-scroll
-                  const SizedBox(height: 40),                
-                ],
+                ),
               ),
-            ),
-          ],
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        _buildGridStatCard(
+                          icon: Icons.calendar_today_outlined,
+                          iconColor: const Color(0xFF2563EB),
+                          iconBgColor: const Color(0xFFDBEAFE),
+                          value: '42',
+                          label: 'Total Kegiatan',
+                        ),
+                        const SizedBox(width: 12),
+                        _buildGridStatCard(
+                          icon: Icons.trending_up,
+                          iconColor: const Color(0xFF16A34A),
+                          iconBgColor: const Color(0xFFDCFCE7),
+                          value: '87%',
+                          label: 'Rata-rata Hadir',
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        _buildGridStatCard(
+                          icon: Icons.people_outline,
+                          iconColor: const Color(0xFF7C3AED),
+                          iconBgColor: const Color(0xFFEDE9FE),
+                          value: '156',
+                          label: 'Total Anggota',
+                        ),
+                        const SizedBox(width: 12),
+                        _buildGridStatCard(
+                          icon: Icons.bar_chart,
+                          iconColor: const Color(0xFFF97316),
+                          iconBgColor: const Color(0xFFFFEDD5),
+                          value: '92%',
+                          label: 'Partisipasi',
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(18.0),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24.0),
+                        border: Border.all(color: Colors.grey.shade100),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.04),
+                            blurRadius: 18,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Tren Kehadiran Bulanan',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          const SizedBox(height: 18),
+                          _buildTrendItem(
+                            month: 'Jan',
+                            percentage: 0.85,
+                            percentText: '85%',
+                            subtitle: '12 rapat',
+                          ),
+                          _buildTrendItem(
+                            month: 'Feb',
+                            percentage: 0.88,
+                            percentText: '88%',
+                            subtitle: '10 rapat',
+                          ),
+                          _buildTrendItem(
+                            month: 'Mar',
+                            percentage: 0.82,
+                            percentText: '82%',
+                            subtitle: '14 rapat',
+                          ),
+                          _buildTrendItem(
+                            month: 'Apr',
+                            percentage: 0.87,
+                            percentText: '87%',
+                            subtitle: '8 rapat',
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(18.0),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24.0),
+                        border: Border.all(color: Colors.grey.shade100),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.04),
+                            blurRadius: 18,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Anggota Teraktif',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          const SizedBox(height: 18),
+                          _buildActiveMemberItem(
+                            rank: '1',
+                            avatarColor: const Color(0xFFF59E0B),
+                            name: 'Maya Wijaya',
+                            role: 'Medinfo',
+                            percentage: '97%',
+                            progress: 0.97,
+                            progressColor: const Color(0xFF16A34A),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
-  // Fungsi bantuan untuk membuat kartu statistik di dalam grid
+
   Widget _buildGridStatCard({
     required IconData icon,
     required Color iconColor,
@@ -286,31 +325,28 @@ class _LaporanViewState extends State<LaporanView> {
         padding: const EdgeInsets.all(16.0),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16.0),
-          // Pada desain, terlihat ada garis batas (border) tipis berwarna abu-abu
-          border: Border.all(color: Colors.grey.withOpacity(0.2)), 
+          borderRadius: BorderRadius.circular(20.0),
+          border: Border.all(color: Colors.grey.shade100),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.02),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
             ),
           ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Wadah ikon (kotak dengan sudut membulat, bukan lingkaran penuh)
             Container(
               padding: const EdgeInsets.all(10.0),
               decoration: BoxDecoration(
                 color: iconBgColor,
-                borderRadius: BorderRadius.circular(10.0),
+                borderRadius: BorderRadius.circular(14.0),
               ),
               child: Icon(icon, color: iconColor, size: 24),
             ),
             const SizedBox(height: 16),
-            // Angka Statistik
             Text(
               value,
               style: const TextStyle(
@@ -333,10 +369,10 @@ class _LaporanViewState extends State<LaporanView> {
       ),
     );
   }
-  // Fungsi bantuan untuk membuat baris grafik tren bulanan
+
   Widget _buildTrendItem({
     required String month,
-    required double percentage, // Nilai dari 0.0 sampai 1.0 untuk panjang bar
+    required double percentage,
     required String percentText,
     required String subtitle,
   }) {
@@ -345,7 +381,6 @@ class _LaporanViewState extends State<LaporanView> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Bagian Kiri: Teks Bulan dan Grafik Bar
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -354,25 +389,24 @@ class _LaporanViewState extends State<LaporanView> {
                   month,
                   style: TextStyle(
                     fontSize: 14,
-                    color: Colors.blueGrey[700],
+                    color: Colors.grey[700],
                   ),
                 ),
                 const SizedBox(height: 8),
-                // Custom Progress Bar menggunakan Stack & FractionallySizedBox
                 Container(
-                  height: 8, // Ketebalan grafik bar
+                  height: 8,
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: Colors.grey[200], // Warna background bar (abu-abu terang)
-                    borderRadius: BorderRadius.circular(4),
+                    color: const Color(0xFFE2E8F0),
+                    borderRadius: BorderRadius.circular(999),
                   ),
                   child: FractionallySizedBox(
-                    alignment: Alignment.centerLeft, // Mulai isi dari kiri
-                    widthFactor: percentage, // Seberapa panjang bar terisi (0.0 - 1.0)
+                    alignment: Alignment.centerLeft,
+                    widthFactor: percentage,
                     child: Container(
                       decoration: BoxDecoration(
-                        color: Colors.blueAccent, // Warna bar terisi (biru)
-                        borderRadius: BorderRadius.circular(4),
+                        color: const Color(0xFF2563EB),
+                        borderRadius: BorderRadius.circular(999),
                       ),
                     ),
                   ),
@@ -381,7 +415,6 @@ class _LaporanViewState extends State<LaporanView> {
             ),
           ),
           const SizedBox(width: 16),
-          // Bagian Kanan: Teks Persentase dan Jumlah Rapat
           Column(
             crossAxisAlignment: CrossAxisAlignment.end, // Rata kanan
             children: [
@@ -407,7 +440,7 @@ class _LaporanViewState extends State<LaporanView> {
       ),
     );
   }
-  // Fungsi bantuan untuk membuat baris daftar anggota teraktif
+
   Widget _buildActiveMemberItem({
     required String rank,
     required Color avatarColor,
@@ -421,7 +454,6 @@ class _LaporanViewState extends State<LaporanView> {
       padding: const EdgeInsets.only(bottom: 16.0),
       child: Row(
         children: [
-          // Lingkaran Peringkat (Warna Kuning/Emas)
           CircleAvatar(
             backgroundColor: avatarColor,
             radius: 20,
@@ -435,7 +467,6 @@ class _LaporanViewState extends State<LaporanView> {
             ),
           ),
           const SizedBox(width: 16),
-          // Nama dan Divisi
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -459,7 +490,6 @@ class _LaporanViewState extends State<LaporanView> {
               ],
             ),
           ),
-          // Persentase dan Mini Bar
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -472,12 +502,11 @@ class _LaporanViewState extends State<LaporanView> {
                 ),
               ),
               const SizedBox(height: 6),
-              // Mini Progress Bar di bawah angka persentase
               Container(
                 height: 4,
-                width: 48, // Lebar statis untuk bar kecil ini
+                width: 48,
                 decoration: BoxDecoration(
-                  color: Colors.grey[200],
+                  color: const Color(0xFFE2E8F0),
                   borderRadius: BorderRadius.circular(2),
                 ),
                 child: FractionallySizedBox(

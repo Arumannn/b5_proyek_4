@@ -5,13 +5,12 @@ import '../../../models/event_invitation.dart';
 import '../../../widgets/custom_snackbar.dart';
 import '../../../widgets/invitation_card.dart';
 import '../../member/permission_form_view.dart';
-
 class MyInvitationSection extends StatelessWidget {
-    final String currentMemberId;
+    final String currentNim;
 
     const MyInvitationSection({
         super.key,
-        required this.currentMemberId,
+        required this.currentNim,
     });
 
     // Fungsi untuk menangani perubahan status undangan
@@ -28,9 +27,11 @@ class MyInvitationSection extends StatelessWidget {
 
             // Simpan kembali ke Hive
             await HiveService.invitations.put(invitation.invitationId, invitation);
+            if (!context.mounted) return;
 
             CustomSnackbar.showSuccess(context, 'Response updated to $newStatus');
         } catch (e) {
+            if (!context.mounted) return;
             CustomSnackbar.showError(context, 'Failed to update response: $e');
         }
     }
@@ -52,7 +53,7 @@ class MyInvitationSection extends StatelessWidget {
                     builder: (context, box, _) {
                         //1. Ambil semua undangan yang ditujukan untuk user yang sedang login
                         final myInvitations = box.values
-                            .where((inv) => inv.memberId == currentMemberId)
+                            .where((inv) => inv.nim == currentNim)
                             .toList();
 
                         if (myInvitations.isEmpty) {

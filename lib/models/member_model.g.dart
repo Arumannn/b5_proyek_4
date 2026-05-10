@@ -17,7 +17,6 @@ class MemberModelAdapter extends TypeAdapter<MemberModel> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return MemberModel(
-      memberId: fields[0] as String?,
       nama: fields[1] as String,
       nim: fields[2] as String,
       divisi: fields[3] as String,
@@ -31,9 +30,7 @@ class MemberModelAdapter extends TypeAdapter<MemberModel> {
   @override
   void write(BinaryWriter writer, MemberModel obj) {
     writer
-      ..writeByte(8)
-      ..writeByte(0)
-      ..write(obj.memberId)
+      ..writeByte(7)
       ..writeByte(1)
       ..write(obj.nama)
       ..writeByte(2)

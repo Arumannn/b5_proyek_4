@@ -10,7 +10,7 @@ class EventInvitation {
     final String eventId;
 
     @HiveField(2)
-    final String memberId;
+    final String nim;
 
     @HiveField(3)
     String responseStatus;
@@ -42,7 +42,7 @@ class EventInvitation {
     EventInvitation({
         required this.invitationId,
         required this.eventId,
-        required this.memberId,
+        required this.nim,
         this.responseStatus = 'pending',
         this.responseMessage,
         this.respondedAt,
@@ -64,7 +64,7 @@ class EventInvitation {
         return EventInvitation(
             invitationId: (json['invitationId'] ?? '').toString(),
             eventId: (json['eventId'] ?? '').toString(),
-            memberId: (json['memberId'] ?? '').toString(),
+            nim: (json['nim'] ?? '').toString(),
             responseStatus: (json['responseStatus'] ?? 'pending').toString(),
             responseMessage: json['responseMessage']?.toString(),
             respondedAt: parseDate(json['respondedAt']),
@@ -81,7 +81,7 @@ class EventInvitation {
         return {
             'invitationId': invitationId,
             'eventId': eventId,
-            'memberId': memberId,
+            'nim': nim,
             'responseStatus': responseStatus,
             'responseMessage': responseMessage,
             'respondedAt': respondedAt?.toIso8601String(),

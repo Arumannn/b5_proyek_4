@@ -19,7 +19,7 @@ class EventInvitationAdapter extends TypeAdapter<EventInvitation> {
     return EventInvitation(
       invitationId: fields[0] as String,
       eventId: fields[1] as String,
-      memberId: fields[2] as String,
+      nim: fields[2] as String,
       responseStatus: fields[3] as String,
       responseMessage: fields[4] as String?,
       respondedAt: fields[5] as DateTime?,
@@ -41,7 +41,7 @@ class EventInvitationAdapter extends TypeAdapter<EventInvitation> {
       ..writeByte(1)
       ..write(obj.eventId)
       ..writeByte(2)
-      ..write(obj.memberId)
+      ..write(obj.nim)
       ..writeByte(3)
       ..write(obj.responseStatus)
       ..writeByte(4)

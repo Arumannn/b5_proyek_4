@@ -4,6 +4,8 @@ import '../features/event/event_detail_view.dart';
 import '../models/event_model.dart';
 import '../core/services/hive_service.dart';
 import '../models/attendance_record.dart';
+import '../features/auth/auth_controller.dart';
+import '../core/constants/app_constants.dart';
 
 class EventListSection extends StatefulWidget {
   const EventListSection({super.key});
@@ -59,6 +61,80 @@ class _EventListSectionState extends State<EventListSection> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(int eventCount) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.14),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.event_outlined, color: Colors.white),
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Daftar Event',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  'Kegiatan terakhir dan mendatang',
+                  style: TextStyle(
+                    color: Color(0xFFDBEAFE),
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              '$eventCount event',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -119,9 +195,10 @@ class _EventListSectionState extends State<EventListSection> {
       child: InkWell(
         borderRadius: BorderRadius.circular(22),
         onTap: () {
+          final role = AuthController.instance.currentUser.value?.role ?? AppConstants.roleMember;
           Navigator.push(
             context,
-            MaterialPageRoute<void>(builder: (_) => EventDetailView(event: event)),
+            MaterialPageRoute<void>(builder: (_) => EventDetailView(event: event, userRole: role)),
           );
         },
         child: Padding(
@@ -403,6 +480,18 @@ class _EventListSectionState extends State<EventListSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        ValueListenableBuilder<List<EventModel>>(
+          valueListenable: _eventController.events,
+          builder: (context, events, _) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildSectionHeader(events.length),
+                const SizedBox(height: 16),
+              ],
+            );
+          },
+        ),
         // --- TAB BUTTONS ---
         Row(
           children: [
@@ -468,10 +557,11 @@ class _EventListSectionState extends State<EventListSection> {
                   location: location,
                   participants: peserta,
                   onTap: () {
+                    final role = AuthController.instance.currentUser.value?.role ?? AppConstants.roleMember;
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => EventDetailView(event: event),
+                        builder: (context) => EventDetailView(event: event, userRole: role),
                       ),
                     );
                   },

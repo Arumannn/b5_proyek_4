@@ -19,7 +19,7 @@ class PermissionRecordAdapter extends TypeAdapter<PermissionRecord> {
     return PermissionRecord(
       permissionId: fields[0] as String,
       eventId: fields[1] as String,
-      memberId: fields[2] as String,
+      nim: fields[2] as String,
       jenisIzin: fields[3] as String,
       alasan: fields[4] as String,
       buktiFotoPath: fields[5] as String?,
@@ -41,7 +41,7 @@ class PermissionRecordAdapter extends TypeAdapter<PermissionRecord> {
       ..writeByte(1)
       ..write(obj.eventId)
       ..writeByte(2)
-      ..write(obj.memberId)
+      ..write(obj.nim)
       ..writeByte(3)
       ..write(obj.jenisIzin)
       ..writeByte(4)

@@ -12,9 +12,7 @@ class AttendanceRecord extends HiveObject {
   final String eventId;
 
   @HiveField(2)
-  final String memberId; // Disimpan legacy, nilainya diperlakukan sebagai NIM.
-
-  String get nim => memberId;
+  final String nim;
 
   @HiveField(3)
   final DateTime timestamp;
@@ -46,7 +44,7 @@ class AttendanceRecord extends HiveObject {
   AttendanceRecord({
     required this.recordId,
     required this.eventId,
-    required this.memberId,
+    required this.nim,
     required this.timestamp,
     this.status = 'Hadir',
     this.isManualOverride = false,
@@ -68,7 +66,7 @@ class AttendanceRecord extends HiveObject {
     return AttendanceRecord(
       recordId: recordId,
       eventId: eventId,
-      memberId: nim,
+      nim: nim,
       timestamp: DateTime.now(),
       status: status,
       isManualOverride: false,
@@ -82,7 +80,6 @@ class AttendanceRecord extends HiveObject {
       'recordId': recordId,
       'eventId': eventId,
       'nim': nim,
-      'memberId': nim,
       'timestamp': timestamp.toIso8601String(),
       'status': status,
       'isManualOverride': isManualOverride,
@@ -95,7 +92,7 @@ class AttendanceRecord extends HiveObject {
     return AttendanceRecord(
       recordId: map['recordId']?.toString() ?? '',
       eventId: map['eventId']?.toString() ?? '',
-      memberId: map['memberId']?.toString() ?? map['nim']?.toString() ?? '',
+      nim: map['nim']?.toString() ?? '',
       timestamp: map['timestamp'] != null
           ? DateTime.parse(map['timestamp'].toString())
           : DateTime.now(),
@@ -104,7 +101,7 @@ class AttendanceRecord extends HiveObject {
       overrideBy: map['overrideBy']?.toString(),
       isSynced: true,
       compositeKey: map['compositeKey']?.toString() ??
-          '${map['eventId']}_${map['memberId'] ?? map['nim']}',
+          '${map['eventId']}_${map['nim']}',
     );
   }
 

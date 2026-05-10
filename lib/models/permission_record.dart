@@ -12,9 +12,7 @@ class PermissionRecord extends HiveObject {
   final String eventId;
 
   @HiveField(2)
-  final String memberId;
-
-  String get nim => memberId;
+  final String nim;
 
   @HiveField(3)
   final String jenisIzin; // 'Sakit' atau 'Izin'
@@ -46,7 +44,7 @@ class PermissionRecord extends HiveObject {
   PermissionRecord({
     required this.permissionId,
     required this.eventId,
-    required this.memberId,
+    required this.nim,
     required this.jenisIzin,
     required this.alasan,
     this.buktiFotoPath,
@@ -64,7 +62,6 @@ class PermissionRecord extends HiveObject {
       'permissionId': permissionId,
       'eventId': eventId,
       'nim': nim,
-      'memberId': nim,
       'jenisIzin': jenisIzin,
       'alasan': alasan,
       'buktiFotoUrl': buktiFotoUrl,
@@ -79,7 +76,7 @@ class PermissionRecord extends HiveObject {
     return PermissionRecord(
       permissionId: map['permissionId']?.toString() ?? '',
       eventId: map['eventId']?.toString() ?? '',
-      memberId: map['nim']?.toString() ?? map['memberId']?.toString() ?? '',
+      nim: map['nim']?.toString() ?? '',
       jenisIzin: map['jenisIzin']?.toString() ?? 'Izin',
       alasan: map['alasan']?.toString() ?? '',
       buktiFotoUrl: map['buktiFotoUrl']?.toString(),

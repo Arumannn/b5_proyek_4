@@ -4,10 +4,18 @@ import '../../core/services/hive_service.dart';
 import '../../models/attendance_record.dart';
 import '../../models/event_model.dart';
 import '../../models/member_model.dart';
+import '../../core/constants/app_constants.dart';
+import '../../widgets/gradient_header.dart';
 
 class EventDetailView extends StatelessWidget {
-  const EventDetailView({super.key, required this.event});
   final EventModel event;
+  final String userRole;
+
+  const EventDetailView({
+    super.key, 
+    required this.event,
+    required this.userRole,
+  });
 
   String _formatDateTime(DateTime value) {
     final dd = value.day.toString().padLeft(2, '0');
@@ -70,6 +78,7 @@ class EventDetailView extends StatelessWidget {
             line.startsWith('* ') ||
             line.startsWith('• ');
         final text = isBullet ? line.substring(2).trim() : line;
+
         if (!isBullet) {
           return Padding(
             padding: const EdgeInsets.only(bottom: 6.0),
@@ -120,39 +129,13 @@ class EventDetailView extends StatelessWidget {
     final alphaCount = _countStatus(records, ['alpha']);
 
     return Scaffold(
-      // Mengatur warna background dasar menjadi abu-abu sangat muda
       backgroundColor: const Color(0xFFF5F7FA), 
-      
-      // Tahap 1: Membuat AppBar sesuai desain
-      appBar: AppBar(
-        backgroundColor: Colors.blueAccent, // Warna biru AppBar
-        elevation: 0,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Detail Kegiatan',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              event.nama,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.normal,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
+      appBar: GradientHeader(
+        title: 'Detail Kegiatan',
+        subtitle: event.nama,
         actions: [
           IconButton(
+            tooltip: 'Bagikan',
             icon: const Icon(Icons.share, color: Colors.white),
             onPressed: () {
               // TODO: Tambahkan fungsi share nanti
@@ -161,21 +144,19 @@ class EventDetailView extends StatelessWidget {
         ],
       ),
       
-      // Body sementara kita biarkan kosong dulu sebelum masuk ke Tahap 2
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // --- TAHAP 2: KARTU INFORMASI EVENT ---
+              // Kartu Informasi Event
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(20.0),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16.0),
-                  // Menambahkan bayangan halus agar kartu terlihat timbul
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.04),
@@ -189,7 +170,7 @@ class EventDetailView extends StatelessWidget {
                   children: [
                     Text(
                       event.nama,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                         color: Colors.black87,
@@ -197,7 +178,6 @@ class EventDetailView extends StatelessWidget {
                     ),
                     const SizedBox(height: 24),
 
-                    // Memanggil helper function untuk detail
                     _buildInfoRow(
                       icon: Icons.access_time,
                       title: 'Waktu',
@@ -221,12 +201,11 @@ class EventDetailView extends StatelessWidget {
                     ),
                     const SizedBox(height: 24),
 
-                    // Kotak khusus untuk Agenda
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(16.0),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF4F7FB), // Warna biru sangat muda
+                        color: const Color(0xFFF4F7FB),
                         borderRadius: BorderRadius.circular(12.0),
                       ),
                       child: Column(
@@ -249,27 +228,27 @@ class EventDetailView extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               
-// --- TAHAP 3: KARTU STATISTIK KEHADIRAN ---
+              // Kartu Statistik Kehadiran
               Row(
                 children: [
                   _buildStatCard(
-                    iconBgColor: Colors.green.withValues(alpha: 0.15), // Hijau pudar
+                    iconBgColor: Colors.green.withValues(alpha: 0.15),
                     iconColor: Colors.green,
                     icon: Icons.check_circle_outline,
                     count: hadirCount.toString(),
                     label: 'Hadir',
                   ),
-                  const SizedBox(width: 12), // Jarak antar kotak
+                  const SizedBox(width: 12),
                   _buildStatCard(
-                    iconBgColor: Colors.orange.withValues(alpha: 0.15), // Oranye pudar
+                    iconBgColor: Colors.orange.withValues(alpha: 0.15),
                     iconColor: Colors.orange,
                     icon: Icons.error_outline,
                     count: izinCount.toString(),
                     label: 'Izin',
                   ),
-                  const SizedBox(width: 12), // Jarak antar kotak
+                  const SizedBox(width: 12),
                   _buildStatCard(
-                    iconBgColor: Colors.red.withValues(alpha: 0.15), // Merah pudar
+                    iconBgColor: Colors.red.withValues(alpha: 0.15),
                     iconColor: Colors.red,
                     icon: Icons.cancel_outlined,
                     count: alphaCount.toString(),
@@ -278,7 +257,8 @@ class EventDetailView extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 24),
-// --- TAHAP 4: DAFTAR KEHADIRAN ---
+
+              // Daftar Kehadiran
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(20.0),
@@ -296,7 +276,6 @@ class EventDetailView extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Header: Judul dan Tombol Export
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -315,7 +294,7 @@ class EventDetailView extends StatelessWidget {
                           icon: const Icon(Icons.download_outlined, size: 18),
                           label: const Text('Export'),
                           style: TextButton.styleFrom(
-                            foregroundColor: Colors.blueAccent, // Warna biru
+                            foregroundColor: Colors.blueAccent,
                             padding: EdgeInsets.zero,
                             minimumSize: const Size(50, 30),
                             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -326,36 +305,25 @@ class EventDetailView extends StatelessWidget {
                     const SizedBox(height: 16),
 
                     if (records.isEmpty)
-                      Text(
+                      const Text(
                         'Belum ada kehadiran tercatat.',
-                        style: TextStyle(color: Colors.grey[600]),
+                        style: TextStyle(color: Colors.grey),
                       )
                     else
                       ...records.map((record) {
                         final member = memberByNim[record.nim];
                         final name = member?.nama ?? 'Anggota';
-                        final initial = name.isNotEmpty
-                            ? name[0].toUpperCase()
-                            : '?';
-                        final time =
-                            '${record.timestamp.hour.toString().padLeft(2, '0')}:${record.timestamp.minute.toString().padLeft(2, '0')}';
+                        final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
+                        final time = '${record.timestamp.hour.toString().padLeft(2, '0')}:${record.timestamp.minute.toString().padLeft(2, '0')}';
                         final statusLower = record.status.toLowerCase();
-                        final isHadir =
-                            statusLower.contains('hadir') ||
-                            statusLower.contains('terlambat');
-                        final isIzin =
-                            statusLower.contains('izin') ||
-                            statusLower.contains('sakit');
+                        final isHadir = statusLower.contains('hadir') || statusLower.contains('terlambat');
+                        final isIzin = statusLower.contains('izin') || statusLower.contains('sakit');
                         final statusColor = isHadir
                             ? Colors.green[700]!
-                            : (isIzin
-                                ? Colors.orange[800]!
-                                : Colors.red[700]!);
+                            : (isIzin ? Colors.orange[800]! : Colors.red[700]!);
                         final statusBgColor = isHadir
                             ? Colors.green.withValues(alpha: 0.15)
-                            : (isIzin
-                                ? Colors.orange.withValues(alpha: 0.15)
-                                : Colors.red.withValues(alpha: 0.15));
+                            : (isIzin ? Colors.orange.withValues(alpha: 0.15) : Colors.red.withValues(alpha: 0.15));
 
                         return _buildAttendeeItem(
                           initial: initial,
@@ -370,17 +338,73 @@ class EventDetailView extends StatelessWidget {
                       }),
                   ],
                 ),
-              ),            
+              ), 
+              const SizedBox(height: 24),
+
+              // Kontrol berdasarkan Role
+              if (userRole == AppConstants.roleExecutive)
+                _buildExecutiveControls()
+              else if (userRole == AppConstants.roleManager || userRole == AppConstants.roleOrganizer)
+                const Text('Area Manager/Organizer (Pantauan Undangan)')
+              else
+                const Text('Area Member (Status Undangan Saya)'),
             ],
           ),
         ),
       ),
     );
   }
-  // Fungsi bantuan untuk membuat baris ikon, judul, dan nilai (Waktu, Lokasi, Peserta)
-  Widget _buildInfoRow({required IconData icon, required String title, required String value}) {
+
+  Widget _buildExecutiveControls() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20.0),
+      decoration: BoxDecoration(
+        color: Colors.red.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(16.0),
+        border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.admin_panel_settings, color: Colors.red),
+              SizedBox(width: 8),
+              Text(
+                'Kontrol Eksekutif',
+                style: TextStyle(
+                  fontSize: 16, 
+                  fontWeight: FontWeight.bold, 
+                  color: Colors.red,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton.icon(
+            onPressed: () {
+              // TODO: Logika batalkan/hapus kegiatan
+            },
+            icon: const Icon(Icons.cancel, color: Colors.white),
+            label: const Text('Batalkan Kegiatan Ini'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              minimumSize: const Size(double.infinity, 45),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoRow({
+    required IconData icon, 
+    required String title, 
+    required String value,
+  }) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start, // Agar ikon dan teks sejajar di atas
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Icon(icon, size: 24, color: Colors.grey[500]),
         const SizedBox(width: 16),
@@ -400,7 +424,7 @@ class EventDetailView extends StatelessWidget {
                 value,
                 style: const TextStyle(
                   fontSize: 14,
-                  fontWeight: FontWeight.w600, // Semi-bold agar nilai lebih menonjol
+                  fontWeight: FontWeight.w600,
                   color: Colors.black87,
                 ),
               ),
@@ -410,7 +434,7 @@ class EventDetailView extends StatelessWidget {
       ],
     );
   }
-  // Fungsi bantuan untuk membuat kotak statistik (Hadir, Izin, Alpha)
+
   Widget _buildStatCard({
     required Color iconBgColor,
     required Color iconColor,
@@ -435,7 +459,6 @@ class EventDetailView extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Lingkaran background untuk Icon
             Container(
               padding: const EdgeInsets.all(10.0),
               decoration: BoxDecoration(
@@ -445,7 +468,6 @@ class EventDetailView extends StatelessWidget {
               child: Icon(icon, color: iconColor, size: 24),
             ),
             const SizedBox(height: 16),
-            // Angka Statistik
             Text(
               count,
               style: const TextStyle(
@@ -455,7 +477,6 @@ class EventDetailView extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 4),
-            // Label Teks (Hadir/Izin/Alpha)
             Text(
               label,
               style: TextStyle(
@@ -468,7 +489,7 @@ class EventDetailView extends StatelessWidget {
       ),
     );
   }
-  // Fungsi bantuan untuk membuat baris nama peserta
+
   Widget _buildAttendeeItem({
     required String initial,
     required Color avatarColor,
@@ -480,15 +501,14 @@ class EventDetailView extends StatelessWidget {
     required String time,
   }) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12.0), // Jarak antar peserta
+      margin: const EdgeInsets.only(bottom: 12.0),
       padding: const EdgeInsets.all(12.0),
       decoration: BoxDecoration(
-        color: const Color(0xFFF9FAFB), // Warna abu-abu sangat muda untuk latar tiap peserta
+        color: const Color(0xFFF9FAFB),
         borderRadius: BorderRadius.circular(12.0),
       ),
       child: Row(
         children: [
-          // Lingkaran Inisial
           CircleAvatar(
             backgroundColor: avatarColor,
             radius: 20,
@@ -502,7 +522,6 @@ class EventDetailView extends StatelessWidget {
           ),
           const SizedBox(width: 16),
           
-          // Nama dan NIM
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -527,7 +546,6 @@ class EventDetailView extends StatelessWidget {
             ),
           ),
           
-          // Label Status dan Jam
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -535,7 +553,7 @@ class EventDetailView extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
                 decoration: BoxDecoration(
                   color: statusBgColor,
-                  borderRadius: BorderRadius.circular(20.0), // Membuat label oval
+                  borderRadius: BorderRadius.circular(20.0),
                 ),
                 child: Text(
                   status,
@@ -547,7 +565,6 @@ class EventDetailView extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 4),
-              // Hanya tampilkan jam jika statusnya bukan Alpha/Izin yang kosong
               if (time.isNotEmpty)
                 Text(
                   time,
