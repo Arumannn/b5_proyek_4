@@ -3,7 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../core/services/hive_service.dart';
-import '../../features/event/event_controller.dart';
+import '../event/event_controller.dart';
 import '../../models/attendance_record.dart';
 import '../../models/event_model.dart';
 

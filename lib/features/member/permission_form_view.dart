@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/services/hive_service.dart';
-import '../../features/auth/auth_controller.dart';
+import '../auth/auth_controller.dart';
 import '../../models/permission_record.dart';
 
 class PermissionFormView extends StatefulWidget {
