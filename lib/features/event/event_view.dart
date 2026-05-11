@@ -87,19 +87,19 @@ class _EventViewState extends State<EventView> {
 
   String _eventStatusLabel(EventModel event) {
     final now = DateTime.now();
-    final isCompleted = now.isAfter(event.tanggal.add(const Duration(hours: 1)));
+    final isCompleted = now.isAfter(event.tanggalMulai.add(const Duration(hours: 1)));
     return isCompleted ? 'Selesai' : 'Berlangsung';
   }
 
   Color _eventStatusColor(EventModel event) {
     final now = DateTime.now();
-    final isCompleted = now.isAfter(event.tanggal.add(const Duration(hours: 1)));
+    final isCompleted = now.isAfter(event.tanggalMulai.add(const Duration(hours: 1)));
     return isCompleted ? const Color(0xFF22C55E) : const Color(0xFF2563EB);
   }
 
   Color _eventStatusBgColor(EventModel event) {
     final now = DateTime.now();
-    final isCompleted = now.isAfter(event.tanggal.add(const Duration(hours: 1)));
+    final isCompleted = now.isAfter(event.tanggalMulai.add(const Duration(hours: 1)));
     return isCompleted ? const Color(0xFFDCFCE7) : const Color(0xFFDBEAFE);
   }
 
@@ -195,7 +195,7 @@ class _EventViewState extends State<EventView> {
     final ok = existing == null
         ? await _controller.createEvent(
             nama: form.name,
-            tanggal: form.date,
+            tanggalMulai: form.date,
             parentEventId: form.parentEventId,
             jenis: form.jenis,
             lokasi: form.lokasi,
@@ -205,7 +205,7 @@ class _EventViewState extends State<EventView> {
         : await _controller.updateEvent(
             existing.copyWith(
               nama: form.name,
-              tanggal: form.date,
+              tanggalMulai: form.date,
               parentEventId: form.parentEventId,
               jenis: form.jenis,
               lokasi: form.lokasi,
@@ -295,7 +295,7 @@ class _EventViewState extends State<EventView> {
       text: initial?.deskripsi ?? '',
     );
 
-    DateTime selectedDate = initial?.tanggal ?? DateTime.now();
+    DateTime selectedDate = initial?.tanggalMulai ?? DateTime.now();
     String selectedJenis = initial?.jenis ?? AppConstants.eventTypes.first;
     bool isSubEvent = forcedParentId != null || initial?.parentEventId != null;
     String? parentId = forcedParentId ?? initial?.parentEventId;
@@ -609,7 +609,7 @@ class _EventViewState extends State<EventView> {
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                '${_formatDate(event.tanggal)} • ${event.jamMulai != null ? '${event.jamMulai!.hour.toString().padLeft(2, '0')}:${event.jamMulai!.minute.toString().padLeft(2, '0')} WIB' : 'WIB'}',
+                                '${_formatDate(event.tanggalMulai)} • ${event.jamMulai != null ? '${event.jamMulai!.hour.toString().padLeft(2, '0')}:${event.jamMulai!.minute.toString().padLeft(2, '0')} WIB' : 'WIB'}',
                                 style: const TextStyle(fontSize: 15, color: Color(0xFF4B5563)),
                               ),
                             ),
@@ -753,7 +753,7 @@ class _EventViewState extends State<EventView> {
                         style: Theme.of(context).textTheme.titleSmall,
                       ),
                       const SizedBox(height: 4),
-                      Text('${sub.jenis} • ${_formatDate(sub.tanggal)}'),
+                      Text('${sub.jenis} • ${_formatDate(sub.tanggalMulai)}'),
                       const SizedBox(height: 8),
                       _buildActionButtons(sub, forcedParentId: event.eventId),
                     ],
@@ -861,6 +861,7 @@ class _EventFormData {
     required this.date,
     required this.jenis,
     this.parentEventId,
+    this.lokasi,
     this.deskripsi,
     this.targetPeserta = const <String>[],
   });
@@ -869,6 +870,7 @@ class _EventFormData {
   final DateTime date;
   final String jenis;
   final String? parentEventId;
+  final String? lokasi;
   final String? deskripsi;
   final List<String> targetPeserta;
 }

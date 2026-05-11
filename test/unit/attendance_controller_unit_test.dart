@@ -69,7 +69,8 @@ void main() {
         eventId: eventId,
         nama: 'Event Test',
         jenis: 'Rapat',
-        tanggal: tanggalEvent,
+        tanggalMulai: tanggalEvent,
+        tanggalSelesai: tanggalEvent,
         createdBy: 'Executive',
       ),
     );
