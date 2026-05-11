@@ -489,21 +489,6 @@ class PRASASTIApp extends StatelessWidget {
           unselectedLabelStyle: TextStyle(fontSize: 12),
           showUnselectedLabels: true,
         ),
-        cardTheme: CardThemeData(
-          color: Colors.white,
-          elevation: 2,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 0),
-        ),
-        // Basic text size tokens mapping
-        textTheme: const TextTheme(
-          titleLarge: TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
-          titleMedium: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-          titleSmall: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-          bodyLarge: TextStyle(fontSize: 16),
-          bodyMedium: TextStyle(fontSize: 14),
-          bodySmall: TextStyle(fontSize: 12),
-        ),
       ),
       home: const LoginView(),
     );

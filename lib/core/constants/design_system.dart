@@ -1,3 +1,5 @@
+// ignore_for_file: dangling_library_doc_comments
+
 /// Design System untuk HIMAKOM Attendance App
 /// Mengikuti Material Design 3 dengan referensi dari UI mockup yang diberikan
 import 'package:flutter/material.dart';

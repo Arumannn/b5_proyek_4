@@ -1,3 +1,5 @@
+// ignore_for_file: unused_element
+
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_constants.dart';
@@ -371,7 +373,7 @@ class _UserManagementViewState extends State<UserManagementView> {
     );
   }
 
-  Widget _buildTable() {
+Widget _buildTable() {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: DataTable(
@@ -404,30 +406,21 @@ class _UserManagementViewState extends State<UserManagementView> {
                       icon: const Icon(Icons.edit_outlined),
                       onPressed: () => _showUserForm(existing: user),
                     ),
+                    const SizedBox(width: 8),
                     IconButton(
                       tooltip: 'Hapus',
                       icon: const Icon(
                         Icons.delete_outline,
                         color: Colors.redAccent,
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: FilledButton.tonal(
-                          onPressed: () => _confirmDelete(user),
-                          style: FilledButton.styleFrom(
-                            foregroundColor: Colors.red,
-                            backgroundColor: const Color(0xFFFFF1F2),
-                          ),
-                          child: const Text('Hapus'),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                      onPressed: () => _confirmDelete(user),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
-        ),
+            ],
+          );
+        }),
       ),
     );
   }

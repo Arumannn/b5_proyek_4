@@ -1,15 +1,23 @@
+// ignore_for_file: unnecessary_underscores, unused_import, unused_element
+
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../core/constants/design_system.dart';
 import '../../core/services/hive_service.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import '../../models/member_model.dart';
 import '../attendance/attendance_history_view.dart';
+import '../attendance/attendance_recap_view.dart';
+import '../attendance/scan_screen.dart';
 import '../auth/auth_controller.dart';
 import '../auth/user_management_view.dart';
 import '../event/event_controller.dart';
 import '../event/event_view.dart';
 import '../../core/utils/network_status_controller.dart';
+import '../event/sub_event_view.dart';
+import '../member/member_profile_view.dart';
+import '../member/qr_display_view.dart';
 import 'widgets/executive_dashboard_section.dart';
 import '../../widgets/white_status_header.dart';
 import '../../models/event_model.dart';
@@ -49,6 +57,7 @@ class _DashboardMenuItem {
 }
 
 class _DashboardViewState extends State<DashboardView> {
+  final EventController _eventController = EventController.instance;
   Future<void> _confirmAndLogout(BuildContext context) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -184,7 +193,6 @@ class _DashboardViewState extends State<DashboardView> {
           nama: currentUser.nama,
           nim: currentUser.nim,
           divisi: currentUser.divisi,
-          memberId: currentUser.memberId,
         ),
       ),
       _DashboardMenuItem(
@@ -193,7 +201,6 @@ class _DashboardViewState extends State<DashboardView> {
         icon: Icons.history,
         requireRoles: const [AppConstants.roleMember],
         builder: (_, currentUser) => AttendanceHistoryView(
-          memberId: currentUser.memberId,
           nim: currentUser.nim,
         ),
       ),

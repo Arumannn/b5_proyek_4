@@ -51,7 +51,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           final user = currentUser;
           if (user != null) {
             return AttendanceHistoryView(
-              memberId: user.memberId,
               nim: user.nim,
             );
           }
