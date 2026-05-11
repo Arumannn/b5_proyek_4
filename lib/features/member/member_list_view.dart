@@ -5,6 +5,7 @@ import '../../core/services/hive_service.dart';
 import '../../core/services/mongo_service.dart';
 import '../../core/utils/network_status_controller.dart';
 import '../../widgets/custom_snackbar.dart';
+import '../../widgets/gradient_header.dart';
 import '../auth/auth_controller.dart';
 import '../auth/user_management_view.dart';
 import 'member_form_view.dart';
@@ -198,132 +199,57 @@ class _MemberListViewState extends State<MemberListView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F7FD),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
-                ),
-              ),
-              child: ValueListenableBuilder<List<MemberModel>>(
-                valueListenable: _controller.members,
-                builder: (context, membersList, child) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          GestureDetector(
-                            onTap: () => Navigator.pop(context),
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.14),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(Icons.chevron_left, color: Colors.white, size: 24),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(120),
+        child: GradientHeader(
+          title: 'Daftar Anggota',
+          subtitle: 'Total 156 anggota aktif',
+          showBackButton: true,
+          actions: _isExecutive
+              ? [
+                  Padding(
+                    padding: const EdgeInsets.only(right: 16, top: 16),
+                    child: GestureDetector(
+                      onTap: _addMember,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(999),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.12),
+                              blurRadius: 12,
+                              offset: const Offset(0, 6),
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          const Expanded(
-                            child: Text(
-                              'Daftar Anggota',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          if (_isExecutive)
-                            GestureDetector(
-                              onTap: _addMember,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(999),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.12),
-                                      blurRadius: 12,
-                                      offset: const Offset(0, 6),
-                                    ),
-                                  ],
-                                ),
-                                child: const Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.person_add_alt_1, size: 18, color: Color(0xFF2563EB)),
-                                    SizedBox(width: 8),
-                                    Text(
-                                      'Tambah',
-                                      style: TextStyle(
-                                        color: Color(0xFF2563EB),
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 13,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 18),
-                      Center(
-                        child: Column(
+                          ],
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Container(
-                              width: 88,
-                              height: 88,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(24),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.12),
-                                    blurRadius: 18,
-                                    offset: const Offset(0, 8),
-                                  ),
-                                ],
-                              ),
-                              child: const Icon(Icons.groups_2_outlined, size: 44, color: Color(0xFF2563EB)),
-                            ),
-                            const SizedBox(height: 12),
+                            Icon(Icons.person_add_alt_1, size: 18, color: Color(0xFF2563EB)),
+                            SizedBox(width: 8),
                             Text(
-                              '${membersList.length} anggota aktif',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Kelola anggota, role, dan data DBU dari satu tempat.',
+                              'Tambah',
                               style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.85),
-                                fontSize: 12,
+                                color: Color(0xFF2563EB),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
                               ),
-                              textAlign: TextAlign.center,
                             ),
                           ],
                         ),
                       ),
-                    ],
-                  );
-                },
-              ),
-            ),
+                    ),
+                  ),
+                ]
+              : [],
+        ),
+      ),
+      backgroundColor: const Color(0xFFF3F7FD),
+      body: SafeArea(
+        child: Column(
+          children: [
             Container(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
               child: _buildSearchBarCard(),
