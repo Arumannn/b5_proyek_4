@@ -43,7 +43,8 @@ void main() {
     test('createEvent berhasil untuk event valid', () async {
       final ok = await controller.createEvent(
         nama: '  Rapat Divisi  ',
-        tanggal: DateTime.now().add(const Duration(days: 2)),
+        tanggalMulai: DateTime.now().add(const Duration(days: 2)),
+        tanggalSelesai: DateTime.now().add(const Duration(days: 2)),
         jenis: 'Rapat',
         createdBy: 'Executive-1',
       );
@@ -58,7 +59,7 @@ void main() {
     test('createEvent gagal jika parentEventId tidak ada', () async {
       final ok = await controller.createEvent(
         nama: 'Sub Event',
-        tanggal: DateTime.now().add(const Duration(days: 3)),
+        tanggalMulai: DateTime.now().add(const Duration(days: 3)),
         parentEventId: 'missing-parent',
       );
 
@@ -71,7 +72,8 @@ void main() {
         eventId: 'parent-1',
         nama: 'Parent',
         jenis: 'Kegiatan',
-        tanggal: DateTime.now().add(const Duration(days: 1)),
+        tanggalMulai: DateTime.now().add(const Duration(days: 1)),
+        tanggalSelesai: DateTime.now().add(const Duration(days: 1)),
         createdBy: 'Executive',
       );
       await HiveService.events.put(parent.eventId, parent);
@@ -79,7 +81,8 @@ void main() {
 
       final ok = await controller.createEvent(
         nama: 'Sub Event A',
-        tanggal: DateTime.now().add(const Duration(days: 2)),
+        tanggalMulai: DateTime.now().add(const Duration(days: 2)),
+        tanggalSelesai: DateTime.now().add(const Duration(days: 2)),
         parentEventId: 'parent-1',
       );
 
@@ -94,7 +97,8 @@ void main() {
         eventId: 'e-1',
         nama: 'Nama Lama',
         jenis: 'Rapat',
-        tanggal: DateTime.now().add(const Duration(days: 2)),
+        tanggalMulai: DateTime.now().add(const Duration(days: 2)),
+        tanggalSelesai: DateTime.now().add(const Duration(days: 2)),
         createdBy: 'Executive',
         isSynced: true,
       );
@@ -117,14 +121,16 @@ void main() {
         eventId: 'root-1',
         nama: 'Root',
         jenis: 'Rapat',
-        tanggal: DateTime.now().add(const Duration(days: 1)),
+        tanggalMulai: DateTime.now().add(const Duration(days: 1)),
+        tanggalSelesai: DateTime.now().add(const Duration(days: 1)),
         createdBy: 'Executive',
       );
       final child = EventModel(
         eventId: 'child-1',
         nama: 'Child',
         jenis: 'Acara',
-        tanggal: DateTime.now().add(const Duration(days: 2)),
+        tanggalMulai: DateTime.now().add(const Duration(days: 2)),
+        tanggalSelesai: DateTime.now().add(const Duration(days: 2)),
         createdBy: 'Executive',
         parentEventId: 'root-1',
       );
@@ -148,21 +154,24 @@ void main() {
           eventId: 'e1',
           nama: 'Rapat Core',
           jenis: 'Rapat',
-          tanggal: DateTime(2026, 4, 24),
+          tanggalMulai: DateTime(2026, 4, 24),
+          tanggalSelesai: DateTime(2026, 4, 24),
           createdBy: 'Executive',
         ),
         EventModel(
           eventId: 'e2',
           nama: 'Acara Besar',
           jenis: 'Acara',
-          tanggal: DateTime(2026, 4, 25),
+          tanggalMulai: DateTime(2026, 4, 25),
+          tanggalSelesai: DateTime(2026, 4, 25),
           createdBy: 'Executive',
         ),
         EventModel(
           eventId: 'e3',
           nama: 'Kegiatan Divisi',
           jenis: 'Kegiatan',
-          tanggal: DateTime(2026, 4, 26),
+          tanggalMulai: DateTime(2026, 4, 26),
+          tanggalSelesai: DateTime(2026, 4, 26),
           createdBy: 'Executive',
         ),
       ];

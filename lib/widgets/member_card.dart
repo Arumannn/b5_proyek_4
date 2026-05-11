@@ -8,13 +8,13 @@ class MemberCard extends StatelessWidget {
   final VoidCallback? onTap;
 
   const MemberCard({
-    Key? key,
+    super.key,
     required this.name,
     required this.nim,
     required this.division,
     this.attendancePercent = 0.0,
     this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

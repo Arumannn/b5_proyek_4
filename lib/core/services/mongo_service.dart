@@ -32,6 +32,7 @@ class MongoService {
 
   // ─── Env Config ────────────────────────────────────────────────
   String get _uri => dotenv.env['MONGO_URI'] ?? '';
+  String get _fallbackUri => dotenv.env['MONGO_URI_FALLBACK'] ?? '';
   String get _databaseName => dotenv.env['MONGO_DATABASE'] ?? 'prasasti_db';
 
   // ─── Getter Collection ─────────────────────────────────────────
@@ -73,25 +74,57 @@ class MongoService {
 
     _isConnecting = true;
 
-    try {
-      debugPrint('🔄 MongoService: Menghubungkan ke MongoDB Atlas...');
-      debugPrint('   Database: $_databaseName');
+    final urisToTry = <String>[_uri];
+    if (_fallbackUri.isNotEmpty && _fallbackUri != _uri) {
+      urisToTry.add(_fallbackUri);
+    }
 
-      _db = await Db.create(_uri);
-      await _db!.open();
+    Object? lastError;
 
-      if (_db!.isConnected) {
-        _initialized = true;
-        _isConnecting = false;
-        debugPrint('✅ MongoService: Terhubung ke MongoDB Atlas!');
+    for (var i = 0; i < urisToTry.length; i++) {
+      final currentUri = urisToTry[i];
+      final isFallback = i > 0;
+
+      try {
+        debugPrint('🔄 MongoService: Menghubungkan ke MongoDB Atlas...');
         debugPrint('   Database: $_databaseName');
-        debugPrint('   State: ${_db!.state}');
-        return true;
-      } else {
-        _isConnecting = false;
+        debugPrint('   URI mode: ${isFallback ? 'fallback' : 'primary'}');
+
+        _db = await Db.create(currentUri);
+        await _db!.open();
+
+        if (_db!.isConnected) {
+          _initialized = true;
+          _isConnecting = false;
+          debugPrint('✅ MongoService: Terhubung ke MongoDB Atlas!');
+          debugPrint('   Database: $_databaseName');
+          debugPrint('   State: ${_db!.state}');
+          return true;
+        }
+
         debugPrint('❌ MongoService: open() dipanggil tapi tidak connected.');
-        return false;
+        await _db?.close();
+        _db = null;
+      } catch (e) {
+        lastError = e;
+        debugPrint('⚠️ MongoService: koneksi ${isFallback ? 'fallback' : 'primary'} gagal: $e');
+        try {
+          await _db?.close();
+        } catch (_) {}
+        _db = null;
+
+        final usesSrv = currentUri.trim().toLowerCase().startsWith('mongodb+srv://');
+        final looksLikeDnsOverHttpsFailure = e.toString().contains('dns.google.com/resolve') ||
+            e.toString().contains('Connection closed before full header was received');
+        if (usesSrv && looksLikeDnsOverHttpsFailure) {
+          debugPrint('ℹ️ MongoService: SRV lookup gagal (DNS over HTTPS diblokir jaringan).');
+          debugPrint('   Solusi: isi MONGO_URI_FALLBACK dengan URI non-SRV dari Atlas (mongodb://...).');
+        }
       }
+    }
+
+    try {
+      throw lastError ?? StateError('Koneksi gagal tanpa detail error.');
     } catch (e) {
       _isConnecting = false;
       _initialized = false;
@@ -105,6 +138,7 @@ class MongoService {
         '   2. Pastikan IP 0.0.0.0/0 sudah di-allow di Atlas Network Access',
       );
       debugPrint('   3. Pastikan cluster aktif (bukan paused)');
+      debugPrint('   4. Jika jaringan memblokir DNS over HTTPS, tambahkan MONGO_URI_FALLBACK (mongodb://...)');
       return false;
     }
   }

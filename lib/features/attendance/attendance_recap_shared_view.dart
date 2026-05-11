@@ -68,7 +68,7 @@ class _AttendanceRecapSharedViewState extends State<AttendanceRecapSharedView> {
     await EventController.instance.loadEvents(force: true);
 
     final events = HiveService.events.values.toList(growable: false)
-      ..sort((a, b) => a.tanggal.compareTo(b.tanggal));
+      ..sort((a, b) => a.tanggalMulai.compareTo(b.tanggalMulai));
     final records = HiveService.attendance.values.toList(growable: false)
       ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
     final members = HiveService.members.values.toList(growable: false);

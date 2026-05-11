@@ -33,7 +33,7 @@ class AttendanceRolePolicy {
         );
     }
   }
-  static const AttendanceRolePolicy Executive = AttendanceRolePolicy(
+  static const AttendanceRolePolicy executive = AttendanceRolePolicy(
     canEditStatus: true,
     canDeleteRecord: true,
   );

@@ -81,7 +81,7 @@ class AppConstants {
   static const String defaultExecutivePassword = '123';
   static const String defaultExecutiveName = 'Executive Utama';
   static const String defaultExecutiveDivision = 'HEXA';
-  static const String ExecutiveSeedFlagKey = '__seed_Executive_done__';
+  static const String executiveSeedFlagKey = '__seed_Executive_done__';
 
     // ─── Default Member Seeding ───────────────────────
   static const String defaultMemberNim = '39';

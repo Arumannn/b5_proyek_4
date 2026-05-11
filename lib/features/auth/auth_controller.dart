@@ -99,7 +99,6 @@ class AuthController {
           'role': _normalizeRole(role),
           'password': hashedDefaultPassword,
           'qrCodeValue': QrService.generateQrData(normalizedNim),
-          'memberId': normalizedNim,
           'isSynced': false,
           'createdAt': (existing?['createdAt'] ?? nowIso).toString(),
           'updatedAt': nowIso,
@@ -209,7 +208,6 @@ class AuthController {
         'role': normalizedRole,
         'password': _hashPassword(password),
         'qrCodeValue': QrService.generateQrData(normalizedNim),
-        'memberId': normalizedNim,
         'isSynced': false,
         'createdAt': nowIso,
         'updatedAt': nowIso,
@@ -414,6 +412,7 @@ class AuthController {
       final loggedNim = (userDoc['nim'] ?? normalizedNim).toString().trim();
       unawaited(_updateFcmTokenInBackground(loggedNim));
 
+      if (!context.mounted) return false;
       _navigateByRole(context, currentUser.value?.role ?? '');
       return true;
     } catch (e, st) {
@@ -852,7 +851,6 @@ class AuthController {
   Map<String, dynamic> _toCloudPayload(Map<String, dynamic> doc) {
     final nim = (doc['nim'] ?? '').toString().trim();
     return <String, dynamic>{
-      'memberId': nim,
       'nama': doc['nama'],
       'nim': nim,
       'divisi': doc['divisi'],
@@ -905,7 +903,6 @@ class AuthController {
     if (raw is Map) return raw.map((k, v) => MapEntry(k.toString(), v));
     if (raw is MemberModel) {
       return <String, dynamic>{
-        'memberId': raw.nim,
         'nama': raw.nama,
         'nim': raw.nim,
         'divisi': raw.divisi,

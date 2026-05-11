@@ -36,7 +36,7 @@ class _OrganizerAttendanceRecapViewState
     });
 
     final events = HiveService.events.values.toList(growable: false)
-      ..sort((a, b) => a.tanggal.compareTo(b.tanggal));
+      ..sort((a, b) => a.tanggalMulai.compareTo(b.tanggalMulai));
 
     final attendance = HiveService.attendance.values.toList(growable: false)
       ..sort((a, b) => b.timestamp.compareTo(a.timestamp));

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 class StatsGrid extends StatelessWidget {
   final List<StatItem> items;
-  const StatsGrid({Key? key, required this.items}) : super(key: key);
+  const StatsGrid({super.key, required this.items});
 
   @override
   Widget build(BuildContext context) {

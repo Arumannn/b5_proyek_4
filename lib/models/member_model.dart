@@ -5,8 +5,6 @@ part 'member_model.g.dart';
 
 @HiveType(typeId: AppConstants.memberTypeId)
 class MemberModel extends HiveObject {
-  @HiveField(0)
-  final String memberId; // Legacy key, nilainya disamakan dengan nim.
 
   @HiveField(1)
   final String nama;
@@ -32,7 +30,6 @@ class MemberModel extends HiveObject {
   String? fcmToken; // token FCM perangkat aktif
 
   MemberModel({
-    String? memberId,
     required this.nama,
     required String nim,
     required this.divisi,
@@ -40,12 +37,10 @@ class MemberModel extends HiveObject {
     required this.password,
     required this.qrCodeValue,
     this.fcmToken,
-  })  : nim = nim.trim(),
-        memberId = (memberId ?? nim).trim();
+  })  : nim = nim.trim();
 
   Map<String, dynamic> toMap() {
     return {
-      'memberId': nim,
       'nama': nama,
       'nim': nim,
       'divisi': divisi,
@@ -57,7 +52,7 @@ class MemberModel extends HiveObject {
   }
 
   factory MemberModel.fromMap(Map<String, dynamic> map) {
-    final nim = map['nim']?.toString() ?? map['memberId']?.toString() ?? '';
+    final nim = map['nim']?.toString() ?? '';
     final normalizedNim = nim.trim();
     return MemberModel(
       nama: map['nama']?.toString() ?? '',
@@ -73,7 +68,6 @@ class MemberModel extends HiveObject {
   }
 
   MemberModel copyWith({
-    String? memberId,
     String? nama,
     String? nim,
     String? divisi,
@@ -84,7 +78,6 @@ class MemberModel extends HiveObject {
   }) {
     final nextNim = (nim ?? this.nim).trim();
     return MemberModel(
-      memberId: memberId ?? nextNim,
       nama: nama ?? this.nama,
       nim: nextNim,
       divisi: divisi ?? this.divisi,

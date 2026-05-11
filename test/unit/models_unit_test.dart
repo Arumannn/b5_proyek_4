@@ -9,7 +9,6 @@ void main() {
   group('MemberModel', () {
     test('fromMap mendukung field lama qrData', () {
       final member = MemberModel.fromMap({
-        'memberId': 'm-1',
         'nama': 'Budi',
         'nim': '241511001',
         'divisi': 'Core',
@@ -18,14 +17,13 @@ void main() {
         'qrData': 'PRASASTI:241511001',
       });
 
-      expect(member.memberId, equals('m-1'));
+      expect(member.nim, equals('241511001'));
       expect(member.qrCodeValue, equals('PRASASTI:241511001'));
       expect(member.role, equals(AppConstants.roleMember));
     });
 
     test('toMap tidak menyertakan password', () {
       final member = MemberModel(
-        memberId: 'm-2',
         nama: 'Siti',
         nim: '241511002',
         divisi: 'Event',
@@ -93,7 +91,7 @@ void main() {
       expect(record.isSynced, isFalse);
     });
 
-    test('fromMap mendukung fallback nim ke memberId', () {
+    test('fromMap membaca properties dengan benar', () {
       final record = AttendanceRecord.fromMap({
         'recordId': 'r-2',
         'eventId': 'e-1',
@@ -101,7 +99,7 @@ void main() {
         'status': 'Izin',
       });
 
-      expect(record.memberId, equals('241511004'));
+      expect(record.nim, equals('241511004'));
       expect(record.compositeKey, equals('e-1_241511004'));
       expect(record.isSynced, isTrue);
     });
@@ -112,7 +110,7 @@ void main() {
       final permission = PermissionRecord.fromMap({
         'permissionId': 'p-1',
         'eventId': 'e-1',
-        'memberId': '241511005',
+        'nim': '241511005',
         'alasan': 'Sakit',
       });
 
@@ -125,7 +123,7 @@ void main() {
       final permission = PermissionRecord(
         permissionId: 'p-2',
         eventId: 'e-2',
-        memberId: '241511006',
+        nim: '241511006',
         jenisIzin: 'Sakit',
         alasan: 'Demam',
         buktiFotoPath: '/tmp/img.jpg',

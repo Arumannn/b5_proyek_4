@@ -38,7 +38,7 @@ class EventModelAdapter extends TypeAdapter<EventModel> {
   @override
   void write(BinaryWriter writer, EventModel obj) {
     writer
-      ..writeByte(13)
+      ..writeByte(15)
       ..writeByte(0)
       ..write(obj.eventId)
       ..writeByte(1)

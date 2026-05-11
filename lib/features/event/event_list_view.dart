@@ -1,18 +1,21 @@
+// ignore_for_file: unused_element
+
 import 'package:flutter/material.dart';
 import '../../core/constants/app_constants.dart';
 import '../../models/event_model.dart';
 import '../attendance/scan_screen.dart';
 import '../auth/auth_controller.dart';
-import '../dashboard/dashboard_view.dart';
-import '../laporan/laporan_view.dart';
-import '../member/member_list_view.dart';
 import '../../widgets/gradient_header.dart';
 import '../../widgets/loading_overlay.dart';
 import '../../widgets/custom_snackbar.dart';
 import '../../widgets/empty_state_widget.dart';
 import 'event_controller.dart';
+import 'event_detail_view.dart';
 import 'event_form_view.dart';
 import 'event_permission.dart';
+import 'widgets/event_card.dart';
+import 'widgets/event_filter_chips.dart';
+import 'widgets/event_search_bar.dart';
 
 /// Layar daftar event (Executive) — Enhanced Week 9 Sub-Tahap B
 ///
@@ -202,6 +205,7 @@ class _EventListViewState extends State<EventListView> {
             parentId: target.parentEventId,
             jenis: target.jenis,
             lokasi: target.lokasi,
+            targetPeserta: target.targetPeserta,
           ),
         ),
       ),
@@ -217,6 +221,7 @@ class _EventListViewState extends State<EventListView> {
         jamSelesai: result.jamSelesai,
         jenis: result.jenis,
         lokasi: result.lokasi,
+        targetPeserta: result.targetPeserta,
       ),
     );
 
@@ -293,7 +298,7 @@ class _EventListViewState extends State<EventListView> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.06),
+              color: Colors.black.withValues(alpha: 0.06),
               blurRadius: 18,
               offset: const Offset(0, 8),
             ),
@@ -527,7 +532,7 @@ class _EventListViewState extends State<EventListView> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withValues(alpha: 0.06),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -843,10 +848,15 @@ class _EventListViewState extends State<EventListView> {
                   child: Column(
                     children: [
                       // ── Search Bar ──────────────────────
-                      _buildSearchBar(),
+                      EventSearchBar(controller: _searchController),
 
                       // ── Filter Chips ────────────────────
-                      _buildFilterChips(),
+                      EventFilterChips(
+                        controller: _controller,
+                        onJenisFilterTap: _showJenisFilter,
+                        onDateFilterTap: _showDateRangeFilter,
+                        onClearFilters: _clearAllFilters,
+                      ),
 
                       // ── Event List ──────────────────────
                       Expanded(
@@ -884,9 +894,36 @@ class _EventListViewState extends State<EventListView> {
                                     final event = rootEvents[index];
                                     final subEvents = _controller.getSubEvents(event.eventId);
 
-                                    return _buildEventCard(
-                                      event,
+                                    return EventCard(
+                                      event: event,
                                       subEvents: subEvents,
+                                      isExpanded: _expandedState[event.eventId] ?? false,
+                                      canUpdateMain: _canUpdateMainEvent,
+                                      canDeleteMain: _canDeleteMainEvent,
+                                      canCreateSub: _canCreateSubEvent,
+                                      canUpdateSub: _canUpdateSubEvent,
+                                      canDeleteSub: _canDeleteSubEvent,
+                                      onExpandToggle: (expanded) {
+                                        setState(() => _expandedState[event.eventId] = expanded);
+                                      },
+                                      onCardTap: () {
+                                        final role = AuthController.instance.currentUser.value?.role ?? AppConstants.roleMember;
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(builder: (_) => EventDetailView(event: event, userRole: role)),
+                                        );
+                                      },
+                                      onEdit: _editEvent,
+                                      onDelete: _deleteEvent,
+                                      onAddSubEvent: _addSubEvent,
+                                      onScan: (eventId) {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => ScanScreen(eventId: eventId),
+                                          ),
+                                        );
+                                      },
                                     );
                                   },
                                 ),
