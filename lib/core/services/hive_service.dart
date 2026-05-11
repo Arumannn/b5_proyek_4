@@ -5,11 +5,13 @@ import '../../models/member_model.dart';
 import '../../models/event_model.dart';
 import '../../models/attendance_record.dart';
 import '../../models/permission_record.dart';
+import '../../models/event_invitation.dart';
 
 class HiveService {
   HiveService._();
 
   static bool _initialized = false;
+  static const String invitationBoxName = 'invitations';
 
   static Future<void> init() async {
     if (_initialized) {
@@ -25,11 +27,13 @@ class HiveService {
     Hive.registerAdapter(EventModelAdapter()); // typeId: 1
     Hive.registerAdapter(AttendanceRecordAdapter()); // typeId: 2
     Hive.registerAdapter(PermissionRecordAdapter()); // typeId: 3
+    Hive.registerAdapter(EventInvitationAdapter());
 
     await _openBoxSafely<MemberModel>(AppConstants.memberBox);
     await _openBoxSafely<EventModel>(AppConstants.eventBox);
     await _openBoxSafely<AttendanceRecord>(AppConstants.attendanceBox);
     await _openBoxSafely<PermissionRecord>(AppConstants.permissionBox);
+    await _openBoxSafely<EventInvitation>(invitationBoxName);
     await _openBoxSafely<String>(AppConstants.pendingUserUpsertBox);
     await _openBoxSafely<String>(AppConstants.pendingUserDeleteBox);
 
@@ -67,6 +71,11 @@ class HiveService {
     return Hive.box<PermissionRecord>(AppConstants.permissionBox);
   }
 
+  static Box<EventInvitation> get invitations {
+    _assertInitialized();
+    return Hive.box<EventInvitation>(invitationBoxName);
+  }
+  
   static Box<String> get pendingUserUpserts {
     _assertInitialized();
     return Hive.box<String>(AppConstants.pendingUserUpsertBox);

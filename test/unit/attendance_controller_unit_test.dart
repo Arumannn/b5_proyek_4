@@ -12,16 +12,22 @@ import 'package:b5_proyek_4/models/member_model.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   const pathProviderChannel = MethodChannel('plugins.flutter.io/path_provider');
+  late final Directory testDocumentsDir;
 
   final controller = AttendanceController.instance;
 
   setUpAll(() async {
+    testDocumentsDir = Directory(
+      '${Directory.systemTemp.path}${Platform.pathSeparator}attendance_controller_${DateTime.now().microsecondsSinceEpoch}',
+    );
+    testDocumentsDir.createSync(recursive: true);
+
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(pathProviderChannel, (methodCall) async {
       if (methodCall.method == 'getApplicationDocumentsDirectory') {
-        return Directory.systemTemp.path;
+        return testDocumentsDir.path;
       }
-      return Directory.systemTemp.path;
+      return testDocumentsDir.path;
     });
 
     await HiveService.init();
@@ -44,7 +50,8 @@ void main() {
 
   Future<void> seedMemberAndEvent({
     required String eventId,
-    required DateTime tanggalEvent,
+    required DateTime tanggalMulaiEvent,
+    required DateTime tanggalSelesaiEvent,
     String nim = '241511999',
     String nama = 'Tester',
   }) async {
@@ -53,7 +60,6 @@ void main() {
     await HiveService.members.put(
       nim,
       MemberModel(
-        memberId: nim,
         nama: nama,
         nim: nim,
         divisi: 'Core',
@@ -69,8 +75,8 @@ void main() {
         eventId: eventId,
         nama: 'Event Test',
         jenis: 'Rapat',
-        tanggalMulai: tanggalEvent,
-        tanggalSelesai: tanggalEvent,
+        tanggalMulai: tanggalMulaiEvent,
+        tanggalSelesai: tanggalSelesaiEvent,
         createdBy: 'Executive',
       ),
     );
@@ -92,7 +98,6 @@ void main() {
       await HiveService.members.put(
         nim,
         MemberModel(
-          memberId: nim,
           nama: 'No Event',
           nim: nim,
           divisi: 'Core',
@@ -113,7 +118,8 @@ void main() {
     test('berhasil hadir untuk event masa depan dan menyimpan record', () async {
       await seedMemberAndEvent(
         eventId: 'event-future',
-        tanggalEvent: DateTime.now().add(const Duration(days: 1)),
+        tanggalMulaiEvent: DateTime.now().add(const Duration(days: 1)),
+        tanggalSelesaiEvent: DateTime.now().add(const Duration(days: 1)),
         nim: '241511123',
         nama: 'Member Hadir',
       );
@@ -132,7 +138,8 @@ void main() {
     test('scan kedua dengan member & event sama menjadi duplicate', () async {
       await seedMemberAndEvent(
         eventId: 'event-dup',
-        tanggalEvent: DateTime.now().add(const Duration(days: 1)),
+        tanggalMulaiEvent: DateTime.now().add(const Duration(days: 1)),
+        tanggalSelesaiEvent: DateTime.now().add(const Duration(days: 1)),
         nim: '241511124',
       );
 
@@ -154,7 +161,8 @@ void main() {
     test('event lampau menghasilkan status terlambat', () async {
       await seedMemberAndEvent(
         eventId: 'event-past',
-        tanggalEvent: DateTime.now().subtract(const Duration(days: 1)),
+        tanggalMulaiEvent: DateTime.now().subtract(const Duration(days: 1)),
+        tanggalSelesaiEvent: DateTime.now().subtract(const Duration(days: 1)),
         nim: '241511125',
       );
 
@@ -174,14 +182,14 @@ void main() {
         AttendanceRecord(
           recordId: 'r2',
           eventId: 'event-1',
-          memberId: 'm2',
+          nim: 'm2',
           timestamp: DateTime(2026, 4, 23, 10, 0),
           compositeKey: 'event-1_m2',
         ),
         AttendanceRecord(
           recordId: 'r1',
           eventId: 'event-1',
-          memberId: 'm1',
+          nim: 'm1',
           timestamp: DateTime(2026, 4, 23, 9, 0),
           compositeKey: 'event-1_m1',
         ),
@@ -197,14 +205,14 @@ void main() {
         AttendanceRecord(
           recordId: 'r-old',
           eventId: 'e1',
-          memberId: 'member-1',
+          nim: 'member-1',
           timestamp: DateTime(2026, 4, 22, 10, 0),
           compositeKey: 'e1_member-1',
         ),
         AttendanceRecord(
           recordId: 'r-new',
           eventId: 'e2',
-          memberId: 'member-1',
+          nim: 'member-1',
           timestamp: DateTime(2026, 4, 23, 10, 0),
           compositeKey: 'e2_member-1',
         ),

@@ -95,116 +95,196 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA), // Latar belakang abu terang
-      appBar: _buildAppBar(),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                _buildSummaryCards(),
-                _buildFilterChips(),
-                Expanded(
-                  child: RefreshIndicator(
-                    onRefresh: _fetchData,
-                    child: _buildRecordList(),
+      backgroundColor: const Color(0xFFF3F7FD),
+      body: SafeArea(
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : Column(
+                children: [
+                  _buildHeader(),
+                  Expanded(
+                    child: RefreshIndicator(
+                      onRefresh: _fetchData,
+                      child: ListView(
+                        padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
+                        children: [
+                          _buildMonthPickerCard(),
+                          const SizedBox(height: 14),
+                          _buildSummaryCards(),
+                          const SizedBox(height: 14),
+                          _buildFilterChips(),
+                          const SizedBox(height: 14),
+                          _buildRecordList(),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
+      ),
     );
   }
 
-  PreferredSizeWidget _buildAppBar() {
-    return AppBar(
-      backgroundColor: const Color(0xFF1D4ED8), // Biru Header
-      elevation: 0,
-      title: const Column(
+  Widget _buildHeader() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
+        ),
+      ),
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Riwayat Kehadiran', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
-          Text('History absensi Anda', style: TextStyle(fontSize: 12, color: Colors.white70)),
-        ],
-      ),
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.download_outlined),
-          onPressed: () {
-            // TODO: Implementasi Export PDF di Week selanjutnya
-          },
-        ),
-      ],
-      bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(60),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          child: Container(
-            height: 44,
-            decoration: BoxDecoration(
-              color: const Color(0xFF3B66E0), // Biru dropdown yang sedikit lebih terang
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.white.withOpacity(0.3)),
-            ),
-            child: ValueListenableBuilder<String>(
-              valueListenable: _selectedMonth,
-              builder: (context, currentMonth, child) {
-                return DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    isExpanded: true,
-                    dropdownColor: Colors.white,
-                    icon: const Padding(
-                      padding: EdgeInsets.only(right: 12),
-                      child: Icon(Icons.keyboard_arrow_down, color: Colors.white),
-                    ),
-                    value: currentMonth.isNotEmpty ? currentMonth : null,
-                    items: _availableMonths.map((month) {
-                      return DropdownMenuItem<String>(
-                        value: month,
-                        child: Padding(
-                          padding: const EdgeInsets.only(left: 12),
-                          child: Row(
-                            children: [
-                              Icon(Icons.calendar_today_outlined, 
-                                size: 18, 
-                                color: currentMonth == month ? Colors.white : Colors.black87
-                              ),
-                              const SizedBox(width: 12),
-                              Text(
-                                month,
-                                style: TextStyle(
-                                  color: currentMonth == month ? Colors.white : Colors.black87,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                    onChanged: (val) {
-                      if (val != null) {
-                        _selectedMonth.value = val;
-                        _selectedFilter.value = 'Semua'; // Reset filter saat ganti bulan
-                      }
-                    },
-                    selectedItemBuilder: (BuildContext context) {
-                      return _availableMonths.map<Widget>((String item) {
-                        return Padding(
-                          padding: const EdgeInsets.only(left: 12),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.calendar_today_outlined, size: 18, color: Colors.white),
-                              const SizedBox(width: 12),
-                              Text(item, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                            ],
-                          ),
-                        );
-                      }).toList();
-                    },
+          Row(
+            children: [
+              GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.14),
+                    shape: BoxShape.circle,
                   ),
-                );
-              },
+                  child: const Icon(Icons.chevron_left, color: Colors.white, size: 24),
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Riwayat Kehadiran',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Colors.white),
+                    ),
+                    SizedBox(height: 2),
+                    Text('History absensi Anda', style: TextStyle(fontSize: 12, color: Colors.white70)),
+                  ],
+                ),
+              ),
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.14),
+                  shape: BoxShape.circle,
+                ),
+                child: IconButton(
+                  padding: EdgeInsets.zero,
+                  icon: const Icon(Icons.download_outlined, color: Colors.white),
+                  onPressed: () {},
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Center(
+            child: Container(
+              width: 88,
+              height: 88,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.12),
+                    blurRadius: 18,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: const Icon(Icons.history_rounded, size: 42, color: Color(0xFF2563EB)),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMonthPickerCard() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.grey.shade100),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Container(
+        height: 48,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            colors: [Color(0xFF2563EB), Color(0xFF3B82F6)],
+          ),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: ValueListenableBuilder<String>(
+          valueListenable: _selectedMonth,
+          builder: (context, currentMonth, child) {
+            return DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                isExpanded: true,
+                dropdownColor: Colors.white,
+                icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white),
+                value: currentMonth.isNotEmpty ? currentMonth : null,
+                items: _availableMonths.map((month) {
+                  return DropdownMenuItem<String>(
+                    value: month,
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.calendar_today_outlined,
+                          size: 18,
+                          color: currentMonth == month ? const Color(0xFF2563EB) : Colors.black87,
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          month,
+                          style: TextStyle(
+                            color: currentMonth == month ? const Color(0xFF2563EB) : Colors.black87,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+                onChanged: (val) {
+                  if (val != null) {
+                    _selectedMonth.value = val;
+                    _selectedFilter.value = 'Semua';
+                  }
+                },
+                selectedItemBuilder: (BuildContext context) {
+                  return _availableMonths.map<Widget>((String item) {
+                    return Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        item,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    );
+                  }).toList();
+                },
+              ),
+            );
+          },
         ),
       ),
     );
@@ -217,63 +297,94 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
         final stats = _getStats(_recordsForSelectedMonth);
         final percent = stats['total']! == 0 ? 0 : ((stats['hadir']! / stats['total']!) * 100).round();
 
-        return Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
-            children: [
-              // Kartu Biru - Tingkat Kehadiran
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2563EB),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Row(
-                        children: [
-                          Icon(Icons.trending_up, color: Colors.white, size: 16),
-                          SizedBox(width: 8),
-                          Text('Tingkat Kehadiran', style: TextStyle(color: Colors.white, fontSize: 12)),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text('$percent%', style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                ),
+        return Row(
+          children: [
+            Expanded(
+              child: _summaryCard(
+                label: 'Tingkat Kehadiran',
+                value: '$percent%',
+                icon: Icons.trending_up,
+                backgroundColor: const Color(0xFFDBEAFE),
+                iconColor: const Color(0xFF2563EB),
+                accentColor: const Color(0xFF2563EB),
               ),
-              const SizedBox(width: 12),
-              // Kartu Hijau - Total Hadir
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF16A34A),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Row(
-                        children: [
-                          Icon(Icons.check_circle_outline, color: Colors.white, size: 16),
-                          SizedBox(width: 8),
-                          Text('Total Hadir', style: TextStyle(color: Colors.white, fontSize: 12)),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text('${stats['hadir']}/${stats['total']}', style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _summaryCard(
+                label: 'Total Hadir',
+                value: '${stats['hadir']}/${stats['total']}',
+                icon: Icons.check_circle_outline,
+                backgroundColor: const Color(0xFFDCFCE7),
+                iconColor: const Color(0xFF16A34A),
+                accentColor: const Color(0xFF16A34A),
               ),
-            ],
-          ),
+            ),
+          ],
         );
       },
+    );
+  }
+
+  Widget _summaryCard({
+    required String label,
+    required String value,
+    required IconData icon,
+    required Color backgroundColor,
+    required Color iconColor,
+    required Color accentColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.grey.shade100),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: backgroundColor,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: iconColor, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: Colors.grey[700],
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: TextStyle(
+                    color: accentColor,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -285,17 +396,31 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
         
         return ValueListenableBuilder<String>(
           valueListenable: _selectedFilter,
-          builder: (context, selected, _) {
-            return SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  _customChip('Semua', stats['total']!, selected == 'Semua', Colors.grey.shade600),
-                  _customChip('Hadir', stats['hadir']!, selected == 'Hadir', Colors.grey.shade600), // Default sketch color
-                  _customChip('Izin', stats['izin']!, selected == 'Izin', const Color(0xFFEA580C)), // Orange
-                  _customChip('Alpha', stats['alpha']!, selected == 'Alpha', const Color(0xFFDC2626)), // Red
+          builder: (context, selected, ___) {
+            return Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: Colors.grey.shade100),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 18,
+                    offset: const Offset(0, 8),
+                  ),
                 ],
+              ),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _customChip('Semua', stats['total']!, selected == 'Semua', const Color(0xFF475569)),
+                    _customChip('Hadir', stats['hadir']!, selected == 'Hadir', const Color(0xFF2563EB)),
+                    _customChip('Izin', stats['izin']!, selected == 'Izin', const Color(0xFFEA580C)),
+                    _customChip('Alpha', stats['alpha']!, selected == 'Alpha', const Color(0xFFDC2626)),
+                  ],
+                ),
               ),
             );
           },
@@ -310,10 +435,10 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
       child: InkWell(
         onTap: () => _selectedFilter.value = label,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: BoxDecoration(
             color: isSelected ? activeColor : Colors.grey.shade200,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(999),
           ),
           child: Text(
             '$label ($count)',
@@ -334,33 +459,34 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
         final records = _filteredRecords;
 
         if (records.isEmpty) {
-          return const Center(
-            child: Text('Tidak ada riwayat untuk filter ini.', style: TextStyle(color: Colors.grey)),
+          return const Padding(
+            padding: EdgeInsets.only(top: 24),
+            child: Center(
+              child: Text('Tidak ada riwayat untuk filter ini.', style: TextStyle(color: Colors.grey)),
+            ),
           );
         }
 
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: records.length,
-          itemBuilder: (context, index) {
-            final record = records[index];
+        return Column(
+          children: records.asMap().entries.map((entry) {
+            final index = entry.key;
+            final record = entry.value;
             final event = _eventById[record.eventId];
             final eventName = event?.nama ?? 'Event Tidak Diketahui';
-            
-            // Dummy Data untuk menyesuaikan sketsa
-            final location = event?.jenis ?? 'Ruang Kelas'; // Menggunakan 'jenis' sebagai dummy lokasi[cite: 7]
+            final location = event?.jenis ?? 'Ruang Kelas';
             final timeStr = DateFormat('HH:mm').format(record.timestamp);
             final dateStr = DateFormat('dd MMM yyyy', 'id_ID').format(record.timestamp);
-            
+
             return _RecordCard(
               eventName: eventName,
               date: dateStr,
               time: '$timeStr WIB',
               location: location,
               status: record.status,
-              duration: '2 jam', // Dummy
+              duration: '2 jam',
+              isLast: index == records.length - 1,
             );
-          },
+          }).toList(growable: false),
         );
       },
     );
@@ -375,6 +501,7 @@ class _RecordCard extends StatelessWidget {
   final String location;
   final String status;
   final String duration;
+  final bool isLast;
 
   const _RecordCard({
     required this.eventName,
@@ -383,6 +510,7 @@ class _RecordCard extends StatelessWidget {
     required this.location,
     required this.status,
     required this.duration,
+    required this.isLast,
   });
 
   @override
@@ -416,18 +544,24 @@ class _RecordCard extends StatelessWidget {
     }
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: EdgeInsets.only(bottom: isLast ? 0 : 16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.grey.shade100),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(18.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header Row (Nama Event & Badge)
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -442,7 +576,7 @@ class _RecordCard extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: badgeColor,
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(999),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -459,25 +593,18 @@ class _RecordCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            
-            // Info Baris (Tanggal, Waktu, Lokasi)
             _buildInfoRow(Icons.calendar_today_outlined, date),
             const SizedBox(height: 8),
             _buildInfoRow(Icons.access_time, time),
             const SizedBox(height: 8),
             _buildInfoRow(Icons.location_on_outlined, location),
-            
-            // Alert Box (Jika Izin/Alpha)
             if (alertBox != null) ...[
               const SizedBox(height: 16),
               alertBox,
             ],
-            
             const SizedBox(height: 16),
-            const Divider(height: 1),
+            Divider(height: 1, color: Colors.grey.shade200),
             const SizedBox(height: 12),
-            
-            // Footer (Durasi)
             Text('Durasi: $duration', style: const TextStyle(color: Colors.grey, fontSize: 12)),
           ],
         ),
@@ -501,7 +628,7 @@ class _RecordCard extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,

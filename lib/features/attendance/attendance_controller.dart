@@ -56,8 +56,7 @@ class AttendanceController {
       }
 
       // 1. Ambil identifier dari QR secara toleran:
-      // - format utama: PRASASTI:{nim}
-      // - format lama: plain nim/memberId
+      // - format lama: plain nim
       final nim = _extractIdentifierFromScan(normalizedScan);
       if (nim.isEmpty) {
         lastFailureReason.value = 'Identifier QR tidak dapat diparse';
@@ -220,11 +219,11 @@ class AttendanceController {
     );
     cloudDoc ??= await MongoService.instance.findOne(
       collectionName: AppConstants.usersCollection,
-      filter: {'memberId': nimFromQr},
+      filter: {'nim': nimFromQr},
     );
     cloudDoc ??= await MongoService.instance.findOne(
       collectionName: AppConstants.usersCollection,
-      filter: {'memberId': normalizedIdentifier},
+      filter: {'nim': normalizedIdentifier},
     );
     cloudDoc ??= await MongoService.instance.findOne(
       collectionName: AppConstants.usersCollection,
@@ -234,7 +233,6 @@ class AttendanceController {
 
     final merged = Map<String, dynamic>.from(cloudDoc)
       ..['nim'] = (cloudDoc['nim'] ?? nimFromQr).toString().trim()
-      ..['memberId'] = (cloudDoc['nim'] ?? nimFromQr).toString().trim()
       ..['qrCodeValue'] = (cloudDoc['qrCodeValue'] ?? normalizedScan).toString();
 
     final cached = MemberModel.fromMap(merged);
@@ -250,7 +248,7 @@ class AttendanceController {
       return parsed.trim();
     }
 
-    // Legacy tolerance: terima plain nim/memberId, dan prefix tanpa case-sensitive.
+    // Legacy tolerance: terima plain nim, dan prefix tanpa case-sensitive.
     final upperScan = rawScan.toUpperCase();
     final upperPrefix = AppConstants.qrPrefix.toUpperCase();
     if (upperScan.startsWith(upperPrefix)) {
@@ -302,7 +300,6 @@ class AttendanceController {
         if (nim.isEmpty) continue;
 
         merged['nim'] = nim;
-        merged['memberId'] = nim;
         merged['qrCodeValue'] =
             (merged['qrCodeValue'] ?? QrService.generateQrData(nim)).toString();
 

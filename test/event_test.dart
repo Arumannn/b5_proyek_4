@@ -96,7 +96,6 @@ void main() {
       final ok = await controller.createEvent(
         nama: 'Event Lama',
         tanggalMulai: DateTime.now().subtract(const Duration(days: 1)),
-        tanggalSelesai: DateTime.now().subtract(const Duration(days: 1)),
       );
       expect(ok, isFalse);
       expect(controller.errorMessage.value, 'Tanggal event tidak boleh masa lalu.');
@@ -106,7 +105,6 @@ void main() {
       final ok = await controller.createEvent(
         nama: 'Sub Event',
         tanggalMulai: DateTime.now().add(const Duration(days: 1)),
-        tanggalSelesai: DateTime.now().add(const Duration(days: 1, hours: 2)),
         parentEventId: 'missing-parent',
       );
       expect(ok, isFalse);
@@ -117,7 +115,6 @@ void main() {
       final ok = await controller.createEvent(
         nama: '  Rapat Besar  ',
         tanggalMulai: DateTime.now().add(const Duration(days: 1)),
-        tanggalSelesai: DateTime.now().add(const Duration(days: 1, hours: 2)),
         jenis: 'Rapat',
         createdBy: '241511038',
       );
@@ -144,7 +141,7 @@ void main() {
         nama: 'Parent',
         jenis: 'Kegiatan',
         tanggalMulai: DateTime.now().add(const Duration(days: 1)),
-        tanggalSelesai: DateTime.now().add(const Duration(days: 1, hours: 2)),
+        tanggalSelesai: DateTime.now().add(const Duration(days: 1)),
         createdBy: 'Executive',
       );
       await HiveService.events.put(parent.eventId, parent);
@@ -153,7 +150,6 @@ void main() {
       final ok = await controller.createEvent(
         nama: 'Sub Event',
         tanggalMulai: DateTime.now().add(const Duration(days: 2)),
-        tanggalSelesai: DateTime.now().add(const Duration(days: 2, hours: 2)),
         parentEventId: 'parent-1',
       );
 
@@ -172,7 +168,7 @@ void main() {
         nama: '   ',
         jenis: 'Rapat',
         tanggalMulai: DateTime.now().add(const Duration(days: 1)),
-        tanggalSelesai: DateTime.now().add(const Duration(days: 1, hours: 2)),
+        tanggalSelesai: DateTime.now().add(const Duration(days: 1)),
         createdBy: 'Executive',
       );
       final ok = await controller.updateEvent(model);
@@ -186,7 +182,7 @@ void main() {
         nama: 'Event',
         jenis: AppConstants.eventTypes.first,
         tanggalMulai: DateTime.now().subtract(const Duration(days: 1)),
-        tanggalSelesai: DateTime.now().subtract(const Duration(days: 1, hours: 2)),
+        tanggalSelesai: DateTime.now().subtract(const Duration(days: 1)),
         createdBy: 'Executive',
       );
       final ok = await controller.updateEvent(model);
@@ -200,7 +196,7 @@ void main() {
         nama: 'Event',
         jenis: AppConstants.eventTypes.first,
         tanggalMulai: DateTime.now().add(const Duration(days: 1)),
-        tanggalSelesai: DateTime.now().add(const Duration(days: 1, hours: 2)),
+        tanggalSelesai: DateTime.now().add(const Duration(days: 1)),
         createdBy: 'Executive',
       );
       final ok = await controller.updateEvent(model);
@@ -214,7 +210,7 @@ void main() {
         nama: 'Nama Lama',
         jenis: 'Rapat',
         tanggalMulai: DateTime.now().add(const Duration(days: 1)),
-        tanggalSelesai: DateTime.now().add(const Duration(days: 1, hours: 2)),
+        tanggalSelesai: DateTime.now().add(const Duration(days: 1)),
         createdBy: 'Executive',
         isSynced: true,
       );
@@ -242,16 +238,22 @@ void main() {
     test('menghapus root event beserta sub event-nya', () async {
       final root = EventModel(
         eventId: 'root-1', nama: 'Root', jenis: 'Rapat',
-        tanggalMulai: DateTime.now().add(const Duration(days: 1)), tanggalSelesai: DateTime.now().add(const Duration(days: 1, hours: 2)), createdBy: 'Executive',
+        tanggalMulai: DateTime.now().add(const Duration(days: 1)),
+        tanggalSelesai: DateTime.now().add(const Duration(days: 1)),
+        createdBy: 'Executive',
       );
       final child = EventModel(
         eventId: 'child-1', nama: 'Child', jenis: 'Rapat',
-        tanggalMulai: DateTime.now().add(const Duration(days: 1)), tanggalSelesai: DateTime.now().add(const Duration(days: 1, hours: 2)), createdBy: 'Executive',
+        tanggalMulai: DateTime.now().add(const Duration(days: 1)),
+        tanggalSelesai: DateTime.now().add(const Duration(days: 1)),
+        createdBy: 'Executive',
         parentEventId: 'root-1',
       );
       final other = EventModel(
         eventId: 'other-1', nama: 'Other', jenis: 'Rapat',
-        tanggalMulai: DateTime.now().add(const Duration(days: 2)), tanggalSelesai: DateTime.now().add(const Duration(days: 2, hours: 2)), createdBy: 'Executive',
+        tanggalMulai: DateTime.now().add(const Duration(days: 2)),
+        tanggalSelesai: DateTime.now().add(const Duration(days: 2)),
+        createdBy: 'Executive',
       );
 
       await HiveService.events.put(root.eventId, root);
@@ -274,11 +276,15 @@ void main() {
     test('hanya mengembalikan event dengan parentEventId null', () async {
       await HiveService.events.put('root-1', EventModel(
         eventId: 'root-1', nama: 'Root A', jenis: 'Rapat',
-        tanggalMulai: DateTime.now().add(const Duration(days: 1)), tanggalSelesai: DateTime.now().add(const Duration(days: 1, hours: 2)), createdBy: 'Executive',
+        tanggalMulai: DateTime.now().add(const Duration(days: 1)),
+        tanggalSelesai: DateTime.now().add(const Duration(days: 1)),
+        createdBy: 'Executive',
       ));
       await HiveService.events.put('child-1', EventModel(
         eventId: 'child-1', nama: 'Child A', jenis: 'Rapat',
-        tanggalMulai: DateTime.now().add(const Duration(days: 1)), tanggalSelesai: DateTime.now().add(const Duration(days: 1, hours: 2)), createdBy: 'Executive',
+        tanggalMulai: DateTime.now().add(const Duration(days: 1)),
+        tanggalSelesai: DateTime.now().add(const Duration(days: 1)),
+        createdBy: 'Executive',
         parentEventId: 'root-1',
       ));
       await controller.loadEvents(force: true);

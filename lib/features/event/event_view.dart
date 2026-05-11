@@ -7,7 +7,7 @@ import '../../core/services/hive_service.dart';
 import '../../models/event_model.dart';
 import '../../models/attendance_record.dart';
 import '../../widgets/custom_snackbar.dart';
-import '../../widgets/gradient_header.dart';
+import '../../widgets/white_status_header.dart';
 import '../attendance/scan_screen.dart';
 import '../auth/auth_controller.dart';
 import 'event_controller.dart';
@@ -37,7 +37,7 @@ class _EventViewState extends State<EventView> {
   bool get _canDeleteMainEvent => EventPermission.canDeleteMainEvent(_role); // RBAC: Main event DELETE hanya Executive.
   bool get _canCreateSubEvent => EventPermission.canCreateSubEvent(_role); // RBAC: Sub-event CRUD untuk Executive/Manager.
   bool get _canUpdateSubEvent => EventPermission.canUpdateSubEvent(_role); // RBAC: Sub-event CRUD untuk Executive/Manager.
-  bool get _canDeleteSubEvent => EventPermission.canDeleteSubEvent(_role); // RBAC: Sub-event CRUD untuk Executive/Manager.
+  bool get _canDeleteSubEvent => EventPermission.canDeleteSubEvent(_role); // RBAC: Sub-event DELETE untuk Executive/Manager.
   bool get _hasAnyCrudAccess => _canCreateMainEvent || _canCreateSubEvent; // RBAC: Penanda UI jika ada hak tulis di salah satu scope.
 
   @override
@@ -291,6 +291,7 @@ class _EventViewState extends State<EventView> {
   }) async {
     final formKey = GlobalKey<FormState>();
     final nameController = TextEditingController(text: initial?.nama ?? '');
+    final lokasiController = TextEditingController(text: initial?.lokasi ?? '');
     final descController = TextEditingController(
       text: initial?.deskripsi ?? '',
     );
@@ -377,6 +378,14 @@ class _EventViewState extends State<EventView> {
                           subtitle: Text(_formatDate(selectedDate)),
                           trailing: const Icon(Icons.edit_calendar_outlined),
                           onTap: pickDate,
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: lokasiController,
+                          decoration: const InputDecoration(
+                            labelText: 'Lokasi (Opsional)',
+                            prefixIcon: Icon(Icons.place_outlined),
+                          ),
                         ),
                         if (forcedParentId == null) ...[
                           const SizedBox(height: 8),
@@ -488,6 +497,9 @@ class _EventViewState extends State<EventView> {
                         date: selectedDate,
                         jenis: selectedJenis,
                         parentEventId: isSubEvent ? parentId : null,
+                                lokasi: lokasiController.text.trim().isEmpty
+                                    ? null
+                                    : lokasiController.text.trim(),
                         deskripsi: descController.text.trim().isEmpty
                             ? null
                             : descController.text.trim(),
@@ -505,6 +517,7 @@ class _EventViewState extends State<EventView> {
     );
 
     nameController.dispose();
+    lokasiController.dispose();
     descController.dispose();
     return result;
   }
@@ -581,9 +594,10 @@ class _EventViewState extends State<EventView> {
                 Expanded(
                   child: GestureDetector(
                     onTap: () {
+                      final role = AuthController.instance.currentUser.value?.role ?? AppConstants.roleMember;
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => EventDetailView(event: event)),
+                        MaterialPageRoute(builder: (_) => EventDetailView(event: event, userRole: role)),
                       );
                     },
                     child: Column(
@@ -769,22 +783,26 @@ class _EventViewState extends State<EventView> {
 
   @override
   Widget build(BuildContext context) {
-    final title = _hasAnyCrudAccess ? 'Event (Partial CRUD)' : 'Event (Read-Only)'; // RBAC: Manager punya CRUD hanya untuk sub-event.
+    final title = 'Daftar Event';
+    final subtitle = _hasAnyCrudAccess
+        ? 'Kelola event utama dan sub-event'
+        : 'Lihat daftar event yang tersedia';
 
     return Scaffold(
-      appBar: GradientHeader(
+      appBar: WhiteStatusHeader(
         title: title,
+        subtitle: subtitle,
         actions: [
           IconButton(
             tooltip: 'Refresh',
             onPressed: () => _controller.loadEvents(force: true),
-            icon: const Icon(Icons.refresh, color: Colors.white),
+            icon: const Icon(Icons.refresh, color: Color(0xFF111827)),
           ),
           if (_canCreateMainEvent)
             IconButton(
               tooltip: 'Tambah Event',
               onPressed: () => _addOrEditEvent(),
-              icon: const Icon(Icons.add, color: Colors.white),
+              icon: const Icon(Icons.add, color: Color(0xFF111827)),
             ),
         ],
       ),

@@ -14,7 +14,7 @@ import 'package:mongo_dart/mongo_dart.dart';
 class MockMongoService extends Mock implements MongoService {
   int insertOneCallCount = 0;
   bool shouldThrow = false;
-  bool _isConnected = true;
+  final bool _isConnected = true;
 
   @override
   bool get isConnected => _isConnected;
@@ -83,7 +83,7 @@ void main() {
       final record = AttendanceRecord(
         recordId: 'rec-1',
         eventId: 'event-1',
-        memberId: 'member-1',
+        nim: 'member-1',
         timestamp: DateTime.now(),
         compositeKey: 'event-1_member-1',
       );
@@ -111,7 +111,7 @@ void main() {
       final record = AttendanceRecord(
         recordId: 'rec-2',
         eventId: 'event-2',
-        memberId: 'member-2',
+        nim: 'member-2',
         timestamp: DateTime.now(),
         compositeKey: 'event-2_member-2',
       );

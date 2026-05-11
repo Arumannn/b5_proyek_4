@@ -1,0 +1,100 @@
+import 'package:flutter/material.dart';
+import '../models/event_invitation.dart';
+
+class InvitationCard extends StatelessWidget {
+    final EventInvitation invitation;
+    final String eventTitle;
+    final VoidCallback onAccept;
+    final VoidCallback onDecline;
+    final VoidCallback onPermit;
+
+    const InvitationCard({
+        super.key,
+        required this.invitation,
+        required this.eventTitle,
+        required this.onAccept,
+        required this.onDecline,
+        required this.onPermit,
+    });
+
+    @override
+    Widget build(BuildContext context) {
+        bool isPending = invitation.responseStatus == 'pending';
+
+        return Card(
+            margin: const EdgeInsets.only(bottom: 16.0),
+            child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                        Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                            Text(
+                                eventTitle,
+                                style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                )
+                            ),
+                            Chip(
+                                label: Text(
+                                    invitation.responseStatus.toUpperCase(),
+                                    style: const TextStyle(
+                                        fontSize: 10,
+                                        color: Colors.white,
+                                    ),
+                                ),
+                                backgroundColor: _getStatusColor(invitation.responseStatus),
+                            ),
+                        ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Tombol aksi hanya muncul jika status masih pending
+                    if (isPending)
+                        Row(
+                            children: [
+                                Expanded(
+                                    child: ElevatedButton(
+                                        onPressed: onAccept,
+                                        child: const Text('Setujui'),
+                                    ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                    child: OutlinedButton(
+                                        onPressed: onDecline,
+                                        style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+                                        child: const Text('Tolak'),
+                                    ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                    child: TextButton(
+                                        onPressed: onPermit,
+                                        child: const Text('Izin'),
+                                    ),
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+            ),
+        );
+    }
+
+    Color _getStatusColor(String status) {
+        switch (status) {
+            case 'approved':
+                return Colors.green;
+            case 'rejected':
+                return Colors.red;
+            case 'permission_requested':
+                return Colors.orange;
+            default:
+                return Colors.grey;
+        }
+    }
+}

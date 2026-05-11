@@ -1,236 +1,394 @@
-// ignore_for_file: deprecated_member_use
-
-import 'dart:io';
-import 'package:b5_proyek_4/widgets/gradient_header.dart';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:b5_proyek_4/features/auth/auth_controller.dart';
-import 'package:b5_proyek_4/core/services/hive_service.dart';
+import '../../core/services/hive_service.dart';
+import '../../features/auth/auth_controller.dart';
+import '../../models/permission_record.dart';
 
 class PermissionFormView extends StatefulWidget {
-  const PermissionFormView({super.key});
+  final String eventId;
+  final String eventTitle;
+  final VoidCallback onSuccessSubmit;
+
+  const PermissionFormView({
+    super.key,
+    required this.eventId,
+    required this.eventTitle,
+    required this.onSuccessSubmit,
+  });
 
   @override
   State<PermissionFormView> createState() => _PermissionFormViewState();
 }
 
 class _PermissionFormViewState extends State<PermissionFormView> {
-  // UI State Controllers
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _alasanController = TextEditingController();
-  
-  String? _selectedEventId;
-  String _jenisIzin = 'Izin'; // Default value
-  File? _selectedImage;
+  final _reasonController = TextEditingController();
 
-  // Mock Data Event (Nanti ini diambil dari EventController.events.value)
-  final List<Map<String, String>> _dummyEvents = [
-    {'id': 'evt-1', 'nama': 'Rapat Pleno HIMAKOM'},
-    {'id': 'evt-2', 'nama': 'Kaderisasi Tahap 1'},
-  ];
+  String _selectedType = 'Izin';
+  bool _isLoading = false;
+
+  Future<void> _submitPermission() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final currentNim = AuthController.instance.currentUser.value?.nim ?? 'unknown';
+
+      final permissionId = 'PERM-${DateTime.now().millisecondsSinceEpoch}';
+
+      final newPermission = PermissionRecord(
+        permissionId: permissionId,
+        eventId: widget.eventId,
+        nim: currentNim,
+        jenisIzin: _selectedType,
+        alasan: _reasonController.text.trim(),
+        status: 'Pending',
+        isSynced: false,
+      );
+
+      // Simpan ke Hive
+      await HiveService.permissions.put(permissionId, newPermission);
+
+      widget.onSuccessSubmit();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Pengajuan izin berhasil dikirim!'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Terjadi kesalahan: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
   @override
   void dispose() {
-    _alasanController.dispose();
+    _reasonController.dispose();
     super.dispose();
-  }
-
-  // Fungsi untuk membuka Kamera / Galeri
-  Future<void> _pickImage(ImageSource source) async {
-    final picker = ImagePicker();
-    try {
-      final pickedFile = await picker.pickImage(
-        source: source,
-        imageQuality: 70, // Kompres ukuran agar tidak berat di Hive/Firebase
-      );
-      if (pickedFile != null) {
-        setState(() {
-          _selectedImage = File(pickedFile.path);
-        });
-      }
-    } catch (e) {
-      debugPrint('Gagal mengambil gambar: $e');
-    }
-  }
-
-  void _showImagePickerModal() {
-    showModalBottomSheet(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: Wrap(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.camera_alt),
-              title: const Text('Ambil Foto dari Kamera'),
-              onTap: () {
-                Navigator.pop(ctx);
-                _pickImage(ImageSource.camera);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library),
-              title: const Text('Pilih dari Galeri'),
-              onTap: () {
-                Navigator.pop(ctx);
-                _pickImage(ImageSource.gallery);
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-void _submitForm() {
-  if (_formKey.currentState!.validate()) {
-    final currentNim = AuthController.instance.currentUser.value?.nim;
-    
-    final isAlreadySubmitted = HiveService.permissions.values.any(
-      (p) => p.eventId == _selectedEventId && p.nim == currentNim
-    );
-
-    if (isAlreadySubmitted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Anda sudah mengajukan izin untuk event ini!'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-      // TODO: Panggil PermissionController di sini nantinya
-      // PermissionController.instance.submitPermission(
-      //   eventId: _selectedEventId!,
-      //   jenisIzin: _jenisIzin,
-      //   alasan: _alasanController.text,
-      //   buktiFotoPath: _selectedImage!.path,
-      // );
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Mode UI: Form valid. Menunggu Controller Backend.'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const GradientHeader(title: 'Pengajuan Izin / Sakit', subtitle: 'Form pengajuan anggota'),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 1. Pilih Event
-              const Text('Pilih Event', style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              DropdownButtonFormField<String>(
-                decoration: const InputDecoration(border: OutlineInputBorder()),
-                hint: const Text('Pilih event yang tidak bisa dihadiri'),
-                value: _selectedEventId,
-                items: _dummyEvents.map((e) {
-                  return DropdownMenuItem<String>(
-                    value: e['id'],
-                    child: Text(e['nama']!),
-                  );
-                }).toList(),
-                onChanged: (val) => setState(() => _selectedEventId = val),
-                validator: (val) => val == null ? 'Pilih event terlebih dahulu' : null,
+      backgroundColor: const Color(0xFFF3F7FD),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
+                ),
               ),
-              const SizedBox(height: 20),
-
-              // 2. Jenis Izin (Radio Buttons)
-              const Text('Jenis Pengajuan', style: TextStyle(fontWeight: FontWeight.bold)),
-              Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: RadioListTile<String>(
-                      title: const Text('Izin'),
-                      value: 'Izin',
-                      groupValue: _jenisIzin,
-                      onChanged: (val) => setState(() => _jenisIzin = val!),
-                      contentPadding: EdgeInsets.zero,
-                    ),
+                  Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.14),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.chevron_left, color: Colors.white, size: 24),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Text(
+                        'Pengajuan Izin',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
                   ),
-                  Expanded(
-                    child: RadioListTile<String>(
-                      title: const Text('Sakit'),
-                      value: 'Sakit',
-                      groupValue: _jenisIzin,
-                      onChanged: (val) => setState(() => _jenisIzin = val!),
-                      contentPadding: EdgeInsets.zero,
+                  const SizedBox(height: 18),
+                  Center(
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 88,
+                          height: 88,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(24),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.12),
+                                blurRadius: 18,
+                                offset: const Offset(0, 8),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(Icons.description_outlined, size: 44, color: Color(0xFF2563EB)),
+                        ),
+                        const SizedBox(height: 12),
+                        const Text(
+                          'Ajukan izin atau sakit untuk event ini.',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          widget.eventTitle,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.85),
+                            fontSize: 12,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
-
-              // 3. Alasan
-              const Text('Alasan Detail', style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _alasanController,
-                maxLines: 4,
-                decoration: const InputDecoration(
-                  hintText: 'Tuliskan alasan lengkapmu di sini...',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (val) => val == null || val.trim().isEmpty 
-                    ? 'Alasan tidak boleh kosong' : null,
-              ),
-              const SizedBox(height: 20),
-
-              // 4. Bukti Foto (UI Kotak Upload)
-              const Text('Bukti Foto (Surat Dokter/Lainnya)', style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              InkWell(
-                onTap: _showImagePickerModal,
-                child: Container(
-                  height: 150,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade200,
-                    border: Border.all(color: Colors.grey.shade400, style: BorderStyle.solid),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: _selectedImage != null
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.file(_selectedImage!, fit: BoxFit.cover),
-                        )
-                      : const Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.add_a_photo, size: 40, color: Colors.grey),
-                            SizedBox(height: 8),
-                            Text('Ketuk untuk upload foto', style: TextStyle(color: Colors.grey)),
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(color: Colors.grey.shade100),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.04),
+                              blurRadius: 18,
+                              offset: const Offset(0, 8),
+                            ),
                           ],
                         ),
-                ),
-              ),
-              const SizedBox(height: 30),
-
-              // 5. Tombol Submit
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).primaryColor,
-                    foregroundColor: Colors.white,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Event Tujuan',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black54,
+                                letterSpacing: 0.8,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              widget.eventTitle,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: Color(0xFF1D4ED8),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(color: Colors.grey.shade100),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.04),
+                              blurRadius: 18,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Jenis Izin',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black54,
+                                letterSpacing: 0.8,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Container(
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey[200]!),
+                                borderRadius: BorderRadius.circular(16),
+                                color: Colors.grey[50],
+                              ),
+                              child: DropdownButtonFormField<String>(
+                                initialValue: _selectedType,
+                                isExpanded: true,
+                                decoration: const InputDecoration(
+                                  border: InputBorder.none,
+                                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                                ),
+                                items: const [
+                                  DropdownMenuItem(
+                                    value: 'Izin',
+                                    child: Text('Izin (Keperluan Lain)'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'Sakit',
+                                    child: Text('Sakit'),
+                                  ),
+                                ],
+                                onChanged: (value) {
+                                  if (value != null) {
+                                    setState(() => _selectedType = value);
+                                  }
+                                },
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            const Text(
+                              'Alasan Ketidakhadiran',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black54,
+                                letterSpacing: 0.8,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            TextFormField(
+                              controller: _reasonController,
+                              maxLines: 5,
+                              decoration: InputDecoration(
+                                hintText: 'Tuliskan alasan lengkap Anda di sini (sakit, acara keluarga, dll)...',
+                                filled: true,
+                                fillColor: Colors.grey[50],
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide(color: Colors.grey[200]!),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide(color: Colors.grey[200]!),
+                                ),
+                                focusedBorder: const OutlineInputBorder(
+                                  borderRadius: BorderRadius.all(Radius.circular(16)),
+                                  borderSide: BorderSide(color: Color(0xFF2563EB), width: 2),
+                                ),
+                                contentPadding: const EdgeInsets.all(16),
+                              ),
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'Alasan tidak boleh kosong';
+                                }
+                                if (value.trim().length < 10) {
+                                  return 'Mohon berikan alasan yang lebih jelas (minimal 10 karakter)';
+                                }
+                                return null;
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEFF6FF),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: const Color(0xFFDBEAFE)),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Padding(
+                              padding: EdgeInsets.only(top: 2),
+                              child: Icon(Icons.info_outline, size: 18, color: Color(0xFF2563EB)),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'Pengajuan akan tersimpan lokal terlebih dahulu lalu disinkronkan saat koneksi tersedia.',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  height: 1.5,
+                                  color: Colors.blueGrey[800],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: _isLoading ? null : _submitPermission,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF2563EB),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            elevation: 6,
+                            shadowColor: const Color(0xFF93C5FD),
+                          ),
+                          child: _isLoading
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2.5,
+                                  ),
+                                )
+                              : const Text(
+                                  'Kirim Pengajuan Izin',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ],
                   ),
-                  onPressed: _submitForm,
-                  child: const Text('Kirim Pengajuan', style: TextStyle(fontSize: 16)),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
