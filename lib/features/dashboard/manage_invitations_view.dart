@@ -1,5 +1,7 @@
 // ignore_for_file: unused_import
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../core/services/hive_service.dart';
@@ -21,9 +23,12 @@ class ManageInvitationsView extends StatefulWidget {
 class _ManageInvitationsViewState extends State<ManageInvitationsView> {
   List<EventModel> _events = [];
   Map<String, bool> _selectedMembers = {};
-  String? _selectedEventId;
+  String? _selectedMainEventId;
+  String? _selectedSubEventId;
   bool _isLoading = true;
-  final ValueNotifier<String> _selectedRoleFilter = ValueNotifier<String>('Semua');
+  final ValueNotifier<String> _selectedRoleFilter = ValueNotifier<String>(
+    'Semua',
+  );
 
   @override
   void initState() {
@@ -41,7 +46,7 @@ class _ManageInvitationsViewState extends State<ManageInvitationsView> {
       setState(() {
         _events = events;
         _selectedMembers = {for (final m in members) m.nim: false};
-        if (_events.isNotEmpty) _selectedEventId = _events.first.eventId;
+        _syncEventSelection();
         _isLoading = false;
       });
     } catch (e) {
@@ -50,25 +55,88 @@ class _ManageInvitationsViewState extends State<ManageInvitationsView> {
     }
   }
 
+  List<EventModel> get _mainEvents =>
+      _events.where((e) => e.parentEventId == null).toList(growable: false);
+
+  List<EventModel> get _subEventsForSelectedMain {
+    final mainId = _selectedMainEventId;
+    if (mainId == null) return const <EventModel>[];
+    return _events
+        .where((e) => e.parentEventId == mainId)
+        .toList(growable: false);
+  }
+
+  String? get _selectedTargetEventId {
+    return _selectedSubEventId ?? _selectedMainEventId;
+  }
+
+  void _syncEventSelection() {
+    if (_mainEvents.isEmpty) {
+      _selectedMainEventId = null;
+      _selectedSubEventId = null;
+      return;
+    }
+
+    final mainExists =
+        _selectedMainEventId != null &&
+        _mainEvents.any((e) => e.eventId == _selectedMainEventId);
+    if (!mainExists) {
+      _selectedMainEventId = _mainEvents.first.eventId;
+    }
+
+    final subEvents = _subEventsForSelectedMain;
+    if (subEvents.isEmpty) {
+      _selectedSubEventId = null;
+      return;
+    }
+
+    final subExists =
+        _selectedSubEventId != null &&
+        subEvents.any((e) => e.eventId == _selectedSubEventId);
+    if (!subExists) {
+      _selectedSubEventId = subEvents.first.eventId;
+    }
+  }
+
+  void _onMainEventChanged(String? value) {
+    if (value == null) return;
+    final subEvents = _events
+        .where((e) => e.parentEventId == value)
+        .toList(growable: false);
+
+    setState(() {
+      _selectedMainEventId = value;
+      _selectedSubEventId = subEvents.isEmpty ? null : subEvents.first.eventId;
+    });
+  }
+
   Future<void> _sendInvitations() async {
-    if (_selectedEventId == null) return;
-    final selected = _selectedMembers.entries.where((e) => e.value).map((e) => e.key).toList();
+    final targetEventId = _selectedTargetEventId;
+    if (targetEventId == null) return;
+    final selected = _selectedMembers.entries
+        .where((e) => e.value)
+        .map((e) => e.key)
+        .toList();
     if (selected.isEmpty) {
-      CustomSnackbar.showError(context, 'Pilih minimal satu anggota untuk dikirimi undangan.');
+      CustomSnackbar.showError(
+        context,
+        'Pilih minimal satu anggota untuk dikirimi undangan.',
+      );
       return;
     }
 
     try {
       final currentUser = AuthController.instance.currentUser.value;
       final invitedBy = currentUser?.nim ?? 'system';
-      final event = HiveService.events.get(_selectedEventId);
+      final event = HiveService.events.get(targetEventId);
       final attendanceTime = event?.tanggalMulai ?? DateTime.now();
 
       for (final nim in selected) {
-        final invitationId = 'INV-${DateTime.now().millisecondsSinceEpoch}-${nim}';
+        final invitationId =
+            'INV-${DateTime.now().millisecondsSinceEpoch}-${nim}';
         final invitation = EventInvitation(
           invitationId: invitationId,
-          eventId: _selectedEventId!,
+          eventId: targetEventId,
           nim: nim,
           responseStatus: 'pending',
           responseMessage: null,
@@ -84,7 +152,10 @@ class _ManageInvitationsViewState extends State<ManageInvitationsView> {
         await HiveService.invitations.put(invitationId, invitation);
       }
 
-      CustomSnackbar.showSuccess(context, 'Undangan berhasil dikirim ke ${selected.length} anggota. (Sinkronisasi tertunda)');
+      CustomSnackbar.showSuccess(
+        context,
+        'Undangan berhasil dikirim ke ${selected.length} anggota. (Sinkronisasi tertunda)',
+      );
       Navigator.pop(context);
     } catch (e) {
       CustomSnackbar.showError(context, 'Gagal mengirim undangan: $e');
@@ -116,7 +187,8 @@ class _ManageInvitationsViewState extends State<ManageInvitationsView> {
     final lowerRole = role.toLowerCase();
     if (lowerRole == 'member') return const Color(0xFF3B82F6); // Blue
     if (lowerRole == 'manager') return const Color(0xFF2563EB); // Darker blue
-    if (lowerRole == 'executive') return const Color(0xFF1D4ED8); // Even darker blue
+    if (lowerRole == 'executive')
+      return const Color(0xFF1D4ED8); // Even darker blue
     return const Color(0xFF60A5FA); // Light blue
   }
 
@@ -124,26 +196,44 @@ class _ManageInvitationsViewState extends State<ManageInvitationsView> {
   Widget build(BuildContext context) {
     final currentUser = AuthController.instance.currentUser.value;
     final role = (currentUser?.role ?? '').trim().toLowerCase();
-    final allowed = [AppConstants.roleExecutive.toLowerCase(), AppConstants.roleManager.toLowerCase()];
+    final allowed = [
+      AppConstants.roleExecutive.toLowerCase(),
+      AppConstants.roleManager.toLowerCase(),
+    ];
 
     if (!allowed.contains(role)) {
       return Scaffold(
-        appBar: AppBar(backgroundColor: const Color(0xFF2563EB), title: const Text('Kelola Target Peserta')),
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF2563EB),
+          title: const Text('Kelola Target Peserta'),
+        ),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(24.0),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.lock_outline, size: 64, color: Color(0xFF2563EB)),
+                const Icon(
+                  Icons.lock_outline,
+                  size: 64,
+                  color: Color(0xFF2563EB),
+                ),
                 const SizedBox(height: 16),
-                const Text('Akses Ditolak', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const Text(
+                  'Akses Ditolak',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
                 const SizedBox(height: 8),
-                const Text('Halaman ini hanya dapat diakses oleh Executive atau Manager.', textAlign: TextAlign.center),
+                const Text(
+                  'Halaman ini hanya dapat diakses oleh Executive atau Manager.',
+                  textAlign: TextAlign.center,
+                ),
                 const SizedBox(height: 20),
                 ElevatedButton(
                   onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2563EB),
+                  ),
                   child: const Text('Kembali'),
                 ),
               ],
@@ -159,81 +249,73 @@ class _ManageInvitationsViewState extends State<ManageInvitationsView> {
           ? const Center(child: CircularProgressIndicator())
           : Stack(
               children: [
-                // Main Content
+                // Main Content Column
                 Column(
                   children: [
                     // Custom Curved Header
                     _buildCurvedHeader(),
 
-                    // Content with statistics cards overlapping
+                    // Sticky Top Area: Statistics Cards + Event Selector + Filters
+                    Container(
+                      color: const Color(0xFFF3F7FD),
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                      child: Column(
+                        children: [
+                          // Statistics Cards
+                          _buildStatisticsCards(),
+                          const SizedBox(height: 14),
+
+                          // Event selector
+                          _buildEventSelector(),
+                          const SizedBox(height: 12),
+
+                          // Role filter chips
+                          ValueListenableBuilder<String>(
+                            valueListenable: _selectedRoleFilter,
+                            builder: (context, selected, _) {
+                              return SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: Row(
+                                  children: [
+                                    _roleChip(
+                                      'Semua',
+                                      selected == 'Semua',
+                                      Colors.grey.shade600,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    _roleChip(
+                                      'Member',
+                                      selected == 'Member',
+                                      const Color(0xFF2563EB),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    _roleChip(
+                                      'Manager',
+                                      selected == 'Manager',
+                                      const Color(0xFF7C3AED),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    _roleChip(
+                                      'Executive',
+                                      selected == 'Executive',
+                                      const Color(0xFF0EA5A4),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Scrollable Member List
                     Expanded(
                       child: RefreshIndicator(
                         onRefresh: _loadData,
                         child: ListView(
-                          padding: const EdgeInsets.fromLTRB(16, 80, 16, 100),
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
                           children: [
-                            // Event selector
-                            Container(
-                              padding: const EdgeInsets.all(14),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(color: Colors.grey.shade100),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.04),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: DropdownButtonHideUnderline(
-                                child: DropdownButton<String>(
-                                  isExpanded: true,
-                                  value: _selectedEventId,
-                                  items: _events
-                                      .map((e) => DropdownMenuItem(
-                                            value: e.eventId,
-                                            child: Text(
-                                              '${e.nama} - ${DateFormat('dd MMM yyyy', 'id_ID').format(e.tanggalMulai)}',
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ))
-                                      .toList(),
-                                  onChanged: (val) =>
-                                      setState(() => _selectedEventId = val),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-
-                            // Role filter chips
-                            ValueListenableBuilder<String>(
-                              valueListenable: _selectedRoleFilter,
-                              builder: (context, selected, _) {
-                                return SingleChildScrollView(
-                                  scrollDirection: Axis.horizontal,
-                                  child: Row(
-                                    children: [
-                                      _roleChip('Semua', selected == 'Semua',
-                                          Colors.grey.shade600),
-                                      const SizedBox(width: 8),
-                                      _roleChip('Member', selected == 'Member',
-                                          const Color(0xFF2563EB)),
-                                      const SizedBox(width: 8),
-                                      _roleChip('Manager', selected == 'Manager',
-                                          const Color(0xFF7C3AED)),
-                                      const SizedBox(width: 8),
-                                      _roleChip('Executive',
-                                          selected == 'Executive',
-                                          const Color(0xFF0EA5A4)),
-                                    ],
-                                  ),
-                                );
-                              },
-                            ),
-                            const SizedBox(height: 20),
-
                             // Member list or empty
                             _buildMemberList(),
                           ],
@@ -241,14 +323,6 @@ class _ManageInvitationsViewState extends State<ManageInvitationsView> {
                       ),
                     ),
                   ],
-                ),
-
-                // Statistics cards overlapping header
-                Positioned(
-                  top: 160,
-                  left: 16,
-                  right: 16,
-                  child: _buildStatisticsCards(),
                 ),
 
                 // Sticky Bottom Action Bar
@@ -290,8 +364,11 @@ class _ManageInvitationsViewState extends State<ManageInvitationsView> {
                       color: Colors.white.withValues(alpha: 0.2),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.chevron_left,
-                        color: Colors.white, size: 24),
+                    child: const Icon(
+                      Icons.chevron_left,
+                      color: Colors.white,
+                      size: 24,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -310,10 +387,7 @@ class _ManageInvitationsViewState extends State<ManageInvitationsView> {
                       SizedBox(height: 4),
                       Text(
                         'Pilih peserta dan kirim undangan',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.white70,
-                        ),
+                        style: TextStyle(fontSize: 12, color: Colors.white70),
                       ),
                     ],
                   ),
@@ -330,55 +404,47 @@ class _ManageInvitationsViewState extends State<ManageInvitationsView> {
   Widget _buildStatisticsCards() {
     final totalMembers = HiveService.members.length;
     final selectedCount = _selectedMembers.values.where((v) => v).length;
-    final pendingInvites =
-        HiveService.invitations.values.where((inv) => inv.responseStatus == 'pending').length;
+    final pendingInvites = HiveService.invitations.values
+        .where((inv) => inv.responseStatus == 'pending')
+        .length;
 
     return SizedBox(
-      height: 120,
+      height: 100,
       child: Row(
         children: [
           // Total Anggota
           Expanded(
-            child: Transform.translate(
-              offset: Offset.zero,
-              child: _statisticCard(
-                label: 'Total Anggota',
-                value: '$totalMembers',
-                icon: Icons.people,
-                backgroundColor: const Color(0xFFDBEAFE),
-                iconColor: const Color(0xFF2563EB),
-                accentColor: const Color(0xFF2563EB),
-              ),
+            child: _statisticCard(
+              label: 'Total Anggota',
+              value: '$totalMembers',
+              icon: Icons.people,
+              backgroundColor: const Color(0xFFDBEAFE),
+              iconColor: const Color(0xFF2563EB),
+              accentColor: const Color(0xFF2563EB),
             ),
           ),
           const SizedBox(width: 12),
           // Terpilih
           Expanded(
-            child: Transform.translate(
-              offset: const Offset(0, 12),
-              child: _statisticCard(
-                label: 'Terpilih',
-                value: '$selectedCount',
-                icon: Icons.check_circle,
-                backgroundColor: const Color(0xFFFDE68A),
-                iconColor: const Color(0xFFF59E0B),
-                accentColor: const Color(0xFFF59E0B),
-              ),
+            child: _statisticCard(
+              label: 'Terpilih',
+              value: '$selectedCount',
+              icon: Icons.check_circle,
+              backgroundColor: const Color(0xFFFDE68A),
+              iconColor: const Color(0xFFF59E0B),
+              accentColor: const Color(0xFFF59E0B),
             ),
           ),
           const SizedBox(width: 12),
           // Menunggu
           Expanded(
-            child: Transform.translate(
-              offset: const Offset(0, 24),
-              child: _statisticCard(
-                label: 'Menunggu',
-                value: '$pendingInvites',
-                icon: Icons.mail_outline,
-                backgroundColor: const Color(0xFFFEE2E2),
-                iconColor: const Color(0xFFDC2626),
-                accentColor: const Color(0xFFDC2626),
-              ),
+            child: _statisticCard(
+              label: 'Menunggu',
+              value: '$pendingInvites',
+              icon: Icons.mail_outline,
+              backgroundColor: const Color(0xFFFEE2E2),
+              iconColor: const Color(0xFFDC2626),
+              accentColor: const Color(0xFFDC2626),
             ),
           ),
         ],
@@ -396,16 +462,16 @@ class _ManageInvitationsViewState extends State<ManageInvitationsView> {
     required Color accentColor,
   }) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: Colors.grey.shade100),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -413,19 +479,19 @@ class _ManageInvitationsViewState extends State<ManageInvitationsView> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
               color: backgroundColor,
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: iconColor, size: 20),
+            child: Icon(icon, color: iconColor, size: 16),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             value,
             style: TextStyle(
               color: accentColor,
-              fontSize: 20,
+              fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -434,11 +500,170 @@ class _ManageInvitationsViewState extends State<ManageInvitationsView> {
             label,
             style: TextStyle(
               color: Colors.grey[600],
-              fontSize: 11,
+              fontSize: 10,
               fontWeight: FontWeight.w600,
             ),
             textAlign: TextAlign.center,
           ),
+        ],
+      ),
+    );
+  }
+
+  /// Build a responsive event dropdown that stays compact on mobile.
+  Widget _buildEventSelector() {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final maxDropdownHeight = math.min(screenHeight * 0.42, 360.0);
+
+    if (_mainEvents.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.grey.shade100),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 8,
+              offset: const Offset(0, 1),
+            ),
+          ],
+        ),
+        child: const Text(
+          'Belum ada Main Event yang tersedia.',
+          style: TextStyle(fontSize: 13, color: Colors.black54),
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.grey.shade100),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Main Event',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[700],
+            ),
+          ),
+          const SizedBox(height: 8),
+          DropdownButtonFormField<String>(
+            value: _selectedMainEventId,
+            isExpanded: true,
+            isDense: true,
+            menuMaxHeight: maxDropdownHeight,
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: const Color(0xFFF8FAFC),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 14,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey.shade200),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey.shade200),
+              ),
+              focusedBorder: const OutlineInputBorder(
+                borderRadius: BorderRadius.all(Radius.circular(12)),
+                borderSide: BorderSide(color: Color(0xFF2563EB), width: 1.5),
+              ),
+            ),
+            icon: const Icon(Icons.keyboard_arrow_down_rounded),
+            borderRadius: BorderRadius.circular(16),
+            dropdownColor: Colors.white,
+            hint: const Text('Pilih Main Event'),
+            items: _mainEvents
+                .map(
+                  (e) => DropdownMenuItem<String>(
+                    value: e.eventId,
+                    child: Text(
+                      e.nama,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                )
+                .toList(growable: false),
+            onChanged: _onMainEventChanged,
+          ),
+          const SizedBox(height: 12),
+          if (_subEventsForSelectedMain.isNotEmpty) ...[
+            Text(
+              'Sub Event',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[700],
+              ),
+            ),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              value: _selectedSubEventId,
+              isExpanded: true,
+              isDense: true,
+              menuMaxHeight: maxDropdownHeight,
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: const Color(0xFFF8FAFC),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 14,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey.shade200),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey.shade200),
+                ),
+                focusedBorder: const OutlineInputBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(12)),
+                  borderSide: BorderSide(color: Color(0xFF2563EB), width: 1.5),
+                ),
+              ),
+              icon: const Icon(Icons.keyboard_arrow_down_rounded),
+              borderRadius: BorderRadius.circular(16),
+              dropdownColor: Colors.white,
+              hint: const Text('Pilih Sub Event'),
+              items: _subEventsForSelectedMain
+                  .map(
+                    (e) => DropdownMenuItem<String>(
+                      value: e.eventId,
+                      child: Text(
+                        e.nama,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  )
+                  .toList(growable: false),
+              onChanged: (value) {
+                setState(() => _selectedSubEventId = value);
+              },
+            ),
+          ],
         ],
       ),
     );
@@ -464,151 +689,158 @@ class _ManageInvitationsViewState extends State<ManageInvitationsView> {
     }
 
     return Column(
-      children: members.map((m) {
-        final nim = m.nim;
-        final selected = _selectedMembers[nim] ?? false;
-        final initials = _getInitials(m.nama);
-        final avatarColor = _getAvatarColor(m.role);
+      children: members
+          .map((m) {
+            final nim = m.nim;
+            final selected = _selectedMembers[nim] ?? false;
+            final initials = _getInitials(m.nama);
+            final avatarColor = _getAvatarColor(m.role);
 
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          decoration: BoxDecoration(
-            color: selected
-                ? const Color(0xFFDBEAFE).withValues(alpha: 0.5)
-                : Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: selected
-                  ? const Color(0xFF2563EB)
-                  : Colors.grey.shade100,
-              width: selected ? 2 : 1,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.03),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: selected
+                    ? const Color(0xFFDBEAFE).withValues(alpha: 0.5)
+                    : Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: selected
+                      ? const Color(0xFF2563EB)
+                      : Colors.grey.shade100,
+                  width: selected ? 2 : 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.03),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-            ],
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Row(
-              children: [
-                // Modern Checkbox
-                GestureDetector(
-                  onTap: () =>
-                      setState(() => _selectedMembers[nim] = !selected),
-                  child: Container(
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      color: selected
-                          ? const Color(0xFF2563EB)
-                          : Colors.white,
-                      border: Border.all(
-                        color: selected
-                            ? const Color(0xFF2563EB)
-                            : Colors.grey.shade300,
-                        width: 2,
-                      ),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: selected
-                        ? const Icon(Icons.check,
-                            color: Colors.white, size: 16)
-                        : null,
-                  ),
-                ),
-                const SizedBox(width: 14),
-
-                // Avatar with gradient blue
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        avatarColor,
-                        avatarColor.withValues(alpha: 0.7),
-                      ],
-                    ),
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: avatarColor.withValues(alpha: 0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Center(
-                    child: Text(
-                      initials,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 14),
-
-                // Name and ID
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        m.nama,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                          color: Colors.black87,
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Row(
+                  children: [
+                    // Modern Checkbox
+                    GestureDetector(
+                      onTap: () =>
+                          setState(() => _selectedMembers[nim] = !selected),
+                      child: Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: selected
+                              ? const Color(0xFF2563EB)
+                              : Colors.white,
+                          border: Border.all(
+                            color: selected
+                                ? const Color(0xFF2563EB)
+                                : Colors.grey.shade300,
+                            width: 2,
+                          ),
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                        child: selected
+                            ? const Icon(
+                                Icons.check,
+                                color: Colors.white,
+                                size: 16,
+                              )
+                            : null,
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'NIM: ${m.nim}',
+                    ),
+                    const SizedBox(width: 14),
+
+                    // Avatar with gradient blue
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            avatarColor,
+                            avatarColor.withValues(alpha: 0.7),
+                          ],
+                        ),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: avatarColor.withValues(alpha: 0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Text(
+                          initials,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+
+                    // Name and ID
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            m.nama,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                              color: Colors.black87,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'NIM: ${m.nim}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+
+                    // Role Badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _getRoleBadgeColor(m.role),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        m.role,
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.grey[600],
+                          fontWeight: FontWeight.w600,
+                          color: _getRoleTextColor(m.role),
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-
-                // Role Badge
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: _getRoleBadgeColor(m.role),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    m.role,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: _getRoleTextColor(m.role),
                     ),
-                  ),
+                  ],
                 ),
-              ],
-            ),
-          ),
-        );
-      }).toList(growable: false),
+              ),
+            );
+          })
+          .toList(growable: false),
     );
   }
 
@@ -619,9 +851,7 @@ class _ManageInvitationsViewState extends State<ManageInvitationsView> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border(
-          top: BorderSide(color: Colors.grey.shade100, width: 1),
-        ),
+        border: Border(top: BorderSide(color: Colors.grey.shade100, width: 1)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.08),
@@ -655,7 +885,8 @@ class _ManageInvitationsViewState extends State<ManageInvitationsView> {
           // Main action button
           SizedBox(
             width: double.infinity,
-            child: ElevatedButton.icon(
+            height: 52,
+            child: ElevatedButton(
               onPressed: selectedCount > 0
                   ? _confirmAndSend
                   : () {
@@ -664,49 +895,54 @@ class _ManageInvitationsViewState extends State<ManageInvitationsView> {
                         'Pilih minimal satu anggota terlebih dahulu.',
                       );
                     },
-              icon: const Icon(Icons.send_rounded, size: 18),
-              label: Row(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: selectedCount > 0
+                    ? const Color(0xFF2563EB)
+                    : Colors.grey.shade300,
+                foregroundColor: selectedCount > 0
+                    ? Colors.white
+                    : Colors.grey.shade600,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: selectedCount > 0 ? 3 : 0,
+              ),
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  const Icon(Icons.send_rounded, size: 20),
+                  const SizedBox(width: 10),
                   const Text(
                     'Kirim Undangan',
                     style: TextStyle(
                       fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.5,
                     ),
                   ),
                   if (selectedCount > 0) ...[
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 12),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
+                        horizontal: 10,
+                        vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.3),
-                        borderRadius: BorderRadius.circular(6),
+                        color: Colors.white.withValues(alpha: 0.25),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
                         '$selectedCount',
                         style: const TextStyle(
-                          fontSize: 13,
+                          fontSize: 14,
                           fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
                         ),
                       ),
                     ),
                   ],
                 ],
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: selectedCount > 0
-                    ? const Color(0xFF2563EB)
-                    : Colors.grey.shade300,
-                foregroundColor: selectedCount > 0 ? Colors.white : Colors.grey,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                elevation: selectedCount > 0 ? 2 : 0,
               ),
             ),
           ),
@@ -719,23 +955,23 @@ class _ManageInvitationsViewState extends State<ManageInvitationsView> {
   Widget _roleChip(String label, bool selected, Color color) {
     return InkWell(
       onTap: () => _selectedRoleFilter.value = label,
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(18),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: selected ? color : Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(18),
           border: Border.all(
             color: selected ? color : Colors.transparent,
-            width: 1.5,
+            width: 1.2,
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
             color: selected ? Colors.white : Colors.black87,
-            fontWeight: selected ? FontWeight.bold : FontWeight.w500,
-            fontSize: 12,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+            fontSize: 11,
           ),
         ),
       ),
@@ -754,8 +990,10 @@ class _ManageInvitationsViewState extends State<ManageInvitationsView> {
 
   /// Show confirmation dialog before sending invitations
   void _confirmAndSend() {
-    final selected =
-        _selectedMembers.entries.where((e) => e.value).map((e) => e.key).toList();
+    final selected = _selectedMembers.entries
+        .where((e) => e.value)
+        .map((e) => e.key)
+        .toList();
     if (selected.isEmpty) {
       CustomSnackbar.showError(
         context,
@@ -768,8 +1006,7 @@ class _ManageInvitationsViewState extends State<ManageInvitationsView> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Konfirmasi Pengiriman'),
-        content:
-            Text('Kirim undangan ke ${selected.length} anggota?'),
+        content: Text('Kirim undangan ke ${selected.length} anggota?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
