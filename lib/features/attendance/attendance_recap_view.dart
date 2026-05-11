@@ -58,7 +58,7 @@ class _AttendanceRecapViewState extends State<AttendanceRecapView> {
     });
 
     final events = HiveService.events.values.toList(growable: false)
-      ..sort((a, b) => a.tanggal.compareTo(b.tanggal));
+      ..sort((a, b) => a.tanggalMulai.compareTo(b.tanggalMulai));
 
     final records = HiveService.attendance.values.toList(growable: false)
       ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
@@ -751,7 +751,16 @@ class _AttendanceRecapViewState extends State<AttendanceRecapView> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _events.isEmpty
-          ? const Center(child: Text('Belum ada event/sub-event tersedia.'))
+          ? RefreshIndicator(
+              onRefresh: _refresh,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  SizedBox(height: MediaQuery.of(context).size.height * 0.4),
+                  const Center(child: Text('Belum ada event/sub-event tersedia.')),
+                ],
+              ),
+            )
           : RefreshIndicator(
               onRefresh: _refresh,
               child: _canCrud

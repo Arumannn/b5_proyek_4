@@ -103,7 +103,7 @@ class _UserManagementViewState extends State<UserManagementView> {
     final saved = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) => _UserFormDialog(
+      builder: (dialogContext) => UserFormDialog(
         authController: _authController,
         existing: existing,
         roleLabelBuilder: _roleLabel,
@@ -290,8 +290,8 @@ class _UserManagementViewState extends State<UserManagementView> {
   }
 }
 
-class _UserFormDialog extends StatefulWidget {
-  const _UserFormDialog({
+class UserFormDialog extends StatefulWidget {
+  const UserFormDialog({
     required this.authController,
     required this.roleLabelBuilder,
     required this.dbuItemsBuilder,
@@ -304,10 +304,10 @@ class _UserFormDialog extends StatefulWidget {
   final List<DropdownMenuItem<String>> Function() dbuItemsBuilder;
 
   @override
-  State<_UserFormDialog> createState() => _UserFormDialogState();
+  State<UserFormDialog> createState() => _UserFormDialogState();
 }
 
-class _UserFormDialogState extends State<_UserFormDialog> {
+class _UserFormDialogState extends State<UserFormDialog> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nimController;
   late final TextEditingController _namaController;

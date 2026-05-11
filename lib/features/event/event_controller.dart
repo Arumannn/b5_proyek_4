@@ -58,6 +58,40 @@ class EventController {
   // LOAD EVENTS — Hive + MongoDB merge
   // ══════════════════════════════════════════════════════════════
 
+  /// Me-refresh status seluruh event berdasarkan waktu saat ini.
+  /// Jika ada perubahan (misal dari Berlangsung ke Selesai), akan disimpan ke DB.
+  void _refreshAllStatuses() {
+    bool hasUpdates = false;
+    for (final event in _allEvents) {
+      final oldStatus = event.statusEvent;
+      event.refreshStatus();
+      if (oldStatus != event.statusEvent) {
+        try {
+          event.save();
+          // Jika status berubah otomatis, tandai belum tersinkron agar di-push ke cloud.
+          event.isSynced = false;
+          event.save();
+          hasUpdates = true;
+        } catch (e) {
+          debugPrint('[EventCtrl] gagal menyimpan status update: $e');
+        }
+      }
+    }
+    if (hasUpdates) {
+      // Panggil cloud sync di background untuk push perubahan status otomatis
+      unawaited(_pushPendingUpdatesToCloudInBackground());
+    }
+  }
+
+  /// Mem-push data yang isSynced=false ke cloud secara background.
+  Future<void> _pushPendingUpdatesToCloudInBackground() async {
+    if (!await _isOnline()) return;
+    final pending = _allEvents.where((e) => !e.isSynced).toList();
+    for (final event in pending) {
+      unawaited(_upsertEventToCloudInBackground(event));
+    }
+  }
+
   /// Load event dari Hive (instan) lalu sync dari MongoDB di background.
   ///
   /// [force] — paksa reload meski sudah pernah load sebelumnya.
@@ -71,7 +105,11 @@ class EventController {
     try {
       // Step 1: Load dari Hive dulu (instan, offline-first)
       _allEvents = HiveService.events.values.toList();
-      _allEvents.sort((a, b) => a.tanggal.compareTo(b.tanggal));
+      _allEvents.sort((a, b) => a.tanggalMulai.compareTo(b.tanggalMulai));
+      
+      // Auto-update status event berdasarkan waktu sebelum apply filter
+      _refreshAllStatuses();
+      
       _applyFilters();
       _hasLoaded = true;
 
@@ -158,7 +196,10 @@ class EventController {
       if (newCount > 0 || updatedCount > 0) {
         // Reload dari Hive setelah merge untuk refresh UI
         _allEvents = HiveService.events.values.toList();
-        _allEvents.sort((a, b) => a.tanggal.compareTo(b.tanggal));
+        _allEvents.sort((a, b) => a.tanggalMulai.compareTo(b.tanggalMulai));
+        
+        _refreshAllStatuses();
+        
         _applyFilters();
 
         debugPrint(
@@ -181,7 +222,9 @@ class EventController {
 
   Future<bool> createEvent({
     required String nama,
-    required DateTime tanggal,
+    required DateTime tanggalMulai,
+    DateTime? tanggalSelesai,
+    DateTime? jamSelesai,
     String? parentEventId,
     String createdBy = 'unknown',
     String jenis = 'Kegiatan',
@@ -219,7 +262,7 @@ class EventController {
       errorMessage.value = 'Jenis event tidak valid.';
       return false;
     }
-    if (_isPastDay(tanggal)) {
+    if (_isPastDay(tanggalMulai)) {
       errorMessage.value = 'Tanggal event tidak boleh masa lalu.';
       return false;
     }
@@ -239,7 +282,9 @@ class EventController {
         eventId: DateTime.now().microsecondsSinceEpoch.toString(),
         nama: trimmed,
         jenis: jenis,
-        tanggal: tanggal,
+        tanggalMulai: tanggalMulai,
+        tanggalSelesai: tanggalSelesai,
+        jamSelesai: jamSelesai,
         createdBy: actorNim,
         parentEventId: parentEventId,
         lokasi: lokasi,
@@ -295,7 +340,7 @@ class EventController {
       errorMessage.value = 'Jenis event tidak valid.';
       return false;
     }
-    if (_isPastDay(event.tanggal)) {
+    if (_isPastDay(event.tanggalMulai)) {
       errorMessage.value = 'Tanggal event tidak boleh masa lalu.';
       return false;
     }
@@ -521,9 +566,9 @@ class EventController {
       final range = selectedDateRangeFilter.value!;
       filtered = filtered.where((e) {
         final eventDate = DateTime(
-          e.tanggal.year,
-          e.tanggal.month,
-          e.tanggal.day,
+          e.tanggalMulai.year,
+          e.tanggalMulai.month,
+          e.tanggalMulai.day,
         );
         final startDate = DateTime(
           range.start.year,
@@ -550,7 +595,7 @@ class EventController {
           .toList();
     }
 
-    filtered.sort((a, b) => a.tanggal.compareTo(b.tanggal));
+    filtered.sort((a, b) => a.tanggalMulai.compareTo(b.tanggalMulai));
     events.value = filtered;
   }
 
@@ -590,12 +635,11 @@ class EventController {
 
   List<EventModel> getSubEvents(String parentId) =>
       events.value.where((e) => e.parentEventId == parentId).toList()
-        ..sort((a, b) => a.tanggal.compareTo(b.tanggal));
+        ..sort((a, b) => a.tanggalMulai.compareTo(b.tanggalMulai));
 
   // ══════════════════════════════════════════════════════════════
   // HELPERS
   // ══════════════════════════════════════════════════════════════
-
   bool _isPastDay(DateTime date) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);

@@ -21,21 +21,24 @@ class EventModelAdapter extends TypeAdapter<EventModel> {
       parentEventId: fields[1] as String?,
       nama: fields[2] as String,
       jenis: fields[3] as String,
-      tanggal: fields[4] as DateTime,
-      deskripsi: fields[5] as String?,
-      targetPeserta: (fields[6] as List?)?.cast<String>(),
-      createdBy: fields[7] as String,
-      isSynced: fields[8] as bool,
-      createdAt: fields[9] as DateTime?,
-      jamMulai: fields[10] as DateTime?,
-      lokasi: fields[11] as String?,
+      tanggalMulai: fields[4] as DateTime,
+      tanggalSelesai: fields[5] as DateTime?,
+      deskripsi: fields[6] as String?,
+      targetPeserta: (fields[7] as List?)?.cast<String>(),
+      createdBy: fields[8] as String,
+      isSynced: fields[9] as bool,
+      createdAt: fields[10] as DateTime?,
+      jamMulai: fields[11] as DateTime?,
+      jamSelesai: fields[12] as DateTime?,
+      lokasi: fields[13] as String?,
+      statusEvent: fields[14] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, EventModel obj) {
     writer
-      ..writeByte(12)
+      ..writeByte(13)
       ..writeByte(0)
       ..write(obj.eventId)
       ..writeByte(1)
@@ -45,21 +48,27 @@ class EventModelAdapter extends TypeAdapter<EventModel> {
       ..writeByte(3)
       ..write(obj.jenis)
       ..writeByte(4)
-      ..write(obj.tanggal)
+      ..write(obj.tanggalMulai)
       ..writeByte(5)
-      ..write(obj.deskripsi)
+      ..write(obj.tanggalSelesai)
       ..writeByte(6)
-      ..write(obj.targetPeserta)
+      ..write(obj.deskripsi)
       ..writeByte(7)
-      ..write(obj.createdBy)
+      ..write(obj.targetPeserta)
       ..writeByte(8)
-      ..write(obj.isSynced)
+      ..write(obj.createdBy)
       ..writeByte(9)
+      ..write(obj.isSynced)
+      ..writeByte(10)
       ..write(obj.createdAt)
-        ..writeByte(10)
-        ..write(obj.jamMulai)
-        ..writeByte(11)
-        ..write(obj.lokasi);
+      ..writeByte(11)
+      ..write(obj.jamMulai)
+      ..writeByte(12)
+      ..write(obj.jamSelesai)
+      ..writeByte(13)
+      ..write(obj.lokasi)
+      ..writeByte(14)
+      ..write(obj.statusEvent);
   }
 
   @override

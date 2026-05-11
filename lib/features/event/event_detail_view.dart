@@ -203,7 +203,7 @@ class EventDetailView extends StatelessWidget {
                     _buildInfoRow(
                       icon: Icons.access_time,
                       title: 'Waktu',
-                      value: _formatDateTime(event.jamMulai ?? event.tanggal),
+                      value: _formatDateTime(event.jamMulai ?? event.tanggalMulai),
                     ),
                     const SizedBox(height: 16),
 
