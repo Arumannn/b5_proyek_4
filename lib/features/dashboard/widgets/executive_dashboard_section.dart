@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/services/hive_service.dart';
+import '../../attendance/scan_screen.dart';
 import '../../event/event_form_view.dart';
 import '../../member/member_list_view.dart';
 import '../../dashboard/manage_invitations_view.dart';
@@ -270,7 +271,10 @@ class _ExecutiveDashboardSectionState extends State<ExecutiveDashboardSection> {
             width: double.infinity,
             child: TextButton.icon(
               onPressed: () {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const ScanPlaceholder()));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => ScanScreen(eventId: event.eventId)),
+                );
               },
               icon: const Icon(Icons.camera_alt, color: Color(0xFF2563EB)),
               label: const Text('Buka Scanner', style: TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.bold)),
@@ -281,18 +285,4 @@ class _ExecutiveDashboardSectionState extends State<ExecutiveDashboardSection> {
       ),
     );
   }
-}
-
-// Simple placeholder scanner page used by manager action
-class ScanPlaceholder extends StatelessWidget {
-  const ScanPlaceholder({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Pemindai')),
-      body: const Center(child: Text('Scanner placeholder')),
-    );
-  }
-
 }
