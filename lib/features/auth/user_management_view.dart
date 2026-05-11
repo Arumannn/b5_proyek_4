@@ -18,8 +18,10 @@ class UserManagementView extends StatefulWidget {
 
 class _UserManagementViewState extends State<UserManagementView> {
   final AuthController _authController = AuthController.instance;
+  final TextEditingController _searchController = TextEditingController();
 
   bool _isPageLoading = true;
+  String _selectedRoleFilter = 'Semua';
   List<MemberModel> _users = const [];
 
     String get _currentRole =>
@@ -35,6 +37,12 @@ class _UserManagementViewState extends State<UserManagementView> {
   void initState() {
     super.initState();
     _refreshUsers();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _refreshUsers() async {
@@ -59,6 +67,36 @@ class _UserManagementViewState extends State<UserManagementView> {
     if (normalized == AppConstants.roleManager) return 'Manager';
     if (normalized == AppConstants.roleOrganizer) return 'Organizer';
     return 'Member';
+  }
+
+  Color _roleColor(String role) {
+    switch (role.trim().toLowerCase()) {
+      case AppConstants.roleExecutive:
+        return const Color(0xFF1E56E5);
+      case AppConstants.roleManager:
+        return const Color(0xFF06C755);
+      case AppConstants.roleOrganizer:
+        return const Color(0xFFB84DFF);
+      default:
+        return const Color(0xFFFD9800);
+    }
+  }
+
+  List<MemberModel> get _filteredUsers {
+    final query = _searchController.text.trim().toLowerCase();
+    return _users
+        .where((user) {
+          final matchesQuery =
+              query.isEmpty ||
+              user.nama.toLowerCase().contains(query) ||
+              user.nim.toLowerCase().contains(query) ||
+              user.divisi.toLowerCase().contains(query);
+          final matchesRole =
+              _selectedRoleFilter == 'Semua' ||
+              _roleLabel(user.role) == _selectedRoleFilter;
+          return matchesQuery && matchesRole;
+        })
+        .toList(growable: false);
   }
 
   List<DropdownMenuItem<String>> _buildDbuItems() {
@@ -165,86 +203,178 @@ class _UserManagementViewState extends State<UserManagementView> {
     CustomSnackbar.showSuccess(context, 'Akun berhasil dihapus.');
   }
 
-  Widget _buildTable() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: DataTable(
-        headingRowColor: WidgetStateProperty.resolveWith(
-          (states) =>
-              Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
-        ),
-        columns: const [
-          DataColumn(label: Text('No')),
-          DataColumn(label: Text('NIM')),
-          DataColumn(label: Text('Nama')),
-          DataColumn(label: Text('Role')),
-          DataColumn(label: Text('Departemen/Biro/Unit (DBU)')),
-          DataColumn(label: Text('Action')),
-        ],
-        rows: List<DataRow>.generate(_users.length, (index) {
-          final user = _users[index];
-          return DataRow(
-            cells: [
-              DataCell(Text('${index + 1}')),
-              DataCell(Text(user.nim)),
-              DataCell(Text(user.nama)),
-              DataCell(Text(_roleLabel(user.role))),
-              DataCell(SizedBox(width: 280, child: Text(user.divisi))),
-              DataCell(
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      tooltip: 'Edit',
-                      icon: const Icon(Icons.edit_outlined),
-                      onPressed: () => _showUserForm(existing: user),
-                    ),
-                    IconButton(
-                      tooltip: 'Hapus',
-                      icon: const Icon(
-                        Icons.delete_outline,
-                        color: Colors.redAccent,
-                      ),
-                      onPressed: () => _confirmDelete(user),
-                    ),
-                  ],
+  Widget _buildUserCard(MemberModel user) {
+    final role = _roleLabel(user.role);
+    final color = _roleColor(user.role);
+    return Card(
+      elevation: 1,
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            CircleAvatar(
+              radius: 26,
+              backgroundColor: color,
+              child: Text(
+                user.nama.isNotEmpty ? user.nama[0].toUpperCase() : 'A',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
-            ],
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          user.nama,
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: color.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          role,
+                          style: TextStyle(
+                            color: color,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'NIM: ${user.nim}',
+                    style: TextStyle(color: Colors.grey.shade700),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.account_tree_outlined,
+                        size: 18,
+                        color: Color(0xFF94A3B8),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          user.divisi,
+                          style: const TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.email_outlined,
+                        size: 18,
+                        color: Color(0xFF94A3B8),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          '${user.nama.toLowerCase().replaceAll(' ', '.')}@email.com',
+                          style: TextStyle(color: Colors.grey.shade700),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  const Divider(height: 1),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => _showUserForm(existing: user),
+                          child: const Text('Edit'),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: FilledButton.tonal(
+                          onPressed: () => _confirmDelete(user),
+                          style: FilledButton.styleFrom(
+                            foregroundColor: Colors.red,
+                            backgroundColor: const Color(0xFFFFF1F2),
+                          ),
+                          child: const Text('Hapus'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRoleFilterChips() {
+    final roles = <String>[
+      'Semua',
+      'Executive',
+      'Manager',
+      'Organizer',
+      'Member',
+    ];
+    return SizedBox(
+      height: 42,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: roles.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        itemBuilder: (context, index) {
+          final role = roles[index];
+          final selected = _selectedRoleFilter == role;
+          return ChoiceChip(
+            label: Text(role),
+            selected: selected,
+            onSelected: (_) {
+              setState(() {
+                _selectedRoleFilter = role;
+              });
+            },
           );
-        }),
+        },
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!_hasAccess) {
-      return Scaffold(
-        appBar: const GradientHeader(
-          title: 'Manajemen Anggota',
-          subtitle: 'Akses terbatas',
-        ),
-        body: const Center(
-          child: Padding(
-            padding: EdgeInsets.all(24),
-            child: Text(
-              'Halaman ini hanya dapat diakses oleh Executive.',
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ),
-      );
-    }
+    final users = _filteredUsers;
 
     return NetworkStatusBanner(
       child: LoadingOverlay(
         isLoading: _isPageLoading,
         message: 'Memproses data anggota...',
         child: Scaffold(
-          appBar: GradientHeader(
-            title: 'Manajemen Anggota',
-            subtitle: 'Kelola akun Executive, Manager, Organizer, dan Member',
+          appBar: AppBar(
+            title: const Text('Daftar Anggota'),
             actions: [
               IconButton(
                 tooltip: 'Refresh',
@@ -263,24 +393,43 @@ class _UserManagementViewState extends State<UserManagementView> {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                Text(
-                  'Executive dapat mengelola seluruh akun: Executive, Manager, Organizer, dan Member.',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                const SizedBox(height: 12),
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: _users.isEmpty
-                        ? const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 24),
-                            child: Center(
-                              child: Text('Belum ada data anggota.'),
-                            ),
-                          )
-                        : _buildTable(),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 14,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextField(
+                        controller: _searchController,
+                        onChanged: (_) => setState(() {}),
+                        decoration: const InputDecoration(
+                          hintText: 'Cari nama atau NIM...',
+                          prefixIcon: Icon(Icons.search),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      _buildRoleFilterChips(),
+                    ],
                   ),
                 ),
+                const SizedBox(height: 16),
+                if (users.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 40),
+                    child: Center(child: Text('Belum ada data anggota.')),
+                  )
+                else
+                  ...users.map(_buildUserCard),
               ],
             ),
           ),
