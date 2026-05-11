@@ -531,6 +531,12 @@ class AuthController {
       return;
     }
 
+    // Ensure MongoDB is connected before attempting findMany
+    if (!MongoService.instance.isConnected) {
+      debugPrint('[Auth][normalizeRole] MongoDB tidak terkoneksi, skip cloud normalization');
+      return;
+    }
+
     try {
       final users = await MongoService.instance.findMany(
         collectionName: AppConstants.usersCollection,
@@ -704,6 +710,12 @@ class AuthController {
       }
     }
 
+    // Check if MongoDB is connected before attempting operations
+    if (!MongoService.instance.isConnected) {
+      debugPrint('[Auth][syncUpsert] MongoDB tidak terkoneksi, skip upsert');
+      return false;
+    }
+
     try {
       final existing = await MongoService.instance.findOne(
         collectionName: AppConstants.usersCollection,
@@ -806,6 +818,12 @@ class AuthController {
           '[Auth][login] cloud API read failed, fallback to MongoService: $e',
         );
       }
+    }
+
+    // Check if MongoDB is connected before attempting to query
+    if (!MongoService.instance.isConnected) {
+      debugPrint('[Auth][login] MongoDB tidak terkoneksi, skipping mongo_dart query');
+      return null;
     }
 
     try {

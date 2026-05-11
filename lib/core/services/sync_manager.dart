@@ -75,7 +75,12 @@ class SyncManager {
     Connectivity().checkConnectivity().then((results) {
       if (results.any((r) => r != ConnectivityResult.none)) {
         debugPrint('[SyncManager] 🌐 koneksi awal tersedia → trigger syncAll()');
-        syncAll();
+        // Ensure MongoDB is connected before syncing
+        MongoService.instance.ensureConnected().then((_) {
+          syncAll();
+        }).catchError((e) {
+          debugPrint('[SyncManager] ❌ MongoDB tidak siap untuk sync awal: $e');
+        });
       }
     });
   }
@@ -95,7 +100,12 @@ class SyncManager {
 
     if (isOnline) {
       debugPrint('[SyncManager] 🌐 koneksi tersedia → trigger syncAll()');
-      syncAll();
+      // Ensure MongoDB is connected before syncing
+      MongoService.instance.ensureConnected().then((_) {
+        syncAll();
+      }).catchError((e) {
+        debugPrint('[SyncManager] ⚠️ MongoDB tidak siap untuk sync: $e');
+      });
     } else {
       debugPrint('[SyncManager] 📴 offline — sync ditunda.');
     }
