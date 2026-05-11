@@ -4,6 +4,7 @@ import '../../../core/services/hive_service.dart';
 import '../../attendance/scan_screen.dart';
 import '../../event/event_form_view.dart';
 import '../../member/member_list_view.dart';
+import '../../dashboard/manage_invitations_view.dart';
 import '../../event/event_controller.dart';
 import '../../../models/event_model.dart';
 
@@ -113,7 +114,7 @@ class _ExecutiveDashboardSectionState extends State<ExecutiveDashboardSection> {
                   Navigator.push(context, MaterialPageRoute(builder: (_) => const EventFormView()));
                 }),
                 _menuAction(context, 'Undangan', Icons.mail, const Color(0xFFF59E0B), const Color(0xFFFFF7ED), () {
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => const MemberListView()));
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const ManageInvitationsView()));
                 }),
                 _menuAction(context, 'Anggota', Icons.people, const Color(0xFF7C3AED), const Color(0xFFEDE9FE), () {
                   Navigator.push(context, MaterialPageRoute(builder: (_) => const MemberListView()));
