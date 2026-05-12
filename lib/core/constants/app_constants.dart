@@ -30,6 +30,7 @@ class AppConstants {
   static const String eventsCollection = 'events';
   static const String attendanceCollection = 'attendance';
   static const String permissionsCollection = 'permissions';
+  static const String invitationsCollection = 'invitations';
 
   // ─── QR Code Format ──────────────────────────────
   // Format QR: "PRASASTI:{nim}"
