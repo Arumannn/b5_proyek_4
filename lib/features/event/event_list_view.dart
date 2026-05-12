@@ -165,6 +165,7 @@ class _EventListViewState extends State<EventListView> {
       lokasi: result.lokasi,
       deskripsi: result.deskripsi,
       targetPeserta: result.targetPeserta,
+      penyelenggara: result.penyelenggara,
     );
 
     if (!mounted) return;
@@ -765,6 +766,7 @@ class _EventListViewState extends State<EventListView> {
       lokasi: result.lokasi,
       deskripsi: result.deskripsi,
       targetPeserta: result.targetPeserta,
+      penyelenggara: result.penyelenggara,
     );
 
     if (!mounted) return;

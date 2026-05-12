@@ -283,22 +283,15 @@ class _ManageInvitationsViewState extends State<ManageInvitationsView> {
                                       Colors.grey.shade600,
                                     ),
                                     const SizedBox(width: 8),
-                                    _roleChip(
-                                      'Member',
-                                      selected == 'Member',
-                                      const Color(0xFF2563EB),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    _roleChip(
-                                      'Manager',
-                                      selected == 'Manager',
-                                      const Color(0xFF7C3AED),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    _roleChip(
-                                      'Executive',
-                                      selected == 'Executive',
-                                      const Color(0xFF0EA5A4),
+                                    ...AppConstants.penyelenggaraOptions.map(
+                                      (option) => Padding(
+                                        padding: const EdgeInsets.only(right: 8),
+                                        child: _roleChip(
+                                          option,
+                                          selected == option,
+                                          const Color(0xFF2563EB),
+                                        ),
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -674,7 +667,7 @@ class _ManageInvitationsViewState extends State<ManageInvitationsView> {
     final roleFilter = _selectedRoleFilter.value;
     final members = HiveService.members.values.where((m) {
       if (roleFilter == 'Semua') return true;
-      return m.role.toLowerCase() == roleFilter.toLowerCase();
+      return m.divisi == roleFilter;
     }).toList();
 
     if (members.isEmpty) {

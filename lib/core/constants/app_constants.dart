@@ -111,4 +111,18 @@ class AppConstants {
     'Kegiatan',
     'Lainnya',
   ];
+
+  // ─── Penyelenggara (Organizer Tag) ──────────────
+  static const List<String> penyelenggaraOptions = [
+    'Biro Administrasi dan Kesekretariatan',
+    'Biro Kewirausahaan dan Keuangan',
+    'Departemen Komunikasi dan Informasi',
+    'Departemen Luar Himpunan',
+    'Departemen Pengembangan Sumber Daya Himpunan',
+    'Departemen Seni dan Olahraga',
+    'Departemen Keilmuan dan Keprofesian',
+    'Unit Teknologi',
+    'Badan Khusus Manajemen Sumber Daya Himpunan',
+    'Himpunan',
+  ];
 }

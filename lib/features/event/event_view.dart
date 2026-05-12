@@ -201,6 +201,7 @@ class _EventViewState extends State<EventView> {
             lokasi: form.lokasi,
             deskripsi: form.deskripsi,
             targetPeserta: form.targetPeserta,
+            penyelenggara: form.penyelenggara,
           )
         : await _controller.updateEvent(
             existing.copyWith(
@@ -211,6 +212,7 @@ class _EventViewState extends State<EventView> {
               lokasi: form.lokasi,
               deskripsi: form.deskripsi,
               targetPeserta: form.targetPeserta,
+              penyelenggara: form.penyelenggara,
             ),
           );
 
@@ -303,6 +305,7 @@ class _EventViewState extends State<EventView> {
     Set<String> targetDivisi = Set<String>.from(
       initial?.targetPeserta ?? const [],
     );
+    String? selectedPenyelenggara = initial?.penyelenggara;
 
     final allDbu = AppConstants.allDbuOptions;
 
@@ -367,6 +370,28 @@ class _EventViewState extends State<EventView> {
                             if (value == null) return;
                             setDialogState(() {
                               selectedJenis = value;
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          value: selectedPenyelenggara,
+                          decoration: const InputDecoration(
+                            labelText: 'Penyelenggara',
+                            prefixIcon: Icon(Icons.group_outlined),
+                          ),
+                          isExpanded: true,
+                          items: AppConstants.penyelenggaraOptions
+                              .map(
+                                (p) => DropdownMenuItem<String>(
+                                  value: p,
+                                  child: Text(p),
+                                ),
+                              )
+                              .toList(growable: false),
+                          onChanged: (value) {
+                            setDialogState(() {
+                              selectedPenyelenggara = value;
                             });
                           },
                         ),
@@ -504,6 +529,7 @@ class _EventViewState extends State<EventView> {
                             ? null
                             : descController.text.trim(),
                         targetPeserta: targetDivisi.toList(growable: false),
+                        penyelenggara: selectedPenyelenggara,
                       ),
                     );
                   },
@@ -882,6 +908,7 @@ class _EventFormData {
     this.lokasi,
     this.deskripsi,
     this.targetPeserta = const <String>[],
+    this.penyelenggara,
   });
 
   final String name;
@@ -891,4 +918,5 @@ class _EventFormData {
   final String? lokasi;
   final String? deskripsi;
   final List<String> targetPeserta;
+  final String? penyelenggara;
 }

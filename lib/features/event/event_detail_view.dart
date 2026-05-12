@@ -199,6 +199,14 @@ class EventDetailView extends StatelessWidget {
                           ? 'Semua anggota'
                           : '${event.targetPeserta.length} anggota diundang',
                     ),
+                    if (event.penyelenggara != null && event.penyelenggara!.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      _buildInfoRow(
+                        icon: Icons.group_outlined,
+                        title: 'Penyelenggara',
+                        value: event.penyelenggara!,
+                      ),
+                    ],
                     const SizedBox(height: 24),
 
                     Container(

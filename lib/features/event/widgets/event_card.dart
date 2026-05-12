@@ -180,6 +180,24 @@ class EventCard extends StatelessWidget {
                   ),
                 ),
               ),
+              if (event.penyelenggara != null && event.penyelenggara!.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.teal.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    event.penyelenggara!,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.teal,
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 10),
               // ── Header Row ────────────────────────────
               Row(

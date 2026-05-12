@@ -23,6 +23,7 @@ class EventFormValue {
   final String? lokasi;
   final String? deskripsi;
   final List<String> targetPeserta;
+  final String? penyelenggara;
 
   const EventFormValue({
     required this.name,
@@ -35,6 +36,7 @@ class EventFormValue {
     this.lokasi,
     this.deskripsi,
     this.targetPeserta = const [],
+    this.penyelenggara,
   });
 }
 
@@ -74,6 +76,7 @@ class _EventFormViewState extends State<EventFormView> {
   String? _parentId;
   late String _selectedJenis;
   late List<String> _selectedTargetIds;
+  String? _selectedPenyelenggara;
 
   final _formKey = GlobalKey<FormState>();
 
@@ -108,6 +111,7 @@ class _EventFormViewState extends State<EventFormView> {
     _parentId = widget.initialValue?.parentId;
     _selectedJenis = widget.initialValue?.jenis ?? 'Kegiatan';
     _selectedTargetIds = List<String>.from(widget.initialValue?.targetPeserta ?? []);
+    _selectedPenyelenggara = widget.initialValue?.penyelenggara;
   }
 
   @override
@@ -233,6 +237,7 @@ class _EventFormViewState extends State<EventFormView> {
             ? null 
             : _deskripsiController.text.trim(),
         targetPeserta: _selectedTargetIds,
+        penyelenggara: _selectedPenyelenggara,
       ),
     );
   }
@@ -377,6 +382,25 @@ class _EventFormViewState extends State<EventFormView> {
                             _selectedJenis = value;
                           });
                         }
+                      },
+                    ),
+                    const SizedBox(height: 16),
+
+                    _buildInputLabel('Penyelenggara'),
+                    DropdownButtonFormField<String>(
+                      value: _selectedPenyelenggara,
+                      decoration: _inputDecoration(hintText: 'Pilih penyelenggara'),
+                      isExpanded: true,
+                      items: AppConstants.penyelenggaraOptions
+                          .map((p) => DropdownMenuItem<String>(
+                                value: p,
+                                child: Text(p, style: const TextStyle(fontSize: 14)),
+                              ))
+                          .toList(),
+                      onChanged: (value) {
+                        setState(() {
+                          _selectedPenyelenggara = value;
+                        });
                       },
                     ),
                     const SizedBox(height: 16),

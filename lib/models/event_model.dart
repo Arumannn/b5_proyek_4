@@ -50,6 +50,9 @@ class EventModel extends HiveObject {
   @HiveField(14)
   String statusEvent;
 
+  @HiveField(15)
+  final String? penyelenggara;
+
   EventModel({
     required this.eventId,
     this.parentEventId,
@@ -66,6 +69,7 @@ class EventModel extends HiveObject {
     this.jamSelesai,
     this.lokasi,
     String? statusEvent,
+    this.penyelenggara,
   })  : targetPeserta = targetPeserta ?? [],
         createdAt = createdAt ?? DateTime.now(),
         statusEvent = statusEvent ??
@@ -130,6 +134,7 @@ class EventModel extends HiveObject {
       'jamMulai': jamMulai?.toIso8601String(),
       'lokasi': lokasi,
       'statusEvent': statusEvent,
+      'penyelenggara': penyelenggara,
     };
   }
 
@@ -158,6 +163,7 @@ class EventModel extends HiveObject {
       jamMulai: parsedJamMulai,
       lokasi: map['lokasi']?.toString(),
       statusEvent: map['statusEvent']?.toString(),
+      penyelenggara: map['penyelenggara']?.toString(),
     );
   }
 
@@ -177,6 +183,7 @@ class EventModel extends HiveObject {
     DateTime? jamSelesai,
     String? lokasi,
     String? statusEvent,
+    String? penyelenggara,
   }) {
     return EventModel(
       eventId: eventId ?? this.eventId,
@@ -194,6 +201,7 @@ class EventModel extends HiveObject {
       jamSelesai: jamSelesai ?? this.jamSelesai,
       lokasi: lokasi ?? this.lokasi,
       statusEvent: statusEvent ?? this.statusEvent,
+      penyelenggara: penyelenggara ?? this.penyelenggara,
     );
   }
 }
