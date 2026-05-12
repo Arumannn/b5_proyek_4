@@ -6,15 +6,12 @@ import '../../core/services/mongo_service.dart';
 import '../../core/utils/network_status_controller.dart';
 import '../../widgets/custom_snackbar.dart';
 import '../../widgets/white_status_header.dart';
-import '../../widgets/sectioned_list_body.dart';
 import '../auth/auth_controller.dart';
 import '../auth/user_management_view.dart';
 import 'member_form_view.dart';
 import 'member_controller.dart';
 import '../../models/member_model.dart';
 import 'widgets/member_card.dart';
-import 'widgets/member_search_bar.dart';
-import 'widgets/member_role_filter.dart';
 
 class MemberListView extends StatefulWidget {
   final bool showBottomNav;
@@ -247,57 +244,87 @@ class _MemberListViewState extends State<MemberListView> {
               ]
             : [],
       ),
-      backgroundColor: const Color(0xFFF3F7FD),
+      backgroundColor: const Color(0xFFF9FAFB), // bg-gray-50
       body: SafeArea(
-        child: SectionedListBody(
-          searchArea: _buildSearchBarCard(),
-          filterArea: _buildFilterChips(),
-          content: _buildMemberList(),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSearchBarCard() {
-    return MemberSearchBar(controller: _searchController);
-  }
-
-  Widget _buildFilterChips() {
-    return MemberRoleFilter(controller: _controller);
-  }
-
-  Widget _buildMemberList() {
-    return RefreshIndicator(
-      onRefresh: () => _loadMembers(syncFromCloud: true),
-      child: ValueListenableBuilder<List<MemberModel>>(
-        valueListenable: _controller.filteredMembers,
-        builder: (context, filtered, child) {
-          if (filtered.isEmpty) {
-            return ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              children: [
-                SizedBox(height: MediaQuery.of(context).size.height * 0.3),
-                const Center(
-                  child: Text('Tidak ada anggota yang cocok', style: TextStyle(color: Colors.grey, fontSize: 16)),
+        child: Column(
+          children: [
+            // Search Bar Area
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), // px-4 py-3
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade200), // border-b border-gray-200
                 ),
-              ],
-            );
-          }
-          return ListView.builder(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-            itemCount: filtered.length,
-            itemBuilder: (context, index) {
-              final member = filtered[index];
-              return MemberCard(
-                member: member,
-                isExecutive: _isExecutive,
-                onEdit: () => _editMember(member),
-                onDelete: () => _deleteMember(member),
-              );
-            },
-          );
-        },
+              ),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF3F4F6), // bg-gray-100
+                  borderRadius: BorderRadius.circular(12), // rounded-xl
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  style: const TextStyle(
+                    color: Color(0xFF1F2937), // text-gray-800
+                    fontSize: 14, // text-sm
+                  ),
+                  decoration: const InputDecoration(
+                    hintText: 'Cari nama, NIM, atau peran...',
+                    hintStyle: TextStyle(color: Color(0xFF9CA3AF), fontSize: 14),
+                    prefixIcon: Icon(Icons.search, size: 18, color: Color(0xFF9CA3AF)), // text-gray-400
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12), // py-2.5
+                  ),
+                ),
+              ),
+            ),
+            
+            // List Area
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: () => _loadMembers(syncFromCloud: true),
+                child: ValueListenableBuilder<List<MemberModel>>(
+                  valueListenable: _controller.filteredMembers,
+                  builder: (context, filtered, child) {
+                    if (filtered.isEmpty) {
+                      return ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        children: [
+                          SizedBox(height: MediaQuery.of(context).size.height * 0.3),
+                          const Center(
+                            child: Text(
+                              'Tidak ada anggota yang ditemukan.',
+                              style: TextStyle(
+                                color: Color(0xFF6B7280), // text-gray-500
+                                fontSize: 14, // text-sm
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    }
+                    return ListView.separated(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.all(16), // p-4
+                      itemCount: filtered.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 12), // space-y-3 equivalent
+                      itemBuilder: (context, index) {
+                        final member = filtered[index];
+                        return MemberCard(
+                          member: member,
+                          isExecutive: _isExecutive,
+                          onEdit: () => _editMember(member),
+                          onDelete: () => _deleteMember(member),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+            ),
+            if (widget.showBottomNav) const SizedBox(height: 80), // pb-20 equivalent for bottom padding if needed
+          ],
+        ),
       ),
     );
   }

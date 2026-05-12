@@ -7,6 +7,9 @@ import '../../member/member_list_view.dart';
 import '../../dashboard/manage_invitations_view.dart';
 import '../../event/event_controller.dart';
 import '../../../models/event_model.dart';
+import '../../event/event_detail_view.dart';
+import '../../../core/constants/app_constants.dart';
+import '../../auth/auth_controller.dart';
 
 class ExecutiveDashboardSection extends StatefulWidget {
   const ExecutiveDashboardSection({super.key});
@@ -236,10 +239,23 @@ class _ExecutiveDashboardSectionState extends State<ExecutiveDashboardSection> {
   }
 
   Widget _ongoingEventCard(BuildContext context, EventModel event, {bool highlight = false}) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade100)),
+    return GestureDetector(
+      onTap: () {
+        final role = AuthController.instance.currentUser.value?.role ?? AppConstants.roleMember;
+        Navigator.push(
+          context,
+          MaterialPageRoute<void>(
+            builder: (_) => EventDetailView(
+              event: event,
+              userRole: role,
+            ),
+          ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade100)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -283,6 +299,6 @@ class _ExecutiveDashboardSectionState extends State<ExecutiveDashboardSection> {
           ),
         ],
       ),
-    );
+    ));
   }
 }

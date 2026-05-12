@@ -1,35 +1,15 @@
-// ignore_for_file: unused_element
-
 import 'package:flutter/material.dart';
 import '../../core/constants/app_constants.dart';
 import '../../models/event_model.dart';
 import '../../core/utils/network_status_controller.dart';
-import '../../widgets/sectioned_list_body.dart';
 import '../../widgets/white_status_header.dart';
-import '../../widgets/loading_overlay.dart';
-import '../../widgets/custom_snackbar.dart';
-import '../../widgets/empty_state_widget.dart';
-import '../attendance/scan_screen.dart';
 import '../auth/auth_controller.dart';
 import 'event_controller.dart';
 import 'event_detail_view.dart';
 import 'event_form_view.dart';
 import 'event_permission.dart';
-import 'widgets/event_card.dart';
-import 'widgets/event_filter_chips.dart';
-import 'widgets/event_search_bar.dart';
-import 'widgets/event_list_card.dart';
 import 'widgets/event_list_utilities.dart';
 
-/// Layar daftar event (Executive) — Enhanced Week 9 Sub-Tahap B
-///
-/// FITUR BARU:
-/// - Expandable Main Event dengan Sub-Event
-/// - Filter berdasarkan jenis dan range tanggal
-/// - Search bar untuk cari event
-/// - Empty state yang informatif
-/// - Chip untuk menampilkan filter aktif
-/// - Better UX dengan animasi smooth
 class EventListView extends StatefulWidget {
   final bool showBottomNav;
 
@@ -41,27 +21,26 @@ class EventListView extends StatefulWidget {
 
 class _EventListViewState extends State<EventListView> {
   final EventController _controller = EventController.instance;
-  final Map<String, bool> _expandedState = {}; // Track expanded/collapsed state
   final TextEditingController _searchController = TextEditingController();
+  String _activeTab = 'berlangsung'; // 'berlangsung', 'mendatang', 'selesai'
+  String _searchQuery = '';
 
   String get _role =>
-      (AuthController.instance.currentUser.value?.role ?? AppConstants.roleMember)
+      (AuthController.instance.currentUser.value?.role ??
+              AppConstants.roleMember)
           .trim()
-          .toLowerCase(); // RBAC: gunakan role user login aktif untuk kontrol UI aksi.
+          .toLowerCase();
 
-  bool get _canCreateMainEvent => EventPermission.canCreateMainEvent(_role); // RBAC: Main event CREATE hanya Executive.
-  bool get _canUpdateMainEvent => EventPermission.canUpdateMainEvent(_role); // RBAC: Main event UPDATE hanya Executive.
-  bool get _canDeleteMainEvent => EventPermission.canDeleteMainEvent(_role); // RBAC: Main event DELETE hanya Executive.
-  bool get _canCreateSubEvent => EventPermission.canCreateSubEvent(_role); // RBAC: Sub-event CREATE untuk Executive/Manager.
-  bool get _canUpdateSubEvent => EventPermission.canUpdateSubEvent(_role); // RBAC: Sub-event UPDATE untuk Executive/Manager.
-  bool get _canDeleteSubEvent => EventPermission.canDeleteSubEvent(_role); // RBAC: Sub-event DELETE untuk Executive/Manager.
+  bool get _canCreateMainEvent => EventPermission.canCreateMainEvent(_role);
 
   @override
   void initState() {
     super.initState();
     _controller.loadEvents();
     _searchController.addListener(() {
-      _controller.setSearchQuery(_searchController.text);
+      setState(() {
+        _searchQuery = _searchController.text.toLowerCase();
+      });
     });
   }
 
@@ -78,72 +57,13 @@ class _EventListViewState extends State<EventListView> {
         .toList();
   }
 
-  // ═══════════════════════════════════════════════════════════════
-  // FILTER ACTIONS
-  // ═══════════════════════════════════════════════════════════════
-
-  Future<void> _showJenisFilter() async {
-    final selected = await showDialog<String>(
-      context: context,
-      builder: (dialogContext) {
-        return SimpleDialog(
-          title: const Text('Filter Jenis Event'),
-          children: [
-            SimpleDialogOption(
-              onPressed: () => Navigator.pop(dialogContext, null),
-              child: const Text('Semua Jenis'),
-            ),
-            const Divider(),
-            ..._controller.events.value
-                .map((e) => e.jenis)
-                .toSet()
-                .map((jenis) {
-              return SimpleDialogOption(
-                onPressed: () => Navigator.pop(dialogContext, jenis),
-                child: Text(jenis),
-              );
-            }),
-          ],
-        );
-      },
-    );
-
-    if (selected != null || selected == null) {
-      _controller.setJenisFilter(selected);
-    }
-  }
-
-  Future<void> _showDateRangeFilter() async {
-    final picked = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2100),
-      currentDate: DateTime.now(),
-      saveText: 'Terapkan',
-      helpText: 'Pilih Range Tanggal',
-      cancelText: 'Batal',
-      fieldStartLabelText: 'Dari',
-      fieldEndLabelText: 'Sampai',
-    );
-
-    if (picked != null) {
-      _controller.setDateRangeFilter(picked);
-    }
-  }
-
-  void _clearAllFilters() {
-    _searchController.clear();
-    _controller.clearAllFilters();
-    CustomSnackbar.showInfo(context, 'Filter dibersihkan');
-  }
-
-  // ═══════════════════════════════════════════════════════════════
-  // EVENT CRUD ACTIONS
-  // ═══════════════════════════════════════════════════════════════
-
   Future<void> _addEvent() async {
     if (!_canCreateMainEvent) {
-      CustomSnackbar.showError(context, 'Anda tidak memiliki izin membuat main event.'); // RBAC: cegah CREATE main event tanpa izin.
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Anda tidak memiliki izin membuat event.'),
+        ),
+      );
       return;
     }
 
@@ -151,7 +71,7 @@ class _EventListViewState extends State<EventListView> {
       context,
       MaterialPageRoute<EventFormValue>(
         builder: (_) => EventFormView(
-          title: 'Tambah Event',
+          title: 'Buat Event Baru',
           parentOptions: _parentOptions,
         ),
       ),
@@ -173,180 +93,16 @@ class _EventListViewState extends State<EventListView> {
 
     if (!mounted) return;
     if (success) {
-      CustomSnackbar.showSuccess(context, 'Event berhasil ditambahkan.');
-    } else {
-      CustomSnackbar.showError(
-        context,
-        _controller.errorMessage.value ?? 'Gagal menambah event.',
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Event berhasil ditambahkan.')),
       );
-    }
-  }
-
-  Future<void> _editEvent(EventModel target) async {
-    final isSubEvent = target.parentEventId != null; // RBAC: UPDATE permission ditentukan dari scope event.
-    if (!isSubEvent && !_canUpdateMainEvent) {
-      CustomSnackbar.showError(context, 'Anda tidak memiliki izin mengubah main event.'); // RBAC: cegah UPDATE main event tanpa izin.
-      return;
-    }
-    if (isSubEvent && !_canUpdateSubEvent) {
-      CustomSnackbar.showError(context, 'Anda tidak memiliki izin mengubah sub-event.'); // RBAC: cegah UPDATE sub-event tanpa izin.
-      return;
-    }
-
-    final result = await Navigator.push<EventFormValue>(
-      context,
-      MaterialPageRoute<EventFormValue>(
-        builder: (_) => EventFormView(
-          title: 'Edit Event',
-          canChangeHierarchy: false,
-          parentOptions: _parentOptions,
-          initialValue: EventFormValue(
-            name: target.nama,
-            date: target.tanggalMulai,
-            endDate: target.tanggalSelesai,
-            jamSelesai: target.jamSelesai,
-            isSubEvent: isSubEvent,
-            parentId: target.parentEventId,
-            jenis: target.jenis,
-            lokasi: target.lokasi,
-            targetPeserta: target.targetPeserta,
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _controller.errorMessage.value ?? 'Gagal menambah event.',
           ),
         ),
-      ),
-    );
-
-    if (result == null) return;
-
-    final success = await _controller.updateEvent(
-      target.copyWith(
-        nama: result.name,
-        tanggalMulai: result.date,
-        tanggalSelesai: result.endDate,
-        jamSelesai: result.jamSelesai,
-        jenis: result.jenis,
-        lokasi: result.lokasi,
-        targetPeserta: result.targetPeserta,
-      ),
-    );
-
-    if (!mounted) return;
-    if (success) {
-      CustomSnackbar.showSuccess(context, 'Event berhasil diubah.');
-    } else {
-      CustomSnackbar.showError(
-        context,
-        _controller.errorMessage.value ?? 'Gagal mengubah event.',
-      );
-    }
-  }
-
-  Future<void> _deleteEvent(EventModel target) async {
-    final isSubEvent = target.parentEventId != null; // RBAC: DELETE permission ditentukan dari scope event.
-    if (!isSubEvent && !_canDeleteMainEvent) {
-      CustomSnackbar.showError(context, 'Anda tidak memiliki izin menghapus main event.'); // RBAC: cegah DELETE main event tanpa izin.
-      return;
-    }
-    if (isSubEvent && !_canDeleteSubEvent) {
-      CustomSnackbar.showError(context, 'Anda tidak memiliki izin menghapus sub-event.'); // RBAC: cegah DELETE sub-event tanpa izin.
-      return;
-    }
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Hapus Event'),
-          content: Text('Yakin ingin menghapus "${target.nama}"?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Batal'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.red,
-              ),
-              child: const Text('Hapus'),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (confirmed != true) return;
-
-    final success = await _controller.deleteEvent(target.eventId);
-
-    if (!mounted) return;
-    if (success) {
-      CustomSnackbar.showSuccess(context, 'Event berhasil dihapus.');
-    } else {
-      CustomSnackbar.showError(
-        context,
-        _controller.errorMessage.value ?? 'Gagal menghapus event.',
-      );
-    }
-  }
-
-  // ═══════════════════════════════════════════════════════════════
-  // HELPER METHODS
-  // ═══════════════════════════════════════════════════════════════
-
-  void _updateExpandedState(String eventId, bool expanded) {
-    setState(() {
-      _expandedState[eventId] = expanded;
-    });
-  }
-
-
-  Future<void> _addSubEvent(EventModel parentEvent) async {
-    if (!_canCreateSubEvent) {
-      CustomSnackbar.showError(context, 'Anda tidak memiliki izin membuat sub-event.'); // RBAC: cegah CREATE sub-event tanpa izin.
-      return;
-    }
-
-    final result = await Navigator.push<EventFormValue>(
-      context,
-      MaterialPageRoute<EventFormValue>(
-        builder: (_) => EventFormView(
-          title: 'Tambah Sub Event',
-          canChangeHierarchy: false,
-          parentOptions: _parentOptions,
-          initialValue: EventFormValue(
-            name: '',
-            date: DateTime.now(),
-            endDate: DateTime.now().add(const Duration(hours: 1)),
-            isSubEvent: true,
-            parentId: parentEvent.eventId,
-          ),
-        ),
-      ),
-    );
-
-    if (result == null) return;
-
-    final success = await _controller.createEvent(
-      nama: result.name,
-      tanggalMulai: result.date,
-      tanggalSelesai: result.endDate,
-      parentEventId: parentEvent.eventId,
-      jenis: result.jenis,
-      lokasi: result.lokasi,
-      deskripsi: result.deskripsi,
-      targetPeserta: result.targetPeserta,
-    );
-
-    if (!mounted) return;
-    if (success) {
-      setState(() {
-        _expandedState[parentEvent.eventId] = true; // Auto-expand after add
-      });
-      CustomSnackbar.showSuccess(context, 'Sub event berhasil ditambahkan.');
-    } else {
-      CustomSnackbar.showError(
-        context,
-        _controller.errorMessage.value ?? 'Gagal menambah sub event.',
       );
     }
   }
@@ -355,103 +111,17 @@ class _EventListViewState extends State<EventListView> {
     return EventListUtilities.formatDate(date);
   }
 
-  String _formatDateTime(DateTime date) {
-    return EventListUtilities.formatDateTime(date);
-  }
-
-  Color _getJenisColor(String jenis) {
-    return EventListUtilities.getJenisColor(jenis);
-  }
-
-  Widget _buildEventListBuilder(
-    BuildContext context,
-    List<EventModel> rootEvents,
-  ) {
-    if (rootEvents.isEmpty) {
-      return ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        children: [
-          SizedBox(height: MediaQuery.of(context).size.height * 0.2),
-          EmptyStateWidget(
-            icon: _controller.hasActiveFilters
-                ? Icons.filter_list_off
-                : Icons.event_busy,
-            title: _controller.hasActiveFilters
-                ? 'Tidak ada event yang cocok'
-                : 'Belum ada event',
-            subtitle: _controller.hasActiveFilters
-                ? 'Coba ubah filter atau reset untuk melihat semua event'
-                : 'Tekan tombol + untuk menambah event pertama',
-            action: _controller.hasActiveFilters
-                ? FilledButton.icon(
-                    onPressed: _clearAllFilters,
-                    icon: const Icon(Icons.clear_all),
-                    label: const Text('Reset Filter'),
-                  )
-                : null,
-          ),
-        ],
-      );
-    }
-
-    return RefreshIndicator(
-      onRefresh: () => _controller.loadEvents(force: true, cloudSync: true),
-      child: ListView.builder(
-        itemCount: rootEvents.length,
-        itemBuilder: (_, index) {
-          final event = rootEvents[index];
-          final subEvents =
-              _controller.getSubEvents(event.eventId);
-
-          return EventListCard(
-            event: event,
-            subEvents: subEvents,
-            onAddSubEvent: () => _addSubEvent(event),
-            onEditEvent: () => _editEvent(event),
-            onDeleteEvent: () => _deleteEvent(event),
-            onScanEvent: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute<void>(
-                  builder: (_) =>
-                      ScanScreen(eventId: event.eventId),
-                ),
-              );
-            },
-            onEditSubEvent: _editEvent,
-            onDeleteSubEvent: _deleteEvent,
-            onScanSubEvent: (subEvent) {
-              Navigator.push(
-                context,
-                MaterialPageRoute<void>(
-                  builder: (_) =>
-                      ScanScreen(eventId: subEvent.eventId),
-                ),
-              );
-            },
-            getJenisColor: EventListUtilities.getJenisColor,
-            formatDate: EventListUtilities.formatDate,
-            formatDateTime: EventListUtilities.formatDateTime,
-            canCreateSubEvent: _canCreateSubEvent,
-            canUpdateMainEvent: _canUpdateMainEvent,
-            canDeleteMainEvent: _canDeleteMainEvent,
-            canUpdateSubEvent: _canUpdateSubEvent,
-            canDeleteSubEvent: _canDeleteSubEvent,
-            expandedState: _expandedState,
-            onExpandedChanged: (expanded) =>
-                _updateExpandedState(event.eventId, expanded),
-          );
-        },
-      ),
-    );
+  String _formatTime(DateTime date) {
+    // Basic time formatting HH:MM
+    return '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: WhiteStatusHeader(
-        title: 'Daftar Event',
-        subtitle: 'Kelola main event dan sub-event',
+        title: 'Katalog Event',
+        subtitle: 'Daftar semua kegiatan HIMAKOM',
         statusBadge: ValueListenableBuilder<bool>(
           valueListenable: NetworkStatusController.instance.isOnline,
           builder: (context, isOnline, _) {
@@ -475,9 +145,7 @@ class _EventListViewState extends State<EventListView> {
                   ),
                   const SizedBox(width: 5),
                   Text(
-                    isOnline
-                        ? 'TERSINKRONISASI'
-                        : 'OFFLINE (SIMPAN LOKAL)',
+                    isOnline ? 'TERSINKRONISASI' : 'OFFLINE (SIMPAN LOKAL)',
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w800,
@@ -500,45 +168,331 @@ class _EventListViewState extends State<EventListView> {
             ),
         ],
       ),
-      floatingActionButton: _canCreateMainEvent
-          ? FloatingActionButton.extended(
-              onPressed: _addEvent,
-              icon: const Icon(Icons.add),
-              label: const Text('Tambah Event'),
-            )
-          : null,
-      body: ValueListenableBuilder<bool>(
-        valueListenable: _controller.isLoading,
-        builder: (context, isLoading, _) {
-          return LoadingOverlay(
-            isLoading: isLoading,
-            message: 'Memuat event...',
-            child: ValueListenableBuilder<List<EventModel>>(
-              valueListenable: _controller.events,
-              builder: (context, allEvents, _) {
-                final rootEvents = _controller.getRootEvents();
+      backgroundColor: const Color(0xFFF9FAFB), // bg-gray-50
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Search Bar & Tabs Area
+            Container(
+              padding: const EdgeInsets.fromLTRB(
+                16,
+                16,
+                16,
+                8,
+              ), // px-4 pt-4 pb-2
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border(
+                  bottom: BorderSide(
+                    color: Colors.grey.shade200,
+                  ), // border-b border-gray-200
+                ),
+              ),
+              child: Column(
+                children: [
+                  // Search Input
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 12), // mb-3
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF3F4F6), // bg-gray-100
+                      borderRadius: BorderRadius.circular(12), // rounded-xl
+                    ),
+                    child: TextField(
+                      controller: _searchController,
+                      style: const TextStyle(
+                        color: Color(0xFF1F2937), // text-gray-800
+                        fontSize: 14, // text-sm
+                      ),
+                      decoration: const InputDecoration(
+                        hintText: 'Cari nama event...',
+                        hintStyle: TextStyle(
+                          color: Color(0xFF9CA3AF),
+                          fontSize: 14,
+                        ),
+                        prefixIcon: Icon(
+                          Icons.search,
+                          size: 18,
+                          color: Color(0xFF9CA3AF),
+                        ), // text-gray-400
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ), // py-2.5
+                      ),
+                    ),
+                  ),
 
-                return SectionedListBody(
-                  header: const SizedBox.shrink(),
-                  searchBar: EventSearchBar(
-                    controller: _searchController,
+                  // Tabs
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: ['berlangsung', 'mendatang', 'selesai'].map((
+                        tab,
+                      ) {
+                        final isActive = _activeTab == tab;
+                        return Padding(
+                          padding: const EdgeInsets.only(
+                            right: 8,
+                          ), // space-x-2 equivalent
+                          child: InkWell(
+                            onTap: () => setState(() => _activeTab = tab),
+                            borderRadius: BorderRadius.circular(999),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ), // px-4 py-2
+                              decoration: BoxDecoration(
+                                color: isActive
+                                    ? const Color(0xFF2563EB)
+                                    : const Color(
+                                        0xFFF3F4F6,
+                                      ), // bg-blue-600 : bg-gray-100
+                                borderRadius: BorderRadius.circular(
+                                  999,
+                                ), // rounded-full
+                              ),
+                              child: Text(
+                                tab[0].toUpperCase() +
+                                    tab.substring(1), // capitalize
+                                style: TextStyle(
+                                  fontSize: 14, // text-sm
+                                  fontWeight: FontWeight.w500, // font-medium
+                                  color: isActive
+                                      ? Colors.white
+                                      : const Color(
+                                          0xFF4B5563,
+                                        ), // text-white : text-gray-600
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
                   ),
-                  filterArea: EventFilterChips(
-                    controller: _controller,
-                    onJenisFilterTap: _showJenisFilter,
-                    onDateFilterTap: _showDateRangeFilter,
-                    onClearFilters: _clearAllFilters,
-                  ),
-                  listBuilder: (context) =>
-                      _buildEventListBuilder(context, rootEvents),
-                  emptyState: const SizedBox.shrink(),
-                  onRefresh: () =>
-                      _controller.loadEvents(force: true, cloudSync: true),
-                );
-              },
+                ],
+              ),
             ),
-          );
-        },
+
+            // List Area
+            Expanded(
+              child: ValueListenableBuilder<bool>(
+                valueListenable: _controller.isLoading,
+                builder: (context, isLoading, _) {
+                  if (isLoading) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  return ValueListenableBuilder<List<EventModel>>(
+                    valueListenable: _controller.events,
+                    builder: (context, allEvents, _) {
+                      // Filter events
+                      final filteredEvents = allEvents.where((e) {
+                        final statusMatches =
+                            (e.statusEvent.toLowerCase() == _activeTab);
+                        final searchMatches = e.nama.toLowerCase().contains(
+                          _searchQuery,
+                        );
+                        return statusMatches && searchMatches;
+                      }).toList();
+
+                      if (filteredEvents.isEmpty) {
+                        return Center(
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 40), // mt-10
+                            child: Text(
+                              'Tidak ada event yang sesuai dengan pencarian Anda.',
+                              style: TextStyle(
+                                color: const Color(0xFF6B7280), // text-gray-500
+                                fontSize: 14, // text-sm
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        );
+                      }
+
+                      return RefreshIndicator(
+                        onRefresh: () => _controller.loadEvents(
+                          force: true,
+                          cloudSync: true,
+                        ),
+                        child: ListView.separated(
+                          padding: const EdgeInsets.all(16), // p-4
+                          itemCount: filteredEvents.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 16), // space-y-4
+                          itemBuilder: (context, index) {
+                            final event = filteredEvents[index];
+                            final isSubEvent = event.parentEventId != null;
+                            final eventType = isSubEvent
+                                ? 'Sub-Event'
+                                : 'Event Utama';
+
+                            final dateStr = _formatDate(event.tanggalMulai);
+                            final timeStart = _formatTime(
+                              event.jamMulai ?? event.tanggalMulai,
+                            );
+                            final timeEnd = _formatTime(
+                              event.jamSelesai ??
+                                  (event.tanggalSelesai ??
+                                      event.tanggalMulai.add(
+                                        const Duration(hours: 1),
+                                      )),
+                            );
+                            final timeStr = '$timeStart - $timeEnd';
+                            final locationStr =
+                                (event.lokasi != null &&
+                                    event.lokasi!.trim().isNotEmpty)
+                                ? event.lokasi!
+                                : 'Lokasi belum ditentukan';
+
+                            return InkWell(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => EventDetailView(
+                                      event: event,
+                                      userRole: _role,
+                                    ),
+                                  ),
+                                );
+                              },
+                              borderRadius: BorderRadius.circular(12),
+                              child: Container(
+                                padding: const EdgeInsets.all(16), // p-4
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(
+                                    12,
+                                  ), // rounded-xl
+                                  border: Border.all(
+                                    color: Colors.grey.shade100,
+                                  ), // border-gray-100
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(
+                                        alpha: 0.03,
+                                      ),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 1), // shadow-sm
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          eventType.toUpperCase(),
+                                          style: const TextStyle(
+                                            fontSize: 10, // text-[10px]
+                                            fontWeight: FontWeight.bold,
+                                            color: Color(
+                                              0xFF6B7280,
+                                            ), // text-gray-500
+                                            letterSpacing:
+                                                0.5, // uppercase tracking
+                                          ),
+                                        ),
+                                        Text(
+                                          dateStr,
+                                          style: const TextStyle(
+                                            fontSize: 12, // text-xs
+                                            fontWeight: FontWeight
+                                                .w600, // font-semibold
+                                            color: Color(
+                                              0xFF1F2937,
+                                            ), // text-gray-800
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8), // mb-2
+                                    Text(
+                                      event.nama,
+                                      style: const TextStyle(
+                                        fontSize: 16, // text-base
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(
+                                          0xFF1F2937,
+                                        ), // text-gray-800
+                                      ),
+                                    ),
+                                    const SizedBox(
+                                      height: 8,
+                                    ), // mb-4 mapped to 8 + spacing
+                                    Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.schedule,
+                                          size: 12,
+                                          color: Color(0xFF9CA3AF),
+                                        ), // text-gray-400
+                                        const SizedBox(width: 8), // mr-2
+                                        Expanded(
+                                          child: Text(
+                                            timeStr,
+                                            style: const TextStyle(
+                                              fontSize: 12, // text-xs
+                                              color: Color(
+                                                0xFF4B5563,
+                                              ), // text-gray-600
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(
+                                      height: 4,
+                                    ), // space-y-1 equivalent
+                                    Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.location_on_outlined,
+                                          size: 12,
+                                          color: Color(0xFF9CA3AF),
+                                        ), // text-gray-400
+                                        const SizedBox(width: 8), // mr-2
+                                        Expanded(
+                                          child: Text(
+                                            locationStr,
+                                            style: const TextStyle(
+                                              fontSize: 12, // text-xs
+                                              color: Color(
+                                                0xFF4B5563,
+                                              ), // text-gray-600
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+            if (widget.showBottomNav)
+              const SizedBox(height: 80), // pb-20 equivalent
+          ],
+        ),
       ),
     );
   }

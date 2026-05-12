@@ -1,40 +1,82 @@
 import 'package:flutter/material.dart';
-
 import '../../core/services/hive_service.dart';
 import '../../models/attendance_record.dart';
 import '../../models/event_model.dart';
 import '../../models/member_model.dart';
 import '../../core/constants/app_constants.dart';
-import '../../widgets/gradient_header.dart';
+import '../attendance/scan_screen.dart';
+import '../auth/auth_controller.dart';
+import 'event_permission.dart';
+import 'event_controller.dart';
+import 'event_form_view.dart';
+import '../../widgets/custom_snackbar.dart';
 
-class EventDetailView extends StatelessWidget {
+class EventDetailView extends StatefulWidget {
   final EventModel event;
   final String userRole;
 
   const EventDetailView({
-    super.key, 
+    super.key,
     required this.event,
     required this.userRole,
   });
 
-  String _formatDateTime(DateTime value) {
+  @override
+  State<EventDetailView> createState() => _EventDetailViewState();
+}
+
+class _EventDetailViewState extends State<EventDetailView> {
+  late EventModel _currentEvent;
+  final EventController _controller = EventController.instance;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentEvent = widget.event;
+  }
+
+  bool get _canUpdate => widget.event.parentEventId == null 
+      ? EventPermission.canUpdateMainEvent(widget.userRole)
+      : EventPermission.canUpdateSubEvent(widget.userRole);
+
+  bool get _canDelete => widget.event.parentEventId == null
+      ? EventPermission.canDeleteMainEvent(widget.userRole)
+      : EventPermission.canDeleteSubEvent(widget.userRole);
+
+  bool get _canAddSubEvent => widget.event.parentEventId == null && EventPermission.canCreateSubEvent(widget.userRole);
+
+  String _formatDate(DateTime value) {
     final dd = value.day.toString().padLeft(2, '0');
-    final mm = value.month.toString().padLeft(2, '0');
+    final mm = _monthName(value.month);
     final yyyy = value.year.toString();
-    final hh = value.hour.toString().padLeft(2, '0');
-    final min = value.minute.toString().padLeft(2, '0');
-    return '$dd/$mm/$yyyy, $hh:$min WIB';
+    return '$dd $mm $yyyy';
+  }
+
+  String _formatTime(DateTime start, DateTime? end) {
+    final hhStart = start.hour.toString().padLeft(2, '0');
+    final minStart = start.minute.toString().padLeft(2, '0');
+    if (end == null) return '$hhStart:$minStart';
+    
+    final hhEnd = end.hour.toString().padLeft(2, '0');
+    final minEnd = end.minute.toString().padLeft(2, '0');
+    return '$hhStart:$minStart - $hhEnd:$minEnd';
+  }
+
+  String _monthName(int month) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    if (month >= 1 && month <= 12) return months[month - 1];
+    return '';
   }
 
   String _eventLocation() {
-    final lokasi = event.lokasi?.trim();
+    final lokasi = _currentEvent.lokasi?.trim();
     if (lokasi != null && lokasi.isNotEmpty) return lokasi;
     return 'Lokasi belum diatur';
   }
 
   List<AttendanceRecord> _attendanceRecords() {
     return HiveService.attendance.values
-        .where((r) => r.eventId == event.eventId)
+        .where((r) => r.eventId == _currentEvent.eventId)
         .toList(growable: false)
       ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
   }
@@ -52,424 +94,575 @@ class EventDetailView extends StatelessWidget {
     }).length;
   }
 
-  Widget _buildAgendaContent(String? raw) {
-    final normalized = (raw ?? '').trim();
-    if (normalized.isEmpty) {
-      return Text(
-        'Belum ada agenda.',
-        style: TextStyle(
-          fontSize: 14,
-          color: Colors.grey[600],
-          height: 1.4,
-        ),
-      );
-    }
-
-    final lines = normalized
-        .split('\n')
-        .map((line) => line.trim())
-        .where((line) => line.isNotEmpty)
-        .toList(growable: false);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: lines.map((line) {
-        final isBullet = line.startsWith('- ') ||
-            line.startsWith('* ') ||
-            line.startsWith('• ');
-        final text = isBullet ? line.substring(2).trim() : line;
-
-        if (!isBullet) {
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 6.0),
-            child: Text(
-              text,
-              style: const TextStyle(
-                fontSize: 14,
-                color: Colors.black87,
-                height: 1.4,
-              ),
+  Future<void> _deleteEvent() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Hapus Kegiatan'),
+          content: Text('Yakin ingin menghapus "${_currentEvent.nama}"?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Batal'),
             ),
-          );
-        }
-
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 6.0),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Padding(
-                padding: EdgeInsets.only(top: 6.0),
-                child: Icon(Icons.circle, size: 6, color: Colors.black54),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  text,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Colors.black87,
-                    height: 1.4,
-                  ),
-                ),
-              ),
-            ],
-          ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              style: FilledButton.styleFrom(backgroundColor: Colors.red),
+              child: const Text('Hapus'),
+            ),
+          ],
         );
-      }).toList(growable: false),
+      },
     );
+
+    if (confirmed != true || !mounted) return;
+
+    final ok = await _controller.deleteEvent(_currentEvent.eventId);
+    if (!mounted) return;
+
+    if (ok) {
+      CustomSnackbar.showSuccess(context, 'Kegiatan berhasil dihapus.');
+      Navigator.of(context).pop();
+    } else {
+      CustomSnackbar.showError(context, _controller.errorMessage.value ?? 'Gagal menghapus kegiatan.');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final records = _attendanceRecords();
     final memberByNim = _memberByNim();
+    
     final hadirCount = _countStatus(records, ['hadir', 'terlambat']);
     final izinCount = _countStatus(records, ['izin', 'sakit']);
     final alphaCount = _countStatus(records, ['alpha']);
+    
+    final targetCount = _currentEvent.targetPeserta.isEmpty ? memberByNim.length : _currentEvent.targetPeserta.length;
+    final recordedCount = hadirCount + izinCount + alphaCount;
+    final belumAbsenCount = (targetCount - recordedCount).clamp(0, targetCount);
+
+    final isSubEvent = _currentEvent.parentEventId != null;
+    final eventType = isSubEvent ? 'Sub-Event' : 'Event Utama';
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F7FD), 
-      appBar: GradientHeader(
-        title: 'Detail Kegiatan',
-        subtitle: event.nama,
-        actions: [
-          IconButton(
-            tooltip: 'Bagikan',
-            icon: const Icon(Icons.share, color: Colors.white),
-            onPressed: () {
-              // TODO: Tambahkan fungsi share nanti
-            },
+      backgroundColor: const Color(0xFFF9FAFB), // bg-gray-50
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.black87),
+        centerTitle: true,
+        title: const Text(
+          'Detail Kegiatan',
+          style: TextStyle(
+            color: Colors.black87,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
           ),
-        ],
+        ),
       ),
-      
       body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Kartu Informasi Event dengan Accent Bar
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20.0),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16.0),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.04),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
+        padding: const EdgeInsets.only(bottom: 80), // pb-20
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Top Block: Detail Informasi Event
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(24), // p-6
+              margin: const EdgeInsets.only(bottom: 16), // mb-4
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade100), // border-b border-gray-100
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Accent bar
-                        Container(
-                          width: 4,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: Colors.blueAccent,
-                            borderRadius: BorderRadius.circular(2),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.03),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
+                  )
+                ], // shadow-sm
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Type badge & Status
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), // px-3 py-1.5
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEFF6FF), // bg-blue-50
+                          borderRadius: BorderRadius.circular(6), // rounded-md
+                        ),
+                        child: Text(
+                          eventType.toUpperCase(),
+                          style: const TextStyle(
+                            fontSize: 10, // text-[10px]
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF2563EB), // text-blue-600
+                            letterSpacing: 0.5, // tracking-wider
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        // Title
-                        Expanded(
-                          child: Text(
-                            event.nama,
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF3F4F6),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          _currentEvent.statusEvent.toUpperCase(),
+                          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF4B5563)),
+                        ),
+                      ),
+                    ],
+                  ),
+                  
+                  const SizedBox(height: 16), // mt-4
+                  
+                  // Title
+                  Text(
+                    _currentEvent.nama,
+                    style: const TextStyle(
+                      fontSize: 24, // text-2xl
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1F2937), // text-gray-800
+                      height: 1.2, // leading-tight
+                    ),
+                  ),
+
+                  // Description (if available)
+                  if (_currentEvent.deskripsi != null && _currentEvent.deskripsi!.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      _currentEvent.deskripsi!,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF4B5563), // text-gray-600
+                        height: 1.5,
+                      ),
+                    ),
+                  ],
+                  
+                  const SizedBox(height: 20), // mb-4
+                  
+                  // Ringkasan Kehadiran Event (Stats Grid 4 columns)
+                  Row(
+                    children: [
+                      _buildStatBox(
+                        label: 'Hadir',
+                        count: hadirCount,
+                        bgColor: const Color(0xFFF0FDF4), // bg-green-50
+                        borderColor: const Color(0xFFDCFCE7), // border-green-100
+                        labelColor: const Color(0xFF16A34A), // text-green-600
+                        countColor: const Color(0xFF15803D), // text-green-700
+                      ),
+                      const SizedBox(width: 8), // gap-2
+                      _buildStatBox(
+                        label: 'Izin',
+                        count: izinCount,
+                        bgColor: const Color(0xFFFFF7ED), // bg-orange-50
+                        borderColor: const Color(0xFFFFEDD5), // border-orange-100
+                        labelColor: const Color(0xFFEA580C), // text-orange-600
+                        countColor: const Color(0xFFC2410C), // text-orange-700
+                      ),
+                      const SizedBox(width: 8),
+                      _buildStatBox(
+                        label: 'Alpha',
+                        count: alphaCount,
+                        bgColor: const Color(0xFFFEF2F2), // bg-red-50
+                        borderColor: const Color(0xFFFEE2E2), // border-red-100
+                        labelColor: const Color(0xFFDC2626), // text-red-600
+                        countColor: const Color(0xFFB91C1C), // text-red-700
+                      ),
+                      const SizedBox(width: 8),
+                      _buildStatBox(
+                        label: 'Belum',
+                        count: belumAbsenCount,
+                        bgColor: const Color(0xFFF3F4F6), // bg-gray-100
+                        borderColor: const Color(0xFFE5E7EB), // border-gray-200
+                        labelColor: const Color(0xFF6B7280), // text-gray-500
+                        countColor: const Color(0xFF374151), // text-gray-700
+                      ),
+                    ],
+                  ),
+                  
+                  const SizedBox(height: 24), // mb-6
+                  
+                  // Info Block
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16), // p-4
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF9FAFB), // bg-gray-50
+                      borderRadius: BorderRadius.circular(12), // rounded-xl
+                      border: Border.all(color: const Color(0xFFF3F4F6)), // border-gray-100
+                    ),
+                    child: Column(
+                      children: [
+                        _buildInfoRow(
+                          icon: Icons.calendar_today_outlined,
+                          label: 'Tanggal',
+                          value: _formatDate(_currentEvent.tanggalMulai),
+                        ),
+                        const SizedBox(height: 12), // space-y-3
+                        _buildInfoRow(
+                          icon: Icons.access_time_outlined,
+                          label: 'Waktu',
+                          value: '${_formatTime(_currentEvent.jamMulai ?? _currentEvent.tanggalMulai, _currentEvent.jamSelesai ?? _currentEvent.tanggalSelesai)} WIB',
+                        ),
+                        const SizedBox(height: 12),
+                        _buildInfoRow(
+                          icon: Icons.location_on_outlined,
+                          label: 'Lokasi',
+                          value: _eventLocation(),
                         ),
                       ],
                     ),
+                  ),
+
+                  // Actions for Executive/Manager
+                  if (_canUpdate || _canDelete || _canAddSubEvent) ...[
                     const SizedBox(height: 24),
-
-                    // Info rows with better styling
-                    _buildInfoRow(
-                      icon: Icons.access_time_outlined,
-                      title: 'Waktu',
-                      value: _formatDateTime(event.jamMulai ?? event.tanggalMulai),
-                    ),
-                    const SizedBox(height: 16),
-
-                    _buildInfoRow(
-                      icon: Icons.location_on_outlined,
-                      title: 'Lokasi',
-                      value: _eventLocation(),
-                    ),
-                    const SizedBox(height: 16),
-
-                    _buildInfoRow(
-                      icon: Icons.people_outline,
-                      title: 'Peserta',
-                      value: event.targetPeserta.isEmpty
-                          ? 'Semua anggota'
-                          : '${event.targetPeserta.length} anggota diundang',
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Agenda section with refined styling
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16.0),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF4F7FB),
-                        borderRadius: BorderRadius.circular(12.0),
-                        border: Border.all(
-                          color: Colors.blueAccent.withValues(alpha: 0.1),
-                        ),
+                    const Text(
+                      'KONTROL EKSEKUTIF',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF9CA3AF),
+                        letterSpacing: 0.5,
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.assignment_outlined,
-                                size: 16,
-                                color: Colors.blueAccent,
-                              ),
-                              const SizedBox(width: 8),
-                              const Text(
-                                'Agenda Rapat:',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.blueAccent,
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        if (_canUpdate)
+                          _buildActionButton(
+                            icon: Icons.qr_code_scanner,
+                            label: 'Scan QR',
+                            bgColor: const Color(0xFF2563EB),
+                            textColor: Colors.white,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute<void>(
+                                  builder: (_) => ScanScreen(eventId: _currentEvent.eventId),
                                 ),
-                              ),
-                            ],
+                              );
+                            },
                           ),
-                          const SizedBox(height: 12),
-                          _buildAgendaContent(event.deskripsi),
-                        ],
-                      ),
+                        if (_canUpdate)
+                          _buildActionButton(
+                            icon: Icons.edit_outlined,
+                            label: 'Edit',
+                            bgColor: const Color(0xFFF3F4F6),
+                            textColor: const Color(0xFF1F2937),
+                            onTap: () {}, // Pindah ke form edit (todo)
+                          ),
+                        if (_canAddSubEvent)
+                          _buildActionButton(
+                            icon: Icons.add_circle_outline,
+                            label: 'Sub-Event',
+                            bgColor: const Color(0xFFF3F4F6),
+                            textColor: const Color(0xFF1F2937),
+                            onTap: () {},
+                          ),
+                        if (_canDelete)
+                          _buildActionButton(
+                            icon: Icons.delete_outline,
+                            label: 'Hapus',
+                            bgColor: const Color(0xFFFEF2F2),
+                            textColor: const Color(0xFFDC2626),
+                            onTap: _deleteEvent,
+                          ),
+                      ],
                     ),
                   ],
-                ),
-              ),
-              const SizedBox(height: 24),
-              
-              // Kartu Statistik Kehadiran - Enhanced Style
-              Row(
-                children: [
-                  _buildStatCard(
-                    iconBgColor: const Color(0x2622C55E),
-                    iconColor: const Color(0xFF22C55E),
-                    icon: Icons.check_circle_outline,
-                    count: hadirCount.toString(),
-                    label: 'Hadir',
-                  ),
-                  const SizedBox(width: 12),
-                  _buildStatCard(
-                    iconBgColor: const Color(0x26F59E0B),
-                    iconColor: const Color(0xFFF59E0B),
-                    icon: Icons.error_outline,
-                    count: izinCount.toString(),
-                    label: 'Izin',
-                  ),
-                  const SizedBox(width: 12),
-                  _buildStatCard(
-                    iconBgColor: const Color(0x26EF4444),
-                    iconColor: const Color(0xFFEF4444),
-                    icon: Icons.cancel_outlined,
-                    count: alphaCount.toString(),
-                    label: 'Alpha',
-                  ),
                 ],
               ),
-              const SizedBox(height: 24),
-
-              // Daftar Kehadiran
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20.0),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16.0),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.04),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+            ),
+            
+            // Bottom Block: Daftar Kehadiran
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16), // px-4
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4), // px-1
+                    child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         const Text(
-                          'Daftar Kehadiran',
+                          'DAFTAR KEHADIRAN',
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: 14, // text-sm
                             fontWeight: FontWeight.bold,
-                            color: Colors.black87,
+                            color: Color(0xFF1F2937), // text-gray-800
+                            letterSpacing: 0.5, // uppercase tracking-wide
                           ),
                         ),
-                        TextButton.icon(
-                          onPressed: () {
-                            // TODO: Fungsi Export
-                          },
-                          icon: const Icon(Icons.download_outlined, size: 18),
-                          label: const Text('Export'),
-                          style: TextButton.styleFrom(
-                            foregroundColor: Colors.blueAccent,
-                            padding: EdgeInsets.zero,
-                            minimumSize: const Size(50, 30),
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), // px-2 py-1
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE5E7EB), // bg-gray-200
+                            borderRadius: BorderRadius.circular(999), // rounded-full
+                          ),
+                          child: Text(
+                            '${records.length} Peserta',
+                            style: const TextStyle(
+                              fontSize: 10, // text-[10px]
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF6B7280), // text-gray-500
+                            ),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
+                  ),
+                  
+                  const SizedBox(height: 12), // mb-3
+                  
+                  if (records.isEmpty)
+                    Container(
+                      padding: const EdgeInsets.symmetric(vertical: 24),
+                      alignment: Alignment.center,
+                      child: const Text(
+                        'Belum ada data kehadiran.',
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                    )
+                  else
+                    ...records.map((record) {
+                      final member = memberByNim[record.nim];
+                      final name = member?.nama ?? 'Anggota';
+                      final role = member?.role ?? 'Member';
+                      final initial = name.isNotEmpty ? (name.length > 1 ? name.substring(0, 2).toUpperCase() : name[0].toUpperCase()) : '?';
+                      final time = '${record.timestamp.hour.toString().padLeft(2, '0')}:${record.timestamp.minute.toString().padLeft(2, '0')} WIB';
+                      
+                      final statusLower = record.status.toLowerCase();
+                      final isHadir = statusLower.contains('hadir') || statusLower.contains('terlambat');
+                      final isIzin = statusLower.contains('izin') || statusLower.contains('sakit');
+                      final isAlpha = statusLower.contains('alpha');
+                      
+                      // Avatar Colors
+                      Color avatarBg = const Color(0xFFF3F4F6); // bg-gray-100
+                      Color avatarText = const Color(0xFF6B7280); // text-gray-500
+                      if (isHadir) {
+                        avatarBg = const Color(0xFFDCFCE7); // bg-green-100
+                        avatarText = const Color(0xFF15803D); // text-green-700
+                      } else if (isIzin) {
+                        avatarBg = const Color(0xFFFFEDD5); // bg-orange-100
+                        avatarText = const Color(0xFFC2410C); // text-orange-700
+                      }
 
-                    if (records.isEmpty)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 24),
-                        child: Center(
-                          child: Text(
-                            'Belum ada kehadiran tercatat.',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[500],
-                            ),
-                          ),
+                      // Badge Colors
+                      Color badgeBg = const Color(0xFFF9FAFB); // bg-gray-50
+                      Color badgeText = const Color(0xFF4B5563); // text-gray-600
+                      Color badgeBorder = const Color(0xFFE5E7EB); // border-gray-200
+                      if (isHadir) {
+                        badgeBg = const Color(0xFFF0FDF4); // bg-green-50
+                        badgeText = const Color(0xFF16A34A); // text-green-600
+                        badgeBorder = const Color(0xFFBBF7D0); // border-green-200
+                      } else if (isIzin) {
+                        badgeBg = const Color(0xFFFFF7ED); // bg-orange-50
+                        badgeText = const Color(0xFFEA580C); // text-orange-600
+                        badgeBorder = const Color(0xFFFED7AA); // border-orange-200
+                      } else if (isAlpha) {
+                        badgeBg = const Color(0xFFFEF2F2); // bg-red-50
+                        badgeText = const Color(0xFFDC2626); // text-red-600
+                        badgeBorder = const Color(0xFFFECACA); // border-red-200
+                      }
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12), // space-y-3 mapped to mb
+                        padding: const EdgeInsets.all(16), // p-4
+                        decoration: BoxDecoration(
+                          color: Colors.white, // bg-white
+                          borderRadius: BorderRadius.circular(12), // rounded-xl
+                          border: Border.all(color: const Color(0xFFF3F4F6)), // border-gray-100
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.03),
+                              blurRadius: 4,
+                              offset: const Offset(0, 1),
+                            )
+                          ], // shadow-sm
                         ),
-                      )
-                    else
-                      ...records.map((record) {
-                        final member = memberByNim[record.nim];
-                        final name = member?.nama ?? 'Anggota';
-                        final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
-                        final time = '${record.timestamp.hour.toString().padLeft(2, '0')}:${record.timestamp.minute.toString().padLeft(2, '0')}';
-                        final statusLower = record.status.toLowerCase();
-                        final isHadir = statusLower.contains('hadir') || statusLower.contains('terlambat');
-                        final isIzin = statusLower.contains('izin') || statusLower.contains('sakit');
-                        final statusColor = isHadir
-                            ? const Color(0xFF22C55E)
-                            : (isIzin ? const Color(0xFFF59E0B) : const Color(0xFFEF4444));
-                        final statusBgColor = isHadir
-                            ? const Color(0x2622C55E)
-                            : (isIzin ? const Color(0x26F59E0B) : const Color(0x26EF4444));
-
-                        return _buildAttendeeItem(
-                          initial: initial,
-                          avatarColor: Colors.blueAccent,
-                          name: name,
-                          nim: 'NIM: ${record.nim}',
-                          status: record.status,
-                          statusTextColor: statusColor,
-                          statusBgColor: statusBgColor,
-                          time: time,
-                        );
-                      }),
-                  ],
-                ),
-              ), 
-              const SizedBox(height: 24),
-
-              // Kontrol berdasarkan Role
-              if (userRole == AppConstants.roleExecutive)
-                _buildExecutiveControls()
-              else if (userRole == AppConstants.roleManager || userRole == AppConstants.roleOrganizer)
-                const Text('Area Manager/Organizer (Pantauan Undangan)')
-              else
-                const Text('Area Member (Status Undangan Saya)'),
-            ],
-          ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            // Avatar
+                            Container(
+                              width: 40, // w-10
+                              height: 40, // h-10
+                              decoration: BoxDecoration(
+                                color: avatarBg,
+                                shape: BoxShape.circle, // rounded-full
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                initial,
+                                style: TextStyle(
+                                  fontSize: 14, // text-sm
+                                  fontWeight: FontWeight.bold,
+                                  color: avatarText,
+                                ),
+                              ),
+                            ),
+                            
+                            const SizedBox(width: 12), // space-x-3
+                            
+                            // Name & Role
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    name,
+                                    style: const TextStyle(
+                                      fontSize: 14, // text-sm
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF1F2937), // text-gray-800
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    role,
+                                    style: const TextStyle(
+                                      fontSize: 12, // text-xs
+                                      color: Color(0xFF6B7280), // text-gray-500
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            
+                            // Badge & Time
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), // px-2.5 py-1
+                                  margin: const EdgeInsets.only(bottom: 4), // mb-1
+                                  decoration: BoxDecoration(
+                                    color: badgeBg,
+                                    borderRadius: BorderRadius.circular(999), // rounded-full
+                                    border: Border.all(color: badgeBorder),
+                                  ),
+                                  child: Text(
+                                    record.status.toUpperCase(),
+                                    style: TextStyle(
+                                      fontSize: 10, // text-[10px]
+                                      fontWeight: FontWeight.bold,
+                                      color: badgeText,
+                                      letterSpacing: 0.5, // tracking-wide
+                                    ),
+                                  ),
+                                ),
+                                Text(
+                                  time,
+                                  style: const TextStyle(
+                                    fontSize: 10, // text-[10px]
+                                    fontWeight: FontWeight.w500, // font-medium
+                                    color: Color(0xFF9CA3AF), // text-gray-400
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildExecutiveControls() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20.0),
-      decoration: BoxDecoration(
-        color: Colors.red.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(16.0),
-        border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.admin_panel_settings, color: Colors.red),
-              SizedBox(width: 8),
-              Text(
-                'Kontrol Eksekutif',
-                style: TextStyle(
-                  fontSize: 16, 
-                  fontWeight: FontWeight.bold, 
-                  color: Colors.red,
-                ),
+  Widget _buildStatBox({
+    required String label,
+    required int count,
+    required Color bgColor,
+    required Color borderColor,
+    required Color labelColor,
+    required Color countColor,
+  }) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(8), // p-2
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(12), // rounded-xl
+          border: Border.all(color: borderColor),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              label.toUpperCase(),
+              style: TextStyle(
+                fontSize: 9, // text-[9px]
+                fontWeight: FontWeight.bold,
+                color: labelColor,
+                letterSpacing: 0.5, // tracking-wide
               ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: () {
-              // TODO: Logika batalkan/hapus kegiatan
-            },
-            icon: const Icon(Icons.cancel, color: Colors.white),
-            label: const Text('Batalkan Kegiatan Ini'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              minimumSize: const Size(double.infinity, 45),
             ),
-          ),
-        ],
+            const SizedBox(height: 4), // mb-1 equivalent spacing
+            Text(
+              count.toString(),
+              style: TextStyle(
+                fontSize: 18, // text-lg
+                fontWeight: FontWeight.bold,
+                color: countColor,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildInfoRow({
-    required IconData icon, 
-    required String title, 
-    required String value,
-  }) {
+  Widget _buildInfoRow({required IconData icon, required String label, required String value}) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 24, color: Colors.grey[500]),
-        const SizedBox(width: 16),
+        Padding(
+          padding: const EdgeInsets.only(top: 2), // mt-0.5
+          child: Icon(icon, size: 18, color: const Color(0xFF3B82F6)), // text-blue-500
+        ),
+        const SizedBox(width: 12), // mr-3
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                title,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
+                label.toUpperCase(),
+                style: const TextStyle(
+                  fontSize: 10, // text-[10px]
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF9CA3AF), // text-gray-400
+                  letterSpacing: 0.5, // tracking-wide
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 2),
               Text(
                 value,
                 style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
+                  fontSize: 14, // text-sm
+                  fontWeight: FontWeight.w600, // font-semibold
+                  color: Color(0xFF1F2937), // text-gray-800
                 ),
               ),
             ],
@@ -479,147 +672,37 @@ class EventDetailView extends StatelessWidget {
     );
   }
 
-  Widget _buildStatCard({
-    required Color iconBgColor,
-    required Color iconColor,
+  Widget _buildActionButton({
     required IconData icon,
-    required String count,
     required String label,
+    required Color bgColor,
+    required Color textColor,
+    required VoidCallback onTap,
   }) {
-    return Expanded(
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 20.0),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16.0),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          color: bgColor,
+          borderRadius: BorderRadius.circular(8),
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              padding: const EdgeInsets.all(10.0),
-              decoration: BoxDecoration(
-                color: iconBgColor,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: iconColor, size: 24),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              count,
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
-            ),
-            const SizedBox(height: 4),
+            Icon(icon, size: 16, color: textColor),
+            const SizedBox(width: 8),
             Text(
               label,
               style: TextStyle(
                 fontSize: 12,
-                color: Colors.grey[600],
+                fontWeight: FontWeight.bold,
+                color: textColor,
               ),
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildAttendeeItem({
-    required String initial,
-    required Color avatarColor,
-    required String name,
-    required String nim,
-    required String status,
-    required Color statusTextColor,
-    required Color statusBgColor,
-    required String time,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12.0),
-      padding: const EdgeInsets.all(12.0),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF9FAFB),
-        borderRadius: BorderRadius.circular(12.0),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            backgroundColor: avatarColor,
-            radius: 20,
-            child: Text(
-              initial,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          const SizedBox(width: 16),
-          
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  nim,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[500],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
-                decoration: BoxDecoration(
-                  color: statusBgColor,
-                  borderRadius: BorderRadius.circular(20.0),
-                ),
-                child: Text(
-                  status,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: statusTextColor,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 4),
-              if (time.isNotEmpty)
-                Text(
-                  time,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.grey[500],
-                  ),
-                ),
-            ],
-          ),
-        ],
       ),
     );
   }

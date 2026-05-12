@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../models/member_model.dart';
+import '../../../core/constants/app_constants.dart';
 
-/// Individual member card with info and action menu
+/// Individual member card matching the minimal reference design
 class MemberCard extends StatelessWidget {
   final MemberModel member;
   final bool isExecutive;
@@ -18,191 +19,188 @@ class MemberCard extends StatelessWidget {
 
   String _getInitials() {
     if (member.nama.isEmpty) return '?';
-    return member.nama[0].toUpperCase();
+    final parts = member.nama.split(' ');
+    if (parts.length > 1 && parts[1].isNotEmpty) {
+      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    }
+    return member.nama.substring(0, member.nama.length > 1 ? 2 : 1).toUpperCase();
+  }
+
+  Color _getRoleBgColor(String role) {
+    final r = role.toLowerCase();
+    if (r == AppConstants.roleExecutive.toLowerCase() || r == 'eksekutif' || r == 'admin') {
+      return const Color(0xFFF3E8FF); // bg-purple-100
+    } else if (r == AppConstants.roleManager.toLowerCase()) {
+      return const Color(0xFFDBEAFE); // bg-blue-100
+    } else if (r == AppConstants.roleOrganizer.toLowerCase()) {
+      return const Color(0xFFFFEDD5); // bg-orange-100
+    }
+    return const Color(0xFFF3F4F6); // bg-gray-100
+  }
+
+  Color _getRoleTextColor(String role) {
+    final r = role.toLowerCase();
+    if (r == AppConstants.roleExecutive.toLowerCase() || r == 'eksekutif' || r == 'admin') {
+      return const Color(0xFF7E22CE); // text-purple-700
+    } else if (r == AppConstants.roleManager.toLowerCase()) {
+      return const Color(0xFF1D4ED8); // text-blue-700
+    } else if (r == AppConstants.roleOrganizer.toLowerCase()) {
+      return const Color(0xFFC2410C); // text-orange-700
+    }
+    return const Color(0xFF374151); // text-gray-700
+  }
+
+  String _getDisplayRole(String role) {
+    final r = role.toLowerCase();
+    if (r == AppConstants.roleExecutive.toLowerCase() || r == 'eksekutif' || r == 'admin') {
+      return 'Eksekutif';
+    } else if (r == AppConstants.roleManager.toLowerCase()) {
+      return 'Manager';
+    } else if (r == AppConstants.roleOrganizer.toLowerCase()) {
+      return 'Organizer';
+    }
+    return 'Member';
   }
 
   @override
   Widget build(BuildContext context) {
-    final firstName = member.nama.split(' ').first.toLowerCase();
-    final dummyEmail = '$firstName@email.com';
-    final dummyPhone = '081234567890';
-    final attendancePercent = 75 + (member.nama.length % 25);
-    final isHighAttendance = attendancePercent >= 90;
+    final roleText = _getDisplayRole(member.role);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16), // p-4
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(12), // rounded-xl
+        border: Border.all(color: Colors.grey.shade100), // border-gray-100
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          )
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
         ],
-        border: Border.all(color: Colors.grey.shade200),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: Row(
               children: [
-                CircleAvatar(
-                  radius: 28,
-                  backgroundColor: const Color(0xFF2563EB),
+                // Avatar (w-10 h-10)
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100, // bg-gray-100
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
                   child: Text(
                     _getInitials(),
                     style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
+                      color: Color(0xFF4B5563), // text-gray-600
                       fontWeight: FontWeight.bold,
+                      fontSize: 14, // text-sm
                     ),
                   ),
                 ),
-                const SizedBox(width: 16),
-
-                // Info Utama
+                const SizedBox(width: 12), // space-x-3 equivalent
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              member.nama,
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          if (isHighAttendance)
-                            const Icon(
-                              Icons.workspace_premium,
-                              color: Colors.amber,
-                              size: 24,
-                            ),
-                        ],
-                      ),
                       Text(
-                        'NIM: ${member.nim}',
+                        member.nama,
                         style: const TextStyle(
-                          color: Colors.grey,
-                          fontSize: 13,
+                          fontSize: 14, // text-sm
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1F2937), // text-gray-800
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        member.nim,
+                        style: const TextStyle(
+                          fontSize: 12, // text-xs
+                          color: Color(0xFF6B7280), // text-gray-500
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      _buildInfoRow(
-                        Icons.person_outline,
-                        '${member.divisi} - ${member.role}',
-                      ),
-                      const SizedBox(height: 4),
-                      _buildInfoRow(Icons.mail_outline, dummyEmail),
-                      const SizedBox(height: 4),
-                      _buildInfoRow(Icons.phone_outlined, dummyPhone),
                     ],
                   ),
                 ),
-
-                // Titik Tiga (Menu Edit & Hapus)
-                if (isExecutive)
-                  PopupMenuButton<String>(
-                    icon: const Icon(Icons.more_vert, color: Colors.grey),
-                    onSelected: (value) {
-                      if (value == 'edit') {
-                        onEdit();
-                      } else if (value == 'delete') {
-                        onDelete();
-                      }
-                    },
-                    itemBuilder: (context) => [
-                      const PopupMenuItem(
-                        value: 'edit',
-                        child: Row(
-                          children: [
-                            Icon(Icons.edit, size: 20),
-                            SizedBox(width: 8),
-                            Text('Edit')
-                          ],
-                        ),
-                      ),
-                      const PopupMenuItem(
-                        value: 'delete',
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.delete,
-                              size: 20,
-                              color: Colors.red,
-                            ),
-                            SizedBox(width: 8),
-                            Text('Hapus')
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
               ],
             ),
-            const SizedBox(height: 16),
-            const Divider(height: 1),
-            const SizedBox(height: 16),
-
-            // Progress Kehadiran
-            Row(
-              children: [
-                const Text(
-                  'Tingkat Kehadiran: ',
-                  style: TextStyle(color: Colors.grey, fontSize: 13),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), // px-2 py-1
+                decoration: BoxDecoration(
+                  color: _getRoleBgColor(member.role),
+                  borderRadius: BorderRadius.circular(4), // rounded
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: attendancePercent / 100,
-                      minHeight: 8,
-                      backgroundColor: Colors.grey.shade200,
-                      color: isHighAttendance
-                          ? Colors.green
-                          : const Color(0xFF1D4ED8),
+                child: Text(
+                  roleText.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 10, // text-[10px]
+                    fontWeight: FontWeight.bold,
+                    color: _getRoleTextColor(member.role),
+                    letterSpacing: 0.5, // tracking-wide
+                  ),
+                ),
+              ),
+              const SizedBox(height: 4), // mb-1 equivalent space
+              if (isExecutive)
+                InkWell(
+                  onTap: () {
+                    // Show a simple bottom sheet or popup for actions since the JS only shows one edit button but we have edit/delete
+                    showModalBottomSheet(
+                      context: context,
+                      builder: (context) => SafeArea(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ListTile(
+                              leading: const Icon(Icons.edit, color: Colors.blue),
+                              title: const Text('Edit Anggota'),
+                              onTap: () {
+                                Navigator.pop(context);
+                                onEdit();
+                              },
+                            ),
+                            ListTile(
+                              leading: const Icon(Icons.delete, color: Colors.red),
+                              title: const Text('Hapus Anggota', style: TextStyle(color: Colors.red)),
+                              onTap: () {
+                                Navigator.pop(context);
+                                onDelete();
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(16),
+                  child: const Padding(
+                    padding: EdgeInsets.all(4.0),
+                    child: Icon(
+                      Icons.edit_outlined, // Edit3 icon equivalent
+                      size: 16,
+                      color: Color(0xFF9CA3AF), // text-gray-400
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
-                Text(
-                  '$attendancePercent%',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Build info row with icon and text
-  Widget _buildInfoRow(IconData icon, String text) {
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: Colors.grey.shade600),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            text,
-            style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+            ],
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
