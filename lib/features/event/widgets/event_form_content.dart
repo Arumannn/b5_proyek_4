@@ -27,6 +27,8 @@ class EventFormContent extends StatelessWidget {
   final ValueChanged<bool> onSubEventChanged;
   final ValueChanged<String?> onParentChanged;
   final ValueChanged<List<String>> onTargetChanged;
+  final bool requiresInvitation;
+  final ValueChanged<bool> onRequiresInvitationChanged;
   final VoidCallback onSubmit;
   final String Function(DateTime date) formatDate;
   final String Function(DateTime date) formatTime;
@@ -54,6 +56,8 @@ class EventFormContent extends StatelessWidget {
     required this.onSubEventChanged,
     required this.onParentChanged,
     required this.onTargetChanged,
+    required this.requiresInvitation,
+    required this.onRequiresInvitationChanged,
     required this.onSubmit,
     required this.formatDate,
     required this.formatTime,
@@ -252,6 +256,21 @@ class EventFormContent extends StatelessWidget {
                   child: ParticipantSelector(
                     initialSelectedIds: selectedTargetIds,
                     onSelectionChanged: onTargetChanged,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey[200]!),
+                    borderRadius: BorderRadius.circular(12),
+                    color: Colors.grey[50],
+                  ),
+                  child: SwitchListTile(
+                    title: const Text('Aktifkan Undangan', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                    subtitle: const Text('Event ini akan muncul di Kelola Target Peserta', style: TextStyle(fontSize: 12)),
+                    value: requiresInvitation,
+                    activeThumbColor: Colors.blue[600],
+                    onChanged: onRequiresInvitationChanged,
                   ),
                 ),
                 const SizedBox(height: 24),

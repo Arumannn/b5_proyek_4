@@ -36,6 +36,7 @@ class _EventFormViewState extends State<EventFormView> {
   String? _parentId;
   late String _selectedJenis;
   late List<String> _selectedTargetIds;
+  late bool _requiresInvitation;
 
   final _formKey = GlobalKey<FormState>();
 
@@ -61,6 +62,7 @@ class _EventFormViewState extends State<EventFormView> {
     _parentId = widget.initialValue?.parentId;
     _selectedJenis = widget.initialValue?.jenis ?? 'Kegiatan';
     _selectedTargetIds = List<String>.from(widget.initialValue?.targetPeserta ?? []);
+    _requiresInvitation = widget.initialValue?.requiresInvitation ?? false;
   }
 
   @override
@@ -203,6 +205,7 @@ class _EventFormViewState extends State<EventFormView> {
         lokasi: _lokasiController.text.trim().isEmpty ? null : _lokasiController.text.trim(),
         deskripsi: _deskripsiController.text.trim().isEmpty ? null : _deskripsiController.text.trim(),
         targetPeserta: _selectedTargetIds,
+        requiresInvitation: _requiresInvitation,
       ),
     );
   }
@@ -270,6 +273,8 @@ class _EventFormViewState extends State<EventFormView> {
           },
           onParentChanged: (value) => setState(() => _parentId = value),
           onTargetChanged: (selectedIds) => setState(() => _selectedTargetIds = selectedIds),
+          requiresInvitation: _requiresInvitation,
+          onRequiresInvitationChanged: (value) => setState(() => _requiresInvitation = value),
           onSubmit: _submit,
           formatDate: _formatDate,
           formatTime: _formatTime,

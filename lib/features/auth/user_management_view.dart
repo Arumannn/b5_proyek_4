@@ -92,6 +92,22 @@ class _UserManagementViewState extends State<UserManagementView> {
       ...AppConstants.unitDbuOptions.map(
         (value) => DropdownMenuItem<String>(value: value, child: Text(value)),
       ),
+      const DropdownMenuItem<String>(
+        enabled: false,
+        value: '__header_adkes__',
+        child: Text('Adkes', style: headerStyle),
+      ),
+      ...AppConstants.adkesOptions.map(
+        (value) => DropdownMenuItem<String>(value: value, child: Text(value)),
+      ),
+      const DropdownMenuItem<String>(
+        enabled: false,
+        value: '__header_hexa__',
+        child: Text('Hexa', style: headerStyle),
+      ),
+      ...AppConstants.hexaOptions.map(
+        (value) => DropdownMenuItem<String>(value: value, child: Text(value)),
+      ),
     ];
   }
 

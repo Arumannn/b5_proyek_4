@@ -50,13 +50,13 @@ class _ManageInvitationsViewState extends State<ManageInvitationsView> {
   }
 
   List<EventModel> get _mainEvents =>
-      _events.where((e) => e.parentEventId == null).toList(growable: false);
+      _events.where((e) => e.parentEventId == null && e.requiresInvitation).toList(growable: false);
 
   List<EventModel> get _subEventsForSelectedMain {
     final mainId = _selectedMainEventId;
     if (mainId == null) return const <EventModel>[];
     return _events
-        .where((e) => e.parentEventId == mainId)
+        .where((e) => e.parentEventId == mainId && e.requiresInvitation)
         .toList(growable: false);
   }
 

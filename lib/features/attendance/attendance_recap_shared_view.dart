@@ -287,6 +287,7 @@ class _AttendanceRecapSharedViewState extends State<AttendanceRecapSharedView> {
                 ],
               ),
             ),
+          ),
     );
   }
 }

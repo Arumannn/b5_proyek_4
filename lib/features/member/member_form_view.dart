@@ -57,7 +57,7 @@ class _MemberFormViewState extends State<MemberFormView> {
   String _roleLabel(String role) {
     final normalized = role.trim().toLowerCase();
     if (normalized == 'executive' || normalized == 'eksekutif' || normalized == 'admin') {
-      return 'Executive';
+      return 'Eksekutif';
     }
     if (normalized == AppConstants.roleManager) return 'Manager';
     if (normalized == AppConstants.roleOrganizer) return 'Organizer';
@@ -93,6 +93,22 @@ class _MemberFormViewState extends State<MemberFormView> {
         child: Text('Unit', style: headerStyle),
       ),
       ...AppConstants.unitDbuOptions.map(
+        (value) => DropdownMenuItem<String>(value: value, child: Text(value, style: const TextStyle(fontSize: 14))),
+      ),
+      const DropdownMenuItem<String>(
+        enabled: false,
+        value: '__header_adkes__',
+        child: Text('Adkes', style: headerStyle),
+      ),
+      ...AppConstants.adkesOptions.map(
+        (value) => DropdownMenuItem<String>(value: value, child: Text(value, style: const TextStyle(fontSize: 14))),
+      ),
+      const DropdownMenuItem<String>(
+        enabled: false,
+        value: '__header_hexa__',
+        child: Text('Hexa', style: headerStyle),
+      ),
+      ...AppConstants.hexaOptions.map(
         (value) => DropdownMenuItem<String>(value: value, child: Text(value, style: const TextStyle(fontSize: 14))),
       ),
     ];
@@ -132,6 +148,10 @@ class _MemberFormViewState extends State<MemberFormView> {
     });
 
     if (success) {
+      CustomSnackbar.showSuccess(
+        context,
+        _isEdit ? 'Data anggota berhasil diperbarui.' : 'Data anggota berhasil ditambahkan.',
+      );
       Navigator.of(context).pop(true);
       return;
     }
@@ -144,14 +164,14 @@ class _MemberFormViewState extends State<MemberFormView> {
 
   Widget _buildInputLabel(String text) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: 6), // mb-1 equivalent
       child: Text(
         text.toUpperCase(),
         style: TextStyle(
-          fontSize: 11,
+          fontSize: 10, // text-xs
           fontWeight: FontWeight.bold,
-          color: Colors.grey[800],
-          letterSpacing: 0.8,
+          color: Colors.grey[700], // text-gray-700
+          letterSpacing: 0.5, // tracking-wide
         ),
       ),
     );
@@ -162,282 +182,176 @@ class _MemberFormViewState extends State<MemberFormView> {
       hintText: hintText,
       hintStyle: const TextStyle(color: Colors.black38, fontSize: 14),
       filled: true,
-      fillColor: Colors.grey[50],
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      fillColor: Colors.grey[50], // bg-gray-50
+      contentPadding: const EdgeInsets.all(14), // p-3.5
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: Colors.grey[200]!),
+        borderRadius: BorderRadius.circular(12), // rounded-xl
+        borderSide: BorderSide(color: Colors.grey[200]!), // border-gray-200
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide(color: Colors.grey[200]!),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Color(0xFF2563EB), width: 2),
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Colors.blue, width: 2), // focus:ring-blue-500
       ),
       suffixIcon: suffixIcon,
-    );
-  }
-
-  Widget _buildSectionCard({required Widget child}) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.grey.shade100),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: child,
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F7FD),
+      backgroundColor: Colors.white, // bg-white
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: Text(
+          _isEdit ? 'Edit Anggota' : 'Tambah Anggota',
+          style: const TextStyle(
+            color: Colors.black87,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        iconTheme: const IconThemeData(color: Colors.black87),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(
+            color: Colors.grey[200], // border-b border-gray-200
+            height: 1,
+          ),
+        ),
+      ),
       body: SafeArea(
-        child: Column(
-          children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
-                ),
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            padding: const EdgeInsets.all(16), // p-4
+            children: [
+              // Nama Lengkap
+              _buildInputLabel('Nama Lengkap'),
+              TextFormField(
+                controller: _namaController,
+                decoration: _inputDecoration(hintText: 'Masukkan nama lengkap'),
+                textCapitalization: TextCapitalization.words,
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Nama wajib diisi.';
+                  }
+                  return null;
+                },
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      GestureDetector(
-                        onTap: () => Navigator.pop(context),
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.14),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(Icons.chevron_left, color: Colors.white, size: 24),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        _isEdit ? 'Edit Anggota' : 'Tambah Anggota',
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
+              const SizedBox(height: 16), // space-y-4
+
+              // NIM
+              _buildInputLabel('NIM (Nomor Induk Mahasiswa)'),
+              TextFormField(
+                controller: _nimController,
+                enabled: !_isEdit,
+                keyboardType: TextInputType.number,
+                decoration: _inputDecoration(hintText: 'Contoh: 123456789'),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'NIM wajib diisi.';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+
+              // Peran (Role Sistem)
+              _buildInputLabel('Peran (Role Sistem)'),
+              DropdownButtonFormField<String>(
+                initialValue: _selectedRole,
+                isExpanded: true,
+                decoration: _inputDecoration(),
+                items: AppConstants.allowedRoles
+                    .map((role) => DropdownMenuItem<String>(
+                          value: role,
+                          child: Text(_roleLabel(role), style: const TextStyle(fontSize: 14)),
+                        ))
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() {
+                      _selectedRole = value;
+                    });
+                  }
+                },
+              ),
+              const SizedBox(height: 16),
+
+              // Departemen/Biro/Unit (DBU)
+              _buildInputLabel('Departemen/Biro/Unit (DBU)'),
+              DropdownButtonFormField<String>(
+                initialValue: _selectedDbu,
+                isExpanded: true,
+                decoration: _inputDecoration(),
+                items: _buildDbuItems(),
+                onChanged: (value) {
+                  if (value == null || !AppConstants.allDbuOptions.contains(value)) {
+                    return;
+                  }
+                  setState(() {
+                    _selectedDbu = value;
+                  });
+                },
+              ),
+              const SizedBox(height: 16),
+
+              // Password
+              _buildInputLabel(_isEdit ? 'Password Baru (Opsional)' : 'Password'),
+              TextFormField(
+                controller: _passwordController,
+                obscureText: true,
+                decoration: _inputDecoration(hintText: 'Masukkan password'),
+                validator: (value) {
+                  if (!_isEdit && (value == null || value.isEmpty)) {
+                    return 'Password wajib diisi.';
+                  }
+                  return null;
+                },
+              ),
+              
+              const SizedBox(height: 24), // mt-6
+
+              // Tombol Simpan
+              ElevatedButton(
+                onPressed: _isSaving ? null : _submit,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2563EB), // bg-blue-600
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16), // py-4
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12), // rounded-xl
                   ),
-                  const SizedBox(height: 18),
-                  Center(
-                    child: Column(
-                      children: [
-                        Container(
-                          width: 88,
-                          height: 88,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(24),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.12),
-                                blurRadius: 18,
-                                offset: const Offset(0, 8),
-                              ),
-                            ],
-                          ),
-                          child: const Icon(Icons.badge_outlined, size: 44, color: Color(0xFF2563EB)),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          _isEdit ? 'Perbarui data anggota' : 'Form anggota baru',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Isi data anggota dengan rapi sebelum menyimpan.',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.85),
-                            fontSize: 12,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
+                  elevation: 4, // shadow-lg
+                  shadowColor: const Color(0xFFBFDBFE), // shadow-blue-200
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (_isSaving)
+                      const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    else
+                      const Icon(Icons.save, size: 18), // Save size={18}
+                    const SizedBox(width: 8), // mr-2
+                    Text(
+                      _isSaving ? 'Menyimpan...' : 'Simpan Data Anggota',
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                     ),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: Container(
-                color: const Color(0xFFF3F7FD),
-                child: Form(
-                  key: _formKey,
-                  child: ListView(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                    children: [
-                      _buildSectionCard(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _buildInputLabel('Nama Lengkap'),
-                            TextFormField(
-                              controller: _namaController,
-                              decoration: _inputDecoration(hintText: 'Masukkan nama lengkap'),
-                              validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return 'Nama wajib diisi.';
-                                }
-                                return null;
-                              },
-                            ),
-                            const SizedBox(height: 16),
-                            _buildInputLabel('NIM (Nomor Induk Mahasiswa)'),
-                            TextFormField(
-                              controller: _nimController,
-                              enabled: !_isEdit,
-                              keyboardType: TextInputType.number,
-                              decoration: _inputDecoration(hintText: 'Contoh: 123456789'),
-                              validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return 'NIM wajib diisi.';
-                                }
-                                return null;
-                              },
-                            ),
-                            const SizedBox(height: 16),
-                            _buildInputLabel('Peran (Role Sistem)'),
-                            DropdownButtonFormField<String>(
-                              initialValue: _selectedRole,
-                              isExpanded: true,
-                              decoration: _inputDecoration(),
-                              items: AppConstants.allowedRoles
-                                  .map((role) => DropdownMenuItem<String>(
-                                        value: role,
-                                        child: Text(_roleLabel(role), style: const TextStyle(fontSize: 14)),
-                                      ))
-                                  .toList(),
-                              onChanged: (value) {
-                                if (value != null) {
-                                  setState(() {
-                                    _selectedRole = value;
-                                  });
-                                }
-                              },
-                            ),
-                            const SizedBox(height: 16),
-                            _buildInputLabel('Departemen/Biro/Unit (DBU)'),
-                            DropdownButtonFormField<String>(
-                              initialValue: _selectedDbu,
-                              isExpanded: true,
-                              decoration: _inputDecoration(),
-                              items: _buildDbuItems(),
-                              onChanged: (value) {
-                                if (value == null || !AppConstants.allDbuOptions.contains(value)) {
-                                  return;
-                                }
-                                setState(() {
-                                  _selectedDbu = value;
-                                });
-                              },
-                            ),
-                            const SizedBox(height: 16),
-                            _buildInputLabel(_isEdit ? 'Password Baru (Opsional)' : 'Password'),
-                            TextFormField(
-                              controller: _passwordController,
-                              obscureText: true,
-                              decoration: _inputDecoration(hintText: 'Masukkan password'),
-                              validator: (value) {
-                                if (!_isEdit && (value == null || value.isEmpty)) {
-                                  return 'Password wajib diisi.';
-                                }
-                                return null;
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEFF6FF),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: const Color(0xFFDBEAFE)),
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Padding(
-                              padding: EdgeInsets.only(top: 2),
-                              child: Icon(Icons.info_outline, size: 18, color: Color(0xFF2563EB)),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                'Data anggota akan disimpan ke penyimpanan lokal terlebih dahulu, lalu disinkronkan saat koneksi tersedia.',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  height: 1.5,
-                                  color: Colors.blueGrey[800],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          onPressed: _isSaving ? null : _submit,
-                          icon: _isSaving
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                                )
-                              : const Icon(Icons.save, color: Colors.white, size: 20),
-                          label: Text(
-                            _isSaving ? 'Menyimpan...' : 'Simpan Data Anggota',
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF2563EB),
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(18),
-                            ),
-                            elevation: 6,
-                            shadowColor: const Color(0xFF93C5FD),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                  ],
                 ),
               ),
-            ),
-          ],
+              const SizedBox(height: 40), // pb-24 padding inside list
+            ],
+          ),
         ),
       ),
     );

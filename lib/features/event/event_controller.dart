@@ -246,6 +246,7 @@ class EventController {
     String? lokasi,
     String? deskripsi,
     List<String>? targetPeserta,
+    bool requiresInvitation = false,
   }) async {
     // RBAC: Tentukan scope izin berdasarkan apakah data adalah sub-event atau main event.
     final isSubEvent = parentEventId != null && parentEventId.isNotEmpty;
@@ -305,6 +306,7 @@ class EventController {
         lokasi: lokasi,
         deskripsi: deskripsi,
         targetPeserta: targetPeserta,
+        requiresInvitation: requiresInvitation,
         isSynced: false, // akan di-update setelah cloud sync berhasil
       );
 

@@ -16,6 +16,7 @@ class EventFormValue {
   final String? lokasi;
   final String? deskripsi;
   final List<String> targetPeserta;
+  final bool requiresInvitation;
 
   const EventFormValue({
     required this.name,
@@ -28,5 +29,6 @@ class EventFormValue {
     this.lokasi,
     this.deskripsi,
     this.targetPeserta = const [],
+    this.requiresInvitation = false,
   });
 }

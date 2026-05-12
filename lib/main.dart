@@ -43,7 +43,7 @@ import 'core/services/sync_manager.dart';
     await NetworkStatusController.instance.startListening();
     debugPrint('✅ Step 5: Network monitoring started');
 
-    // Step 6: Seed default accounts (Executive, member, organizer, manager)
+    // Step 6: Seed default accounts (executive, member, organizer, manager)
     await AuthController.instance.initializeAuth();
     debugPrint('✅ Step 6: Default accounts seeded');
 

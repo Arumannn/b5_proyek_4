@@ -7,7 +7,6 @@ import '../../core/utils/network_status_controller.dart';
 import '../../widgets/custom_snackbar.dart';
 import '../../widgets/white_status_header.dart';
 import '../auth/auth_controller.dart';
-import '../auth/user_management_view.dart';
 import 'member_form_view.dart';
 import 'member_controller.dart';
 import '../../models/member_model.dart';
@@ -50,14 +49,9 @@ class _MemberListViewState extends State<MemberListView> {
   }
 
   Future<void> _editMember(MemberModel member) async {
-    final saved = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) => UserFormDialog(
-        authController: AuthController.instance,
-        existing: member,
-        roleLabelBuilder: _roleLabel,
-        dbuItemsBuilder: _buildDbuItems,
+    final saved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => MemberFormView(existing: member),
       ),
     );
 
@@ -122,50 +116,6 @@ class _MemberListViewState extends State<MemberListView> {
     CustomSnackbar.showSuccess(context, 'Anggota berhasil dihapus.');
   }
 
-  String _roleLabel(String role) {
-    final normalized = role.trim().toLowerCase();
-    if (normalized == 'executive' || normalized == 'eksekutif' || normalized == 'admin') {
-      return 'Executive';
-    }
-    if (normalized == AppConstants.roleManager) return 'Manager';
-    if (normalized == AppConstants.roleOrganizer) return 'Organizer';
-    return 'Member';
-  }
-
-  List<DropdownMenuItem<String>> _buildDbuItems() {
-    const headerStyle = TextStyle(
-      fontWeight: FontWeight.w700,
-      color: Colors.black54,
-    );
-
-    return [
-      const DropdownMenuItem<String>(
-        enabled: false,
-        value: '__header_departemen__',
-        child: Text('Departemen', style: headerStyle),
-      ),
-      ...AppConstants.departmentDbuOptions.map(
-        (value) => DropdownMenuItem<String>(value: value, child: Text(value)),
-      ),
-      const DropdownMenuItem<String>(
-        enabled: false,
-        value: '__header_biro__',
-        child: Text('Biro', style: headerStyle),
-      ),
-      ...AppConstants.biroDbuOptions.map(
-        (value) => DropdownMenuItem<String>(value: value, child: Text(value)),
-      ),
-      const DropdownMenuItem<String>(
-        enabled: false,
-        value: '__header_unit__',
-        child: Text('Unit', style: headerStyle),
-      ),
-      ...AppConstants.unitDbuOptions.map(
-        (value) => DropdownMenuItem<String>(value: value, child: Text(value)),
-      ),
-    ];
-  }
-
   Future<void> _loadMembers({bool syncFromCloud = true}) async {
     if (mounted) {
       _controller.loadMembers();
@@ -202,7 +152,7 @@ class _MemberListViewState extends State<MemberListView> {
     return Scaffold(
       appBar: WhiteStatusHeader(
         title: 'Daftar Anggota',
-        subtitle: 'Total 156 anggota aktif',
+        subtitle: 'Total ${_controller.members.value.length} anggota aktif',
         statusBadge: ValueListenableBuilder<bool>(
           valueListenable: NetworkStatusController.instance.isOnline,
           builder: (context, isOnline, _) {

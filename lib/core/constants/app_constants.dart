@@ -42,7 +42,7 @@ class AppConstants {
   static Duration syncRetryDelay = const Duration(seconds: 5);
 
   // ─── Role Definitions ────────────────────────────
-  static const String roleExecutive = 'Executive';
+  static const String roleExecutive = 'executive';
   static const String roleManager = 'manager';
   static const String roleOrganizer = 'organizer';
   static const String roleMember = 'member';
@@ -70,10 +70,30 @@ class AppConstants {
 
   static const List<String> unitDbuOptions = ['Unit Teknologi'];
 
+  static const List<String> adkesOptions = [
+    'Ketua Departemen',
+    'Wakil Ketua Departemen',
+    'Ketua Biro',
+    'Wakil Ketua Biro',
+    'Ketua Unit',
+    'Wakil Ketua Unit',
+  ];
+
+  static const List<String> hexaOptions = [
+    'Ketua Himpunan',
+    'Wakil Ketua Himpunan',
+    'Sekretaris Jenderal',
+    'Sekretaris Umum',
+    'Bendahara Umum',
+    'Ketua Manajemen Sumber Daya Himpunan',
+  ];
+
   static const List<String> allDbuOptions = [
     ...departmentDbuOptions,
     ...biroDbuOptions,
     ...unitDbuOptions,
+    ...adkesOptions,
+    ...hexaOptions,
   ];
 
   // ─── Default Executive Seeding ───────────────────────
@@ -81,9 +101,9 @@ class AppConstants {
   static const String defaultExecutivePassword = '123';
   static const String defaultExecutiveName = 'Executive Utama';
   static const String defaultExecutiveDivision = 'HEXA';
-  static const String executiveSeedFlagKey = '__seed_Executive_done__';
+  static const String executiveSeedFlagKey = '__seed_executive_done__';
 
-    // ─── Default Member Seeding ───────────────────────
+  // ─── Default Member Seeding ───────────────────────
   static const String defaultMemberNim = '39';
   static const String defaultMemberPassword = '123';
   static const String defaultMemberName = 'Member Biasa';

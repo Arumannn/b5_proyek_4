@@ -50,6 +50,9 @@ class EventModel extends HiveObject {
   @HiveField(14)
   String statusEvent;
 
+  @HiveField(15)
+  final bool requiresInvitation;
+
   EventModel({
     required this.eventId,
     this.parentEventId,
@@ -66,6 +69,7 @@ class EventModel extends HiveObject {
     this.jamSelesai,
     this.lokasi,
     String? statusEvent,
+    this.requiresInvitation = false,
   })  : targetPeserta = targetPeserta ?? [],
         createdAt = createdAt ?? DateTime.now(),
         statusEvent = statusEvent ??
@@ -131,6 +135,7 @@ class EventModel extends HiveObject {
       'jamSelesai': jamSelesai?.toIso8601String(),
       'lokasi': lokasi,
       'statusEvent': statusEvent,
+      'requiresInvitation': requiresInvitation,
     };
   }
 
@@ -162,6 +167,7 @@ class EventModel extends HiveObject {
       jamSelesai: parsedJamSelesai,
       lokasi: map['lokasi']?.toString(),
       statusEvent: map['statusEvent']?.toString(),
+      requiresInvitation: map['requiresInvitation'] == true,
     );
   }
 
@@ -181,6 +187,7 @@ class EventModel extends HiveObject {
     DateTime? jamSelesai,
     String? lokasi,
     String? statusEvent,
+    bool? requiresInvitation,
   }) {
     return EventModel(
       eventId: eventId ?? this.eventId,
@@ -198,6 +205,7 @@ class EventModel extends HiveObject {
       jamSelesai: jamSelesai ?? this.jamSelesai,
       lokasi: lokasi ?? this.lokasi,
       statusEvent: statusEvent ?? this.statusEvent,
+      requiresInvitation: requiresInvitation ?? this.requiresInvitation,
     );
   }
 }
