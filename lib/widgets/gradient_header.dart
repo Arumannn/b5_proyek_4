@@ -27,9 +27,9 @@ class GradientHeader extends StatelessWidget implements PreferredSizeWidget {
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)), // rounded-b-3xl
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.15),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            color: Colors.black.withOpacity(0.12),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
@@ -41,7 +41,7 @@ class GradientHeader extends StatelessWidget implements PreferredSizeWidget {
               top: MediaQuery.of(context).padding.top + 8,
               left: 16,
               right: 16,
-              bottom: 16,
+              bottom: 14,
             ),
             child: Row(
               children: [
@@ -49,10 +49,13 @@ class GradientHeader extends StatelessWidget implements PreferredSizeWidget {
                   Padding(
                     padding: const EdgeInsets.only(right: 12),
                     child: IconButton(
-                      icon: const Icon(Icons.chevron_left, color: Colors.white, size: 28),
+                      icon: const Icon(Icons.chevron_left, color: Colors.white, size: 26),
                       onPressed: () => Navigator.pop(context),
                       style: IconButton.styleFrom(
-                        backgroundColor: Colors.white.withOpacity(0.2),
+                        backgroundColor: Colors.white.withOpacity(0.12),
+                        padding: const EdgeInsets.all(8),
+                        shape: const CircleBorder(),
+                        minimumSize: const Size(40, 40),
                       ),
                     ),
                   ),
@@ -64,16 +67,20 @@ class GradientHeader extends StatelessWidget implements PreferredSizeWidget {
                         title,
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.2,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       if (subtitle != null)
                         Text(
                           subtitle!,
                           style: const TextStyle(
                             color: Color(0xFFDBEAFE), // blue-100
-                            fontSize: 14,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                     ],
@@ -84,7 +91,7 @@ class GradientHeader extends StatelessWidget implements PreferredSizeWidget {
                 else ...[
                   // Ikon default sesuai tampilan_referensi.js
                   _buildCircleAction(Icons.mail_outline, hasBadge: true),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 10),
                   _buildCircleAction(Icons.settings_outlined),
                 ]
               ],
@@ -124,7 +131,7 @@ class GradientHeader extends StatelessWidget implements PreferredSizeWidget {
         Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.2),
+            color: Colors.white.withOpacity(0.12),
             shape: BoxShape.circle,
           ),
           child: Icon(icon, color: Colors.white, size: 20),
@@ -146,5 +153,5 @@ class GradientHeader extends StatelessWidget implements PreferredSizeWidget {
   }
 
   @override
-  Size get preferredSize => const Size.fromHeight(110);
+  Size get preferredSize => const Size.fromHeight(96);
 }

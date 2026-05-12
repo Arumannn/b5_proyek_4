@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import '../../core/utils/qr_service.dart';
 import '../../widgets/gradient_header.dart';
 
 class QrDisplayView extends StatelessWidget {
@@ -35,7 +36,7 @@ class QrDisplayView extends StatelessWidget {
                       maxScale: 4.0,
                       child: Center(
                         child: QrImageView(
-                          data: nim,
+                          data: QrService.generateQrData(nim),
                           version: QrVersions.auto,
                           size: 280,
                           gapless: false,

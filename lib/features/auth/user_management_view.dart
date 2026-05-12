@@ -5,6 +5,7 @@ import '../../models/member_model.dart';
 import '../../widgets/custom_snackbar.dart';
 import '../../widgets/loading_overlay.dart';
 import '../../widgets/network_status_banner.dart';
+import '../../widgets/table_page_body.dart';
 import 'auth_controller.dart';
 
 class UserManagementView extends StatefulWidget {
@@ -454,49 +455,20 @@ class _UserManagementViewState extends State<UserManagementView> {
             backgroundColor: const Color(0xFF2563EB),
             foregroundColor: Colors.white,
           ),
-          body: SafeArea(
-            child: Column(
-              children: [
-                _buildHeader(),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-                  child: _buildSummaryCard(),
-                ),
-                Expanded(
-                  child: RefreshIndicator(
-                    onRefresh: _refreshUsers,
-                    child: ListView(
-                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(24),
-                            border: Border.all(color: Colors.grey.shade100),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.04),
-                                blurRadius: 18,
-                                offset: const Offset(0, 8),
-                              ),
-                            ],
-                          ),
-                          child: _users.isEmpty
-                              ? const Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 24),
-                                  child: Center(
-                                    child: Text('Belum ada data anggota.'),
-                                  ),
-                                )
-                              : _buildTable(),
-                        ),
-                      ],
+          body: TablePageBody(
+            header: _buildHeader(),
+            summaryArea: _buildSummaryCard(),
+            filterArea: const SizedBox.shrink(),
+            tableBuilder: (context) => _users.isEmpty
+                ? const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: Center(
+                      child: Text('Belum ada data anggota.'),
                     ),
-                  ),
-                ),
-              ],
-            ),
+                  )
+                : _buildTable(),
+            emptyState: const SizedBox.shrink(),
+            onRefresh: _refreshUsers,
           ),
         ),
       ),

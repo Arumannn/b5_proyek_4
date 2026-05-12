@@ -3,6 +3,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../core/services/hive_service.dart';
+import '../../core/utils/network_status_controller.dart';
+import '../../widgets/sectioned_list_body.dart';
+import '../../widgets/white_status_header.dart';
 import '../../features/event/event_controller.dart';
 import '../../models/attendance_record.dart';
 import '../../models/event_model.dart';
@@ -96,30 +99,64 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF3F7FD),
-      body: SafeArea(
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : Column(
+      appBar: WhiteStatusHeader(
+        title: 'Riwayat Kehadiran',
+        subtitle: 'History absensi Anda',
+        statusBadge: ValueListenableBuilder<bool>(
+          valueListenable: NetworkStatusController.instance.isOnline,
+          builder: (context, isOnline, _) {
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: isOnline ? const Color(0xFFE8F7EF) : const Color(0xFFFFF3E6),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  _buildHeader(),
-                  Expanded(
-                    child: RefreshIndicator(
-                      onRefresh: _fetchData,
-                      child: ListView(
-                        padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
-                        children: [
-                          _buildMonthPickerCard(),
-                          const SizedBox(height: 14),
-                          _buildSummaryCards(),
-                          const SizedBox(height: 14),
-                          _buildFilterChips(),
-                          const SizedBox(height: 14),
-                          _buildRecordList(),
-                        ],
-                      ),
+                  Icon(
+                    isOnline ? Icons.wifi : Icons.wifi_off,
+                    size: 10,
+                    color: isOnline ? const Color(0xFF15803D) : const Color(0xFFF97316),
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    isOnline ? 'TERSINKRONISASI' : 'OFFLINE (SIMPAN LOKAL)',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: isOnline ? const Color(0xFF15803D) : const Color(0xFFF97316),
                     ),
                   ),
                 ],
+              ),
+            );
+          },
+        ),
+        actions: [
+          IconButton(
+            tooltip: 'Unduh Riwayat',
+            icon: const Icon(Icons.download_outlined, color: Color(0xFF111827)),
+            onPressed: () {},
+          ),
+        ],
+      ),
+      body: SafeArea(
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : SectionedListBody(
+                header: Column(
+                  children: [
+                    _buildMonthPickerCard(),
+                    const SizedBox(height: 14),
+                    _buildSummaryCards(),
+                  ],
+                ),
+                searchBar: const SizedBox.shrink(),
+                filterArea: _buildFilterChips(),
+                listBuilder: (context) => _buildRecordList(),
+                emptyState: const SizedBox.shrink(),
+                onRefresh: _fetchData,
               ),
       ),
     );
@@ -459,18 +496,27 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
         final records = _filteredRecords;
 
         if (records.isEmpty) {
-          return const Padding(
-            padding: EdgeInsets.only(top: 24),
-            child: Center(
-              child: Text('Tidak ada riwayat untuk filter ini.', style: TextStyle(color: Colors.grey)),
-            ),
+          return ListView(
+            children: [
+              Padding(
+                padding: EdgeInsets.only(
+                  top: MediaQuery.of(context).size.height * 0.15,
+                ),
+                child: const Center(
+                  child: Text(
+                    'Tidak ada riwayat untuk filter ini.',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ),
+              ),
+            ],
           );
         }
 
-        return Column(
-          children: records.asMap().entries.map((entry) {
-            final index = entry.key;
-            final record = entry.value;
+        return ListView.builder(
+          itemCount: records.length,
+          itemBuilder: (context, index) {
+            final record = records[index];
             final event = _eventById[record.eventId];
             final eventName = event?.nama ?? 'Event Tidak Diketahui';
             final location = event?.jenis ?? 'Ruang Kelas';
@@ -486,7 +532,7 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
               duration: '2 jam',
               isLast: index == records.length - 1,
             );
-          }).toList(growable: false),
+          },
         );
       },
     );

@@ -129,7 +129,7 @@ class EventDetailView extends StatelessWidget {
     final alphaCount = _countStatus(records, ['alpha']);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA), 
+      backgroundColor: const Color(0xFFF3F7FD), 
       appBar: GradientHeader(
         title: 'Detail Kegiatan',
         subtitle: event.nama,
@@ -150,7 +150,7 @@ class EventDetailView extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Kartu Informasi Event
+              // Kartu Informasi Event dengan Accent Bar
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(20.0),
@@ -168,18 +168,39 @@ class EventDetailView extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      event.nama,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Accent bar
+                        Container(
+                          width: 4,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: Colors.blueAccent,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        // Title
+                        Expanded(
+                          child: Text(
+                            event.nama,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 24),
 
+                    // Info rows with better styling
                     _buildInfoRow(
-                      icon: Icons.access_time,
+                      icon: Icons.access_time_outlined,
                       title: 'Waktu',
                       value: _formatDateTime(event.jamMulai ?? event.tanggalMulai),
                     ),
@@ -201,24 +222,39 @@ class EventDetailView extends StatelessWidget {
                     ),
                     const SizedBox(height: 24),
 
+                    // Agenda section with refined styling
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(16.0),
                       decoration: BoxDecoration(
                         color: const Color(0xFFF4F7FB),
                         borderRadius: BorderRadius.circular(12.0),
+                        border: Border.all(
+                          color: Colors.blueAccent.withValues(alpha: 0.1),
+                        ),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Agenda Rapat:',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.black54,
-                            ),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.assignment_outlined,
+                                size: 16,
+                                color: Colors.blueAccent,
+                              ),
+                              const SizedBox(width: 8),
+                              const Text(
+                                'Agenda Rapat:',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.blueAccent,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 12),
                           _buildAgendaContent(event.deskripsi),
                         ],
                       ),
@@ -226,30 +262,30 @@ class EventDetailView extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
               
-              // Kartu Statistik Kehadiran
+              // Kartu Statistik Kehadiran - Enhanced Style
               Row(
                 children: [
                   _buildStatCard(
-                    iconBgColor: Colors.green.withValues(alpha: 0.15),
-                    iconColor: Colors.green,
+                    iconBgColor: const Color(0x2622C55E),
+                    iconColor: const Color(0xFF22C55E),
                     icon: Icons.check_circle_outline,
                     count: hadirCount.toString(),
                     label: 'Hadir',
                   ),
                   const SizedBox(width: 12),
                   _buildStatCard(
-                    iconBgColor: Colors.orange.withValues(alpha: 0.15),
-                    iconColor: Colors.orange,
+                    iconBgColor: const Color(0x26F59E0B),
+                    iconColor: const Color(0xFFF59E0B),
                     icon: Icons.error_outline,
                     count: izinCount.toString(),
                     label: 'Izin',
                   ),
                   const SizedBox(width: 12),
                   _buildStatCard(
-                    iconBgColor: Colors.red.withValues(alpha: 0.15),
-                    iconColor: Colors.red,
+                    iconBgColor: const Color(0x26EF4444),
+                    iconColor: const Color(0xFFEF4444),
                     icon: Icons.cancel_outlined,
                     count: alphaCount.toString(),
                     label: 'Alpha',
@@ -305,9 +341,17 @@ class EventDetailView extends StatelessWidget {
                     const SizedBox(height: 16),
 
                     if (records.isEmpty)
-                      const Text(
-                        'Belum ada kehadiran tercatat.',
-                        style: TextStyle(color: Colors.grey),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 24),
+                        child: Center(
+                          child: Text(
+                            'Belum ada kehadiran tercatat.',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[500],
+                            ),
+                          ),
+                        ),
                       )
                     else
                       ...records.map((record) {
@@ -319,11 +363,11 @@ class EventDetailView extends StatelessWidget {
                         final isHadir = statusLower.contains('hadir') || statusLower.contains('terlambat');
                         final isIzin = statusLower.contains('izin') || statusLower.contains('sakit');
                         final statusColor = isHadir
-                            ? Colors.green[700]!
-                            : (isIzin ? Colors.orange[800]! : Colors.red[700]!);
+                            ? const Color(0xFF22C55E)
+                            : (isIzin ? const Color(0xFFF59E0B) : const Color(0xFFEF4444));
                         final statusBgColor = isHadir
-                            ? Colors.green.withValues(alpha: 0.15)
-                            : (isIzin ? Colors.orange.withValues(alpha: 0.15) : Colors.red.withValues(alpha: 0.15));
+                            ? const Color(0x2622C55E)
+                            : (isIzin ? const Color(0x26F59E0B) : const Color(0x26EF4444));
 
                         return _buildAttendeeItem(
                           initial: initial,

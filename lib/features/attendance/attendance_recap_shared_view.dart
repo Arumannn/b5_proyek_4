@@ -7,6 +7,7 @@ import '../../core/services/hive_service.dart';
 import '../../models/attendance_record.dart';
 import '../../models/event_model.dart';
 import '../../models/member_model.dart';
+import '../../widgets/sectioned_list_body.dart';
 import '../auth/auth_controller.dart';
 import '../event/event_controller.dart';
 import 'attendance_controller.dart';
@@ -247,33 +248,33 @@ class _AttendanceRecapSharedViewState extends State<AttendanceRecapSharedView> {
           ? const Center(child: CircularProgressIndicator())
           : _events.isEmpty
           ? const Center(child: Text('Belum ada event/sub-event tersedia.'))
-          : RefreshIndicator(
-              onRefresh: _refresh,
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  EventSelectorField(
-                    selectedEventId: _selectedEventId,
-                    events: _events,
-                    labelBuilder: _eventLabel,
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedEventId = value;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: AttendanceRecordsTable(
-                        records: _filteredRecords,
-                        memberById: _memberById,
-                        eventLabelBuilder: _eventLabel,
-                        showEventColumn: true,
-                        showActionColumn: widget.policy.hasActionColumn,
-                        enableFilters: true,
-                        onEdit: widget.policy.canEditStatus
+          : SectionedListBody(
+              searchArea: EventSelectorField(
+                selectedEventId: _selectedEventId,
+                events: _events,
+                labelBuilder: _eventLabel,
+                onChanged: (value) {
+                  setState(() {
+                    _selectedEventId = value;
+                  });
+                },
+              ),
+              content: RefreshIndicator(
+                onRefresh: _refresh,
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  children: [
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: AttendanceRecordsTable(
+                          records: _filteredRecords,
+                          memberById: _memberById,
+                          eventLabelBuilder: _eventLabel,
+                          showEventColumn: true,
+                          showActionColumn: widget.policy.hasActionColumn,
+                          enableFilters: true,
+                          onEdit: widget.policy.canEditStatus
                             ? _editStatus
                             : null,
                         onDelete: widget.policy.canDeleteRecord

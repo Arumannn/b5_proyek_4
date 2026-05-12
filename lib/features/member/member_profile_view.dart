@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import '../../core/utils/qr_service.dart';
 import '../../widgets/gradient_header.dart';
 
 class MemberProfileView extends StatelessWidget {
@@ -81,7 +82,7 @@ class MemberProfileView extends StatelessWidget {
                 border: Border.all(color: Colors.grey.shade300),
               ),
               child: QrImageView(
-                data: nim,
+                data: QrService.generateQrData(nim),
                 version: QrVersions.auto,
                 size: 200.0,
               ),

@@ -128,6 +128,7 @@ class EventModel extends HiveObject {
       'isSynced': isSynced,
       'createdAt': createdAt.toIso8601String(),
       'jamMulai': jamMulai?.toIso8601String(),
+      'jamSelesai': jamSelesai?.toIso8601String(),
       'lokasi': lokasi,
       'statusEvent': statusEvent,
     };
@@ -142,6 +143,8 @@ class EventModel extends HiveObject {
     final parsedTanggalMulai = DateTime.tryParse((map['tanggalMulai'] ?? '').toString()) ?? DateTime.now();
     final parsedTanggalSelesai = DateTime.tryParse((map['tanggalSelesai'] ?? '').toString());
     final parsedJamMulai = map['jamMulai'] != null ? DateTime.tryParse(map['jamMulai'].toString()) : null;
+    final parsedJamSelesai = map['jamSelesai'] != null ? DateTime.tryParse(map['jamSelesai'].toString()) : null;
+
 
     return EventModel(
       eventId: (map['eventId'] ?? '').toString(),
@@ -156,6 +159,7 @@ class EventModel extends HiveObject {
       isSynced: map['isSynced'] == true,
       createdAt: DateTime.tryParse((map['createdAt'] ?? '').toString()) ?? DateTime.now(),
       jamMulai: parsedJamMulai,
+      jamSelesai: parsedJamSelesai,
       lokasi: map['lokasi']?.toString(),
       statusEvent: map['statusEvent']?.toString(),
     );

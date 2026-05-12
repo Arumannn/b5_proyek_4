@@ -45,14 +45,26 @@ class WhiteStatusHeader extends StatelessWidget implements PreferredSizeWidget {
                       final canPop = Navigator.of(innerContext).canPop();
 
                       if (hasDrawer) {
-                        return IconButton(
-                          icon: const Icon(Icons.menu, color: Color(0xFF1F2937)),
-                          onPressed: () => scaffold!.openDrawer(),
+                        return Container(
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF3F4F6),
+                            shape: BoxShape.circle,
+                          ),
+                          child: IconButton(
+                            icon: const Icon(Icons.menu, color: Color(0xFF1F2937)),
+                            onPressed: () => scaffold!.openDrawer(),
+                          ),
                         );
                       } else if (canPop) {
-                        return IconButton(
-                          icon: const Icon(Icons.chevron_left, color: Color(0xFF1F2937)),
-                          onPressed: () => Navigator.of(innerContext).pop(),
+                        return Container(
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF3F4F6),
+                            shape: BoxShape.circle,
+                          ),
+                          child: IconButton(
+                            icon: const Icon(Icons.chevron_left, color: Color(0xFF1F2937)),
+                            onPressed: () => Navigator.of(innerContext).pop(),
+                          ),
                         );
                       }
                       return const SizedBox(width: 16);
@@ -70,7 +82,7 @@ class WhiteStatusHeader extends StatelessWidget implements PreferredSizeWidget {
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           color: Color(0xFF111827),
-                          fontSize: 19,
+                          fontSize: 20,
                           fontWeight: FontWeight.w800,
                           letterSpacing: -0.2,
                         ),

@@ -32,7 +32,7 @@ class _EventListSectionState extends State<EventListSection> {
     _eventController.loadEvents();
   }
 
-  // Helper untuk membuat tombol tab (Kegiatan Terakhir / Mendatang)
+  // Helper untuk membuat tombol tab dengan design pill (Kegiatan Terakhir / Mendatang)
   Widget _buildTabButton(String title, int index) {
     bool isActive = _activeTabIndex == index;
     return Expanded(
@@ -42,11 +42,12 @@ class _EventListSectionState extends State<EventListSection> {
             _activeTabIndex = index;
           });
         },
-        child: Container(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
           padding: const EdgeInsets.symmetric(vertical: 12.0),
           decoration: BoxDecoration(
             color: isActive ? Colors.blueAccent : Colors.white,
-            borderRadius: BorderRadius.circular(8.0),
+            borderRadius: BorderRadius.circular(24.0),
             border: Border.all(
               color: isActive ? Colors.blueAccent : Colors.grey[300]!,
             ),
@@ -188,12 +189,14 @@ class _EventListSectionState extends State<EventListSection> {
     final targetCount = _targetCount(event, presentCount);
     final attendancePercent =
         targetCount == 0 ? 0.0 : (presentCount / targetCount).clamp(0.0, 1.0);
+    final jenisColor = _getJenisColor(event.jenis);
+    final jenisTint = _getJenisTintColor(event.jenis);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 14),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(16),
         onTap: () {
           final role = AuthController.instance.currentUser.value?.role ?? AppConstants.roleMember;
           Navigator.push(
@@ -202,22 +205,65 @@ class _EventListSectionState extends State<EventListSection> {
           );
         },
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Header with accent bar
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Left accent bar
+                  Container(
+                    width: 4,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: jenisColor,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // Title and badge
                   Expanded(
-                    child: Text(
-                      event.nama,
-                      style: const TextStyle(
-                        fontSize: 34 / 2,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF283548),
-                        height: 1.2,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: jenisTint,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                event.jenis,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: jenisColor,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                event.nama,
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF283548),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -225,23 +271,23 @@ class _EventListSectionState extends State<EventListSection> {
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                     decoration: BoxDecoration(
                       color: _eventStatusBgColor(event),
-                      borderRadius: BorderRadius.circular(999),
+                      borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
                           Icons.check_circle_outline,
-                          size: 17,
+                          size: 14,
                           color: _eventStatusColor(event),
                         ),
-                        const SizedBox(width: 5),
+                        const SizedBox(width: 4),
                         Text(
                           event.statusEvent,
                           style: TextStyle(
                             color: _eventStatusColor(event),
-                            fontWeight: FontWeight.w700,
-                            fontSize: 13.5,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 11,
                           ),
                         ),
                       ],
@@ -250,14 +296,15 @@ class _EventListSectionState extends State<EventListSection> {
                 ],
               ),
               const SizedBox(height: 12),
+              // Metadata rows
               Row(
                 children: [
-                  const Icon(Icons.schedule_outlined, size: 22, color: Color(0xFF98A2B3)),
-                  const SizedBox(width: 10),
+                  const Icon(Icons.schedule_outlined, size: 16, color: Color(0xFF98A2B3)),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       '${_formatDateFull(event.tanggalMulai)} • ${_formatTimeOptional(event.jamMulai)} WIB',
-                      style: const TextStyle(fontSize: 15, color: Color(0xFF566377)),
+                      style: const TextStyle(fontSize: 13, color: Color(0xFF566377)),
                     ),
                   ),
                 ],
@@ -265,12 +312,14 @@ class _EventListSectionState extends State<EventListSection> {
               const SizedBox(height: 8),
               Row(
                 children: [
-                  const Icon(Icons.location_on_outlined, size: 22, color: Color(0xFF98A2B3)),
-                  const SizedBox(width: 10),
+                  const Icon(Icons.location_on_outlined, size: 16, color: Color(0xFF98A2B3)),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       _eventLocation(event),
-                      style: const TextStyle(fontSize: 15, color: Color(0xFF566377)),
+                      style: const TextStyle(fontSize: 13, color: Color(0xFF566377)),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
@@ -278,29 +327,30 @@ class _EventListSectionState extends State<EventListSection> {
               const SizedBox(height: 8),
               Row(
                 children: [
-                  const Icon(Icons.groups_outlined, size: 22, color: Color(0xFF98A2B3)),
-                  const SizedBox(width: 10),
+                  const Icon(Icons.groups_outlined, size: 16, color: Color(0xFF98A2B3)),
+                  const SizedBox(width: 8),
                   Text(
                     '$presentCount/$targetCount hadir',
-                    style: const TextStyle(fontSize: 15, color: Color(0xFF566377)),
+                    style: const TextStyle(fontSize: 13, color: Color(0xFF566377)),
                   ),
                 ],
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
               const Divider(height: 1),
               const SizedBox(height: 12),
+              // Attendance progress
               Row(
                 children: [
                   const Text(
                     'Kehadiran',
-                    style: TextStyle(fontSize: 15, color: Color(0xFF667085)),
+                    style: TextStyle(fontSize: 13, color: Color(0xFF667085)),
                   ),
-                  const SizedBox(width: 14),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(999),
+                      borderRadius: BorderRadius.circular(20),
                       child: LinearProgressIndicator(
-                        minHeight: 10,
+                        minHeight: 8,
                         value: attendancePercent,
                         backgroundColor: const Color(0xFFE5E7EB),
                         valueColor: AlwaysStoppedAnimation<Color>(
@@ -311,12 +361,12 @@ class _EventListSectionState extends State<EventListSection> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 10),
                   Text(
                     '${(attendancePercent * 100).round()}%',
                     style: const TextStyle(
-                      fontSize: 31 / 2,
-                      fontWeight: FontWeight.w800,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
                       color: Color(0xFF1F2937),
                     ),
                   ),
@@ -473,6 +523,26 @@ class _EventListSectionState extends State<EventListSection> {
     final hh = date.hour.toString().padLeft(2, '0');
     final mm = date.minute.toString().padLeft(2, '0');
     return '$hh:$mm WIB';
+  }
+
+  Color _getJenisColor(String jenis) {
+    switch (jenis.toLowerCase()) {
+      case 'rapat':
+        return Colors.blue;
+      case 'acara':
+        return Colors.purple;
+      case 'kegiatan':
+        return Colors.green;
+      case 'lainnya':
+        return Colors.orange;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  Color _getJenisTintColor(String jenis) {
+    final base = _getJenisColor(jenis);
+    return base.withValues(alpha: 0.15);
   }
 
   @override

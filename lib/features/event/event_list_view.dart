@@ -3,12 +3,14 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_constants.dart';
 import '../../models/event_model.dart';
-import '../attendance/scan_screen.dart';
-import '../auth/auth_controller.dart';
-import '../../widgets/gradient_header.dart';
+import '../../core/utils/network_status_controller.dart';
+import '../../widgets/sectioned_list_body.dart';
+import '../../widgets/white_status_header.dart';
 import '../../widgets/loading_overlay.dart';
 import '../../widgets/custom_snackbar.dart';
 import '../../widgets/empty_state_widget.dart';
+import '../attendance/scan_screen.dart';
+import '../auth/auth_controller.dart';
 import 'event_controller.dart';
 import 'event_detail_view.dart';
 import 'event_form_view.dart';
@@ -16,6 +18,8 @@ import 'event_permission.dart';
 import 'widgets/event_card.dart';
 import 'widgets/event_filter_chips.dart';
 import 'widgets/event_search_bar.dart';
+import 'widgets/event_list_card.dart';
+import 'widgets/event_list_utilities.dart';
 
 /// Layar daftar event (Executive) — Enhanced Week 9 Sub-Tahap B
 ///
@@ -286,449 +290,15 @@ class _EventListViewState extends State<EventListView> {
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // UI BUILDERS
+  // HELPER METHODS
   // ═══════════════════════════════════════════════════════════════
 
-  Widget _buildSearchBar() {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 18,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: TextField(
-          controller: _searchController,
-          decoration: InputDecoration(
-            hintText: 'Cari event, jenis, atau lokasi...',
-            prefixIcon: const Icon(Icons.search),
-            suffixIcon: _searchController.text.isNotEmpty
-                ? IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => _searchController.clear(),
-                  )
-                : null,
-            border: InputBorder.none,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 14,
-            ),
-          ),
-        ),
-      ),
-    );
+  void _updateExpandedState(String eventId, bool expanded) {
+    setState(() {
+      _expandedState[eventId] = expanded;
+    });
   }
 
-  Widget _buildFilterChips() {
-    return ValueListenableBuilder<String?>(
-      valueListenable: _controller.selectedJenisFilter,
-      builder: (_, jenisFilter, _) {
-        return ValueListenableBuilder<DateTimeRange?>(
-          valueListenable: _controller.selectedDateRangeFilter,
-          builder: (_, dateRange, _) {
-            final hasFilters = _controller.hasActiveFilters;
-            final chipShape = RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(999),
-            );
-
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  // Filter Jenis Button
-                  FilterChip(
-                    label: Text(jenisFilter ?? 'Semua Jenis'),
-                    selected: jenisFilter != null,
-                    onSelected: (_) => _showJenisFilter(),
-                    avatar: const Icon(Icons.category_outlined, size: 18),
-                    shape: chipShape,
-                    showCheckmark: false,
-                    selectedColor: const Color(0xFFDBEAFE),
-                    labelStyle: TextStyle(
-                      fontWeight: jenisFilter != null
-                          ? FontWeight.w700
-                          : FontWeight.w500,
-                      color: jenisFilter != null
-                          ? const Color(0xFF1D4ED8)
-                          : Colors.black87,
-                    ),
-                  ),
-                  
-                  // Filter Tanggal Button
-                  FilterChip(
-                    label: Text(
-                      dateRange != null
-                          ? '${_formatDate(dateRange.start)} - ${_formatDate(dateRange.end)}'
-                          : 'Semua Tanggal',
-                    ),
-                    selected: dateRange != null,
-                    onSelected: (_) => _showDateRangeFilter(),
-                    avatar: const Icon(Icons.date_range, size: 18),
-                    shape: chipShape,
-                    showCheckmark: false,
-                    selectedColor: const Color(0xFFDCFCE7),
-                    labelStyle: TextStyle(
-                      fontWeight: dateRange != null
-                          ? FontWeight.w700
-                          : FontWeight.w500,
-                      color: dateRange != null
-                          ? const Color(0xFF166534)
-                          : Colors.black87,
-                    ),
-                  ),
-
-                  // Clear All Filters
-                  if (hasFilters)
-                    ActionChip(
-                      label: const Text('Reset Filter'),
-                      onPressed: _clearAllFilters,
-                      avatar: const Icon(Icons.clear_all, size: 18),
-                      shape: chipShape,
-                      backgroundColor: const Color(0xFFF3F4F6),
-                      labelStyle: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildSubEventItem(EventModel subEvent) {
-    return Container(
-      margin: const EdgeInsets.only(top: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFF),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: const Color(0xFFE2E8F0),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                Icons.subdirectory_arrow_right,
-                size: 20,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  subEvent.nama,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                ),
-              ),
-              PopupMenuButton<String>(
-                tooltip: 'Aksi',
-                onSelected: (value) {
-                  if (value == 'edit') {
-                    _editEvent(subEvent);
-                  } else if (value == 'delete') {
-                    _deleteEvent(subEvent);
-                  }
-                },
-                itemBuilder: (context) {
-                  return <PopupMenuEntry<String>>[
-                    if (_canUpdateSubEvent)
-                      const PopupMenuItem(
-                        value: 'edit',
-                        child: Text('Edit'),
-                      ),
-                    if (_canDeleteSubEvent)
-                      const PopupMenuItem(
-                        value: 'delete',
-                        child: Text('Hapus'),
-                      ),
-                  ];
-                },
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: _getJenisColor(subEvent.jenis).withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  subEvent.jenis,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: _getJenisColor(subEvent.jenis),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              Icon(Icons.calendar_today, size: 14, color: Colors.grey.shade600),
-              const SizedBox(width: 4),
-              Text(
-                _formatDateTime(subEvent.tanggalMulai),
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              if (_canUpdateSubEvent)
-                TextButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute<void>(
-                        builder: (_) => ScanScreen(eventId: subEvent.eventId),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.qr_code_scanner, size: 16),
-                  label: const Text('Scan'),
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    minimumSize: Size.zero,
-                    foregroundColor: const Color(0xFF1D4ED8),
-                  ),
-                ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEventCard(EventModel event, {List<EventModel> subEvents = const []}) {
-    final eventId = event.eventId;
-    final isExpanded = _expandedState[eventId] ?? false;
-    final hasSubEvents = subEvents.isNotEmpty;
-    final hasLocation = (event.lokasi ?? '').trim().isNotEmpty;
-    final dateLabel = _formatDateTime(event.jamMulai ?? event.tanggalMulai);
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: hasSubEvents
-            ? () {
-                setState(() {
-                  _expandedState[eventId] = !isExpanded;
-                });
-              }
-            : null,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: _getJenisColor(event.jenis).withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  event.jenis.toUpperCase(),
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.6,
-                    color: _getJenisColor(event.jenis),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
-              // ── Header Row ────────────────────────────
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          event.nama,
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w800,
-                                height: 1.2,
-                              ),
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.schedule,
-                              size: 14,
-                              color: Colors.grey.shade600,
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              dateLabel,
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                          ],
-                        ),
-                        if (hasLocation) ...[
-                          const SizedBox(height: 6),
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.location_on_outlined,
-                                size: 14,
-                                color: Colors.grey.shade600,
-                              ),
-                              const SizedBox(width: 6),
-                              Expanded(
-                                child: Text(
-                                  event.lokasi!.trim(),
-                                  style: Theme.of(context).textTheme.bodySmall,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  // Expand/Collapse Icon
-                  if (hasSubEvents)
-                    Icon(
-                      isExpanded 
-                          ? Icons.expand_less 
-                          : Icons.expand_more,
-                      color: Theme.of(context).colorScheme.primary,
-                    )
-                  else if (_canCreateSubEvent)
-                    IconButton(
-                      tooltip: 'Tambah Sub Event',
-                      onPressed: () => _addSubEvent(event),
-                      icon: Icon(
-                        Icons.add_circle_outline,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                    ),
-                  PopupMenuButton<String>(
-                    tooltip: 'Aksi',
-                    onSelected: (value) {
-                      if (value == 'edit') {
-                        _editEvent(event);
-                      } else if (value == 'delete') {
-                        _deleteEvent(event);
-                      }
-                    },
-                    itemBuilder: (context) {
-                      return <PopupMenuEntry<String>>[
-                        if (_canUpdateMainEvent)
-                          const PopupMenuItem(
-                            value: 'edit',
-                            child: Text('Edit'),
-                          ),
-                        if (_canDeleteMainEvent)
-                          const PopupMenuItem(
-                            value: 'delete',
-                            child: Text('Hapus'),
-                          ),
-                      ];
-                    },
-                  ),
-                ],
-              ),
-
-              if (hasSubEvents) ...[
-                const SizedBox(height: 8),
-                Text(
-                  '${subEvents.length} sub event',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.grey.shade600,
-                        fontStyle: FontStyle.italic,
-                      ),
-                ),
-              ],
-
-              const SizedBox(height: 12),
-
-              // ── Action Buttons ────────────────────────
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  if (!hasSubEvents)
-                    if (_canUpdateMainEvent)
-                      FilledButton.icon(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute<void>(
-                              builder: (_) => ScanScreen(eventId: event.eventId),
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.qr_code_scanner),
-                        label: const Text('Scan'),
-                        style: FilledButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 10,
-                          ),
-                        ),
-                      ),
-                ],
-              ),
-
-              // ── Sub Events (Expandable) ───────────────
-              if (hasSubEvents && isExpanded) ...[
-                const SizedBox(height: 12),
-                const Divider(height: 1),
-                const SizedBox(height: 12),
-                Text(
-                  'Sub Event',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
-                ...subEvents.map(_buildSubEventItem),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
   Future<void> _addSubEvent(EventModel parentEvent) async {
     if (!_canCreateSubEvent) {
@@ -782,46 +352,151 @@ class _EventListViewState extends State<EventListView> {
   }
 
   String _formatDate(DateTime date) {
-    final dd = date.day.toString().padLeft(2, '0');
-    final mm = date.month.toString().padLeft(2, '0');
-    final yyyy = date.year.toString();
-    return '$dd/$mm/$yyyy';
+    return EventListUtilities.formatDate(date);
   }
 
   String _formatDateTime(DateTime date) {
-    final datePart = _formatDate(date);
-    final hh = date.hour.toString().padLeft(2, '0');
-    final mm = date.minute.toString().padLeft(2, '0');
-    return '$datePart $hh:$mm';
+    return EventListUtilities.formatDateTime(date);
   }
 
   Color _getJenisColor(String jenis) {
-    switch (jenis) {
-      case 'Rapat':
-        return Colors.blue;
-      case 'Acara':
-        return Colors.purple;
-      case 'Kegiatan':
-        return Colors.green;
-      case 'Lainnya':
-        return Colors.orange;
-      default:
-        return Colors.grey;
+    return EventListUtilities.getJenisColor(jenis);
+  }
+
+  Widget _buildEventListBuilder(
+    BuildContext context,
+    List<EventModel> rootEvents,
+  ) {
+    if (rootEvents.isEmpty) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          SizedBox(height: MediaQuery.of(context).size.height * 0.2),
+          EmptyStateWidget(
+            icon: _controller.hasActiveFilters
+                ? Icons.filter_list_off
+                : Icons.event_busy,
+            title: _controller.hasActiveFilters
+                ? 'Tidak ada event yang cocok'
+                : 'Belum ada event',
+            subtitle: _controller.hasActiveFilters
+                ? 'Coba ubah filter atau reset untuk melihat semua event'
+                : 'Tekan tombol + untuk menambah event pertama',
+            action: _controller.hasActiveFilters
+                ? FilledButton.icon(
+                    onPressed: _clearAllFilters,
+                    icon: const Icon(Icons.clear_all),
+                    label: const Text('Reset Filter'),
+                  )
+                : null,
+          ),
+        ],
+      );
     }
+
+    return RefreshIndicator(
+      onRefresh: () => _controller.loadEvents(force: true, cloudSync: true),
+      child: ListView.builder(
+        itemCount: rootEvents.length,
+        itemBuilder: (_, index) {
+          final event = rootEvents[index];
+          final subEvents =
+              _controller.getSubEvents(event.eventId);
+
+          return EventListCard(
+            event: event,
+            subEvents: subEvents,
+            onAddSubEvent: () => _addSubEvent(event),
+            onEditEvent: () => _editEvent(event),
+            onDeleteEvent: () => _deleteEvent(event),
+            onScanEvent: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) =>
+                      ScanScreen(eventId: event.eventId),
+                ),
+              );
+            },
+            onEditSubEvent: _editEvent,
+            onDeleteSubEvent: _deleteEvent,
+            onScanSubEvent: (subEvent) {
+              Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) =>
+                      ScanScreen(eventId: subEvent.eventId),
+                ),
+              );
+            },
+            getJenisColor: EventListUtilities.getJenisColor,
+            formatDate: EventListUtilities.formatDate,
+            formatDateTime: EventListUtilities.formatDateTime,
+            canCreateSubEvent: _canCreateSubEvent,
+            canUpdateMainEvent: _canUpdateMainEvent,
+            canDeleteMainEvent: _canDeleteMainEvent,
+            canUpdateSubEvent: _canUpdateSubEvent,
+            canDeleteSubEvent: _canDeleteSubEvent,
+            expandedState: _expandedState,
+            onExpandedChanged: (expanded) =>
+                _updateExpandedState(event.eventId, expanded),
+          );
+        },
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: GradientHeader(
+      appBar: WhiteStatusHeader(
         title: 'Daftar Event',
         subtitle: 'Kelola main event dan sub-event',
+        statusBadge: ValueListenableBuilder<bool>(
+          valueListenable: NetworkStatusController.instance.isOnline,
+          builder: (context, isOnline, _) {
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: isOnline
+                    ? const Color(0xFFE8F7EF)
+                    : const Color(0xFFFFF3E6),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    isOnline ? Icons.wifi : Icons.wifi_off,
+                    size: 10,
+                    color: isOnline
+                        ? const Color(0xFF15803D)
+                        : const Color(0xFFF97316),
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    isOnline
+                        ? 'TERSINKRONISASI'
+                        : 'OFFLINE (SIMPAN LOKAL)',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: isOnline
+                          ? const Color(0xFF15803D)
+                          : const Color(0xFFF97316),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
         actions: [
           if (_canCreateMainEvent)
             IconButton(
               tooltip: 'Tambah Event',
               onPressed: _addEvent,
-              icon: const Icon(Icons.add, color: Colors.white),
+              icon: const Icon(Icons.add, color: Color(0xFF111827)),
             ),
         ],
       ),
@@ -843,94 +518,22 @@ class _EventListViewState extends State<EventListView> {
               builder: (context, allEvents, _) {
                 final rootEvents = _controller.getRootEvents();
 
-                return Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      // ── Search Bar ──────────────────────
-                      EventSearchBar(controller: _searchController),
-
-                      // ── Filter Chips ────────────────────
-                      EventFilterChips(
-                        controller: _controller,
-                        onJenisFilterTap: _showJenisFilter,
-                        onDateFilterTap: _showDateRangeFilter,
-                        onClearFilters: _clearAllFilters,
-                      ),
-
-                      // ── Event List ──────────────────────
-                      Expanded(
-                        child: RefreshIndicator(
-                          onRefresh: () => _controller.loadEvents(force: true, cloudSync: true),
-                          child: rootEvents.isEmpty
-                              ? ListView(
-                                  physics: const AlwaysScrollableScrollPhysics(),
-                                  children: [
-                                    SizedBox(height: MediaQuery.of(context).size.height * 0.2),
-                                    EmptyStateWidget(
-                                      icon: _controller.hasActiveFilters
-                                          ? Icons.filter_list_off
-                                          : Icons.event_busy,
-                                      title: _controller.hasActiveFilters
-                                          ? 'Tidak ada event yang cocok'
-                                          : 'Belum ada event',
-                                      subtitle: _controller.hasActiveFilters
-                                          ? 'Coba ubah filter atau reset untuk melihat semua event'
-                                          : 'Tekan tombol + untuk menambah event pertama',
-                                      action: _controller.hasActiveFilters
-                                          ? FilledButton.icon(
-                                              onPressed: _clearAllFilters,
-                                              icon: const Icon(Icons.clear_all),
-                                              label: const Text('Reset Filter'),
-                                            )
-                                          : null,
-                                    ),
-                                  ],
-                                )
-                              : ListView.builder(
-                                  physics: const AlwaysScrollableScrollPhysics(),
-                                  itemCount: rootEvents.length,
-                                  itemBuilder: (context, index) {
-                                    final event = rootEvents[index];
-                                    final subEvents = _controller.getSubEvents(event.eventId);
-
-                                    return EventCard(
-                                      event: event,
-                                      subEvents: subEvents,
-                                      isExpanded: _expandedState[event.eventId] ?? false,
-                                      canUpdateMain: _canUpdateMainEvent,
-                                      canDeleteMain: _canDeleteMainEvent,
-                                      canCreateSub: _canCreateSubEvent,
-                                      canUpdateSub: _canUpdateSubEvent,
-                                      canDeleteSub: _canDeleteSubEvent,
-                                      onExpandToggle: (expanded) {
-                                        setState(() => _expandedState[event.eventId] = expanded);
-                                      },
-                                      onCardTap: () {
-                                        final role = AuthController.instance.currentUser.value?.role ?? AppConstants.roleMember;
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(builder: (_) => EventDetailView(event: event, userRole: role)),
-                                        );
-                                      },
-                                      onEdit: _editEvent,
-                                      onDelete: _deleteEvent,
-                                      onAddSubEvent: _addSubEvent,
-                                      onScan: (eventId) {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) => ScanScreen(eventId: eventId),
-                                          ),
-                                        );
-                                      },
-                                    );
-                                  },
-                                ),
-                        ),
-                      ),
-                    ],
+                return SectionedListBody(
+                  header: const SizedBox.shrink(),
+                  searchBar: EventSearchBar(
+                    controller: _searchController,
                   ),
+                  filterArea: EventFilterChips(
+                    controller: _controller,
+                    onJenisFilterTap: _showJenisFilter,
+                    onDateFilterTap: _showDateRangeFilter,
+                    onClearFilters: _clearAllFilters,
+                  ),
+                  listBuilder: (context) =>
+                      _buildEventListBuilder(context, rootEvents),
+                  emptyState: const SizedBox.shrink(),
+                  onRefresh: () =>
+                      _controller.loadEvents(force: true, cloudSync: true),
                 );
               },
             ),
