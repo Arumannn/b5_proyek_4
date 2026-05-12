@@ -37,13 +37,10 @@ class _AttendanceRecapSharedViewState extends State<AttendanceRecapSharedView> {
   String? _selectedEventId;
 
   String get _currentRole =>
-      (AuthController.instance.currentUser.value?.role ?? '').trim().toLowerCase();
+      (AuthController.instance.currentUser.value?.role ?? '').trim();
 
   bool get _hasAccess {
-    if (_currentRole == AppConstants.roleExecutive.toLowerCase() ||
-        _currentRole == 'executive' ||
-        _currentRole == 'eksekutif' ||
-        _currentRole == 'admin') {
+    if (_currentRole == AppConstants.roleExecutive.toLowerCase()) {
       return true;
     }
     if (_currentRole == AppConstants.roleManager.toLowerCase()) {

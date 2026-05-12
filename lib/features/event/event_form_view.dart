@@ -45,9 +45,6 @@ class _EventFormViewState extends State<EventFormView> {
 
   bool get _hasAccess =>
       _currentRole == AppConstants.roleExecutive.toLowerCase() ||
-      _currentRole == 'executive' ||
-      _currentRole == 'eksekutif' ||
-      _currentRole == 'admin' ||
       _currentRole == AppConstants.roleManager.toLowerCase();
 
   @override

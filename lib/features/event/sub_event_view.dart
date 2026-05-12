@@ -364,7 +364,7 @@ class _SubEventViewState extends State<SubEventView> {
                   ...subs.asMap().entries.map((entry) {
                     final sub = entry.value;
                     return _buildSubEventItem(sub, jenisColor);
-                  }).toList(),
+                  }),
                 ],
               ),
             ),

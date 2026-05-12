@@ -58,7 +58,6 @@ class _DashboardViewState extends State<DashboardView> {
           );
         }
 
-        final role = currentUser.role.trim().toLowerCase();
         final policy = DashboardRolePolicy.forRole(currentUser.role);
 
         return Scaffold(

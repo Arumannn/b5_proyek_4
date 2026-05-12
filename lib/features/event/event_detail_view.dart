@@ -3,12 +3,9 @@ import '../../core/services/hive_service.dart';
 import '../../models/attendance_record.dart';
 import '../../models/event_model.dart';
 import '../../models/member_model.dart';
-import '../../core/constants/app_constants.dart';
 import '../attendance/scan_screen.dart';
-import '../auth/auth_controller.dart';
 import 'event_permission.dart';
 import 'event_controller.dart';
-import 'event_form_view.dart';
 import '../../widgets/custom_snackbar.dart';
 
 class EventDetailView extends StatefulWidget {

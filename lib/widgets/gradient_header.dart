@@ -27,7 +27,7 @@ class GradientHeader extends StatelessWidget implements PreferredSizeWidget {
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)), // rounded-b-3xl
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.12),
+            color: Colors.black.withValues(alpha: 0.12),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -52,7 +52,7 @@ class GradientHeader extends StatelessWidget implements PreferredSizeWidget {
                       icon: const Icon(Icons.chevron_left, color: Colors.white, size: 26),
                       onPressed: () => Navigator.pop(context),
                       style: IconButton.styleFrom(
-                        backgroundColor: Colors.white.withOpacity(0.12),
+                        backgroundColor: Colors.white.withValues(alpha: 0.12),
                         padding: const EdgeInsets.all(8),
                         shape: const CircleBorder(),
                         minimumSize: const Size(40, 40),
@@ -131,7 +131,7 @@ class GradientHeader extends StatelessWidget implements PreferredSizeWidget {
         Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.12),
+            color: Colors.white.withValues(alpha: 0.12),
             shape: BoxShape.circle,
           ),
           child: Icon(icon, color: Colors.white, size: 20),

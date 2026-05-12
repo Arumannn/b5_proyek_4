@@ -24,10 +24,7 @@ class _ManagerUserReadonlyViewState extends State<ManagerUserReadonlyView> {
 
   bool get _hasAccess =>
       _currentRole == AppConstants.roleManager.toLowerCase() ||
-      _currentRole == AppConstants.roleExecutive.toLowerCase() ||
-      _currentRole == 'executive' ||
-      _currentRole == 'eksekutif' ||
-      _currentRole == 'admin';
+      _currentRole == AppConstants.roleExecutive.toLowerCase();
 
   @override
   void initState() {
@@ -51,11 +48,9 @@ class _ManagerUserReadonlyViewState extends State<ManagerUserReadonlyView> {
 
   String _roleLabel(String role) {
     final normalized = role.trim().toLowerCase();
-    if (normalized == 'executive' || normalized == 'eksekutif' || normalized == 'admin') {
-      return 'Executive';
-    }
-    if (normalized == 'manager') return 'Manager';
-    if (normalized == 'organizer') return 'Organizer';
+    if (normalized == AppConstants.roleExecutive.toLowerCase()) return 'Executive';
+    if (normalized == AppConstants.roleManager.toLowerCase()) return 'Manager';
+    if (normalized == AppConstants.roleOrganizer.toLowerCase()) return 'Organizer';
     return 'Member';
   }
 

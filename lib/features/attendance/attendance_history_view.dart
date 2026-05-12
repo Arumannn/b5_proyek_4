@@ -162,86 +162,6 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
     );
   }
 
-  Widget _buildHeader() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              GestureDetector(
-                onTap: () => Navigator.pop(context),
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.14),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.chevron_left, color: Colors.white, size: 24),
-                ),
-              ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Riwayat Kehadiran',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Colors.white),
-                    ),
-                    SizedBox(height: 2),
-                    Text('History absensi Anda', style: TextStyle(fontSize: 12, color: Colors.white70)),
-                  ],
-                ),
-              ),
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.14),
-                  shape: BoxShape.circle,
-                ),
-                child: IconButton(
-                  padding: EdgeInsets.zero,
-                  icon: const Icon(Icons.download_outlined, color: Colors.white),
-                  onPressed: () {},
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          Center(
-            child: Container(
-              width: 88,
-              height: 88,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.12),
-                    blurRadius: 18,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: const Icon(Icons.history_rounded, size: 42, color: Color(0xFF2563EB)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildMonthPickerCard() {
     return Container(
       padding: const EdgeInsets.all(12),
@@ -330,7 +250,7 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
   Widget _buildSummaryCards() {
     return ValueListenableBuilder<String>(
       valueListenable: _selectedMonth,
-      builder: (context, _, __) {
+      builder: (context, _, _) {
         final stats = _getStats(_recordsForSelectedMonth);
         final percent = stats['total']! == 0 ? 0 : ((stats['hadir']! / stats['total']!) * 100).round();
 
@@ -428,12 +348,12 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
   Widget _buildFilterChips() {
     return ValueListenableBuilder<String>(
       valueListenable: _selectedMonth,
-      builder: (context, _, __) {
+      builder: (context, _, _) {
         final stats = _getStats(_recordsForSelectedMonth);
         
         return ValueListenableBuilder<String>(
           valueListenable: _selectedFilter,
-          builder: (context, selected, ___) {
+          builder: (context, selected, _) {
             return Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -492,7 +412,7 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
   Widget _buildRecordList() {
     return ValueListenableBuilder<String>(
       valueListenable: _selectedFilter,
-      builder: (context, _, __) {
+      builder: (context, _, _) {
         final records = _filteredRecords;
 
         if (records.isEmpty) {

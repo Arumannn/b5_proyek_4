@@ -56,7 +56,7 @@ class _MemberFormViewState extends State<MemberFormView> {
 
   String _roleLabel(String role) {
     final normalized = role.trim().toLowerCase();
-    if (normalized == 'executive' || normalized == 'eksekutif' || normalized == 'admin') {
+    if (normalized == AppConstants.roleExecutive.toLowerCase()) {
       return 'Eksekutif';
     }
     if (normalized == AppConstants.roleManager) return 'Manager';

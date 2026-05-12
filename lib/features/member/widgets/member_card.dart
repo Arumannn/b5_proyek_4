@@ -28,7 +28,7 @@ class MemberCard extends StatelessWidget {
 
   Color _getRoleBgColor(String role) {
     final r = role.toLowerCase();
-    if (r == AppConstants.roleExecutive.toLowerCase() || r == 'eksekutif' || r == 'admin') {
+    if (r == AppConstants.roleExecutive.toLowerCase()) {
       return const Color(0xFFF3E8FF); // bg-purple-100
     } else if (r == AppConstants.roleManager.toLowerCase()) {
       return const Color(0xFFDBEAFE); // bg-blue-100
@@ -40,7 +40,7 @@ class MemberCard extends StatelessWidget {
 
   Color _getRoleTextColor(String role) {
     final r = role.toLowerCase();
-    if (r == AppConstants.roleExecutive.toLowerCase() || r == 'eksekutif' || r == 'admin') {
+    if (r == AppConstants.roleExecutive.toLowerCase()) {
       return const Color(0xFF7E22CE); // text-purple-700
     } else if (r == AppConstants.roleManager.toLowerCase()) {
       return const Color(0xFF1D4ED8); // text-blue-700
@@ -52,7 +52,7 @@ class MemberCard extends StatelessWidget {
 
   String _getDisplayRole(String role) {
     final r = role.toLowerCase();
-    if (r == AppConstants.roleExecutive.toLowerCase() || r == 'eksekutif' || r == 'admin') {
+    if (r == AppConstants.roleExecutive.toLowerCase()) {
       return 'Eksekutif';
     } else if (r == AppConstants.roleManager.toLowerCase()) {
       return 'Manager';

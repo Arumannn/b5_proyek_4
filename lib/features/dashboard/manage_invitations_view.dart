@@ -170,12 +170,14 @@ class _ManageInvitationsViewState extends State<ManageInvitationsView> {
         await HiveService.invitations.put(invitationId, invitation);
       }
 
+      if (!mounted) return;
       CustomSnackbar.showSuccess(
         context,
         'Undangan berhasil disebar ke ${selected.length} anggota! Data sinkronisasi tertunda karena offline mode (Simulasi).',
       );
       Navigator.pop(context);
     } catch (e) {
+      if (!mounted) return;
       CustomSnackbar.showError(context, 'Gagal mengirim undangan: $e');
     }
   }
@@ -513,7 +515,7 @@ class _ManageInvitationsViewState extends State<ManageInvitationsView> {
                 : ListView.separated(
                     shrinkWrap: true,
                     itemCount: filteredUsers.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    separatorBuilder: (_, _) => const SizedBox(height: 8),
                     itemBuilder: (context, index) {
                       final user = filteredUsers[index];
                       final isSelected = _selectedMembers[user.nim] ?? false;

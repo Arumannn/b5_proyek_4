@@ -97,7 +97,7 @@ class MemberTodayEventsSection extends StatelessWidget {
 class _EventCard extends StatelessWidget {
   final EventModel event;
 
-  const _EventCard({super.key, required this.event});
+  const _EventCard({required this.event});
 
   @override
   Widget build(BuildContext context) {
@@ -170,7 +170,7 @@ class _EventCard extends StatelessWidget {
                       alignment: Alignment.centerLeft,
                       child: ElevatedButton(
                         onPressed: () {
-                          // TODO: Navigasi ke halaman pengajuan izin/sakit
+                          // T O D O: Navigasi ke halaman pengajuan izin/sakit
                           // Contoh: Navigator.push(context, MaterialPageRoute(builder: (_) => PermissionRequestView(event: event)));
                         },
                         style: ElevatedButton.styleFrom(

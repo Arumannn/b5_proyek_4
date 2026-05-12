@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../core/constants/app_constants.dart';
 import '../../../core/services/hive_service.dart';
 import '../../../models/event_model.dart';
 import '../../../models/attendance_record.dart';

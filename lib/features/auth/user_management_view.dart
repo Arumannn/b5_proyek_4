@@ -24,10 +24,7 @@ class _UserManagementViewState extends State<UserManagementView> {
   String get _currentRole => (_authController.currentUser.value?.role ?? '').trim().toLowerCase();
 
   bool get _hasAccess =>
-      _currentRole == AppConstants.roleExecutive.toLowerCase() ||
-      _currentRole == 'executive' ||
-      _currentRole == 'eksekutif' ||
-      _currentRole == 'admin';
+      _currentRole == AppConstants.roleExecutive.toLowerCase();
 
   @override
   void initState() {
@@ -53,9 +50,7 @@ class _UserManagementViewState extends State<UserManagementView> {
 
   String _roleLabel(String role) {
     final normalized = role.trim().toLowerCase();
-    if (normalized == 'executive' || normalized == 'eksekutif' || normalized == 'admin') {
-      return 'Executive';
-    }
+    if (normalized == AppConstants.roleExecutive) return 'Executive';
     if (normalized == AppConstants.roleManager) return 'Manager';
     if (normalized == AppConstants.roleOrganizer) return 'Organizer';
     return 'Member';

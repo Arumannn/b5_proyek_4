@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../core/constants/app_constants.dart';
 import '../../../models/event_model.dart';
-import '../../../widgets/custom_snackbar.dart';
 import '../../attendance/scan_screen.dart';
-import '../../auth/auth_controller.dart';
 import '../event_controller.dart';
 
 /// Widget that displays action buttons for an event (Scan, Edit, Delete, Add Sub-Event)
@@ -42,7 +39,7 @@ class EventActionButtons extends StatelessWidget {
     final canEdit = isSubEvent ? canUpdateSubEvent : canUpdateMainEvent; // RBAC: UPDATE berbeda antara main/sub.
     final canScan = canEdit && (isSubEvent || !hasSubEvents);
     final canDelete = isSubEvent ? canDeleteSubEvent : canDeleteMainEvent; // RBAC: DELETE berbeda antara main/sub.
-    final canAddSubEvent = !isSubEvent && this.canCreateSubEvent; // RBAC: CREATE sub-event boleh Executive/Manager pada parent main event.
+    final canAddSubEvent = !isSubEvent && canCreateSubEvent; // RBAC: CREATE sub-event boleh Executive/Manager pada parent main event.
 
     return Wrap(
       spacing: 8,

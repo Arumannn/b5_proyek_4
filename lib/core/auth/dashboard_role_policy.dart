@@ -22,11 +22,8 @@ class DashboardRolePolicy {
   factory DashboardRolePolicy.forRole(String role) {
     final normalized = role.trim().toLowerCase();
 
-    // Executive / Manager / Admin
+    // Executive / Manager
     if (normalized == AppConstants.roleExecutive.toLowerCase() ||
-        normalized == 'executive' ||
-        normalized == 'eksekutif' ||
-        normalized == 'admin' ||
         normalized == AppConstants.roleManager.toLowerCase()) {
       return const DashboardRolePolicy(
         showExecutiveAdmin: true,

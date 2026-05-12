@@ -322,7 +322,7 @@ class _EventListViewState extends State<EventListView> {
                         child: ListView.separated(
                           padding: const EdgeInsets.all(16), // p-4
                           itemCount: filteredEvents.length,
-                          separatorBuilder: (_, __) =>
+                          separatorBuilder: (_, _) =>
                               const SizedBox(height: 16), // space-y-4
                           itemBuilder: (context, index) {
                             final event = filteredEvents[index];

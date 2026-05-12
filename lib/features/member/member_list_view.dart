@@ -42,10 +42,7 @@ class _MemberListViewState extends State<MemberListView> {
 
   bool get _isExecutive {
     final role = (AuthController.instance.currentUser.value?.role ?? '').trim().toLowerCase();
-    return role == AppConstants.roleExecutive.toLowerCase() ||
-        role == 'executive' ||
-        role == 'eksekutif' ||
-        role == 'admin';
+    return role == AppConstants.roleExecutive.toLowerCase();
   }
 
   Future<void> _editMember(MemberModel member) async {
@@ -257,7 +254,7 @@ class _MemberListViewState extends State<MemberListView> {
                       physics: const AlwaysScrollableScrollPhysics(),
                       padding: const EdgeInsets.all(16), // p-4
                       itemCount: filtered.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 12), // space-y-3 equivalent
+                      separatorBuilder: (_, _) => const SizedBox(height: 12), // space-y-3 equivalent
                       itemBuilder: (context, index) {
                         final member = filtered[index];
                         return MemberCard(

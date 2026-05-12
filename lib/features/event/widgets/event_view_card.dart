@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../models/event_model.dart';
-import '../../../widgets/custom_snackbar.dart';
 import '../../auth/auth_controller.dart';
 import '../event_controller.dart';
 import '../event_detail_view.dart';
