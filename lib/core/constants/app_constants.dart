@@ -54,6 +54,15 @@ class AppConstants {
     roleMember,
   ];
 
+  static List<String> dbuOptionsForRole(String role) {
+    final normalized = role.trim().toLowerCase();
+    if (normalized == roleExecutive) return hexaOptions;
+    if (normalized == roleManager) return adkesOptions;
+    return [...departmentDbuOptions, ...biroDbuOptions, ...unitDbuOptions];
+  }
+
+  static String defaultDbuForRole(String role) => dbuOptionsForRole(role).first;
+
   // DBU options for user management form (Executive only)
   static const List<String> departmentDbuOptions = [
     'Departemen Komunikasi dan Informasi',

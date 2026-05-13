@@ -667,7 +667,7 @@ class _ManageInvitationsViewState extends State<ManageInvitationsView> {
                       Icon(Icons.send, size: 18), // Send size={18}
                       SizedBox(width: 8), // mr-2
                       Text(
-                        'Kirim Undangan Massal',
+                        'Kirim Undangan',
                         style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                       ),
                     ],

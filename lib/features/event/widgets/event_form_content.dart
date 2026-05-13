@@ -4,6 +4,7 @@ import 'event_form_footer.dart';
 import 'event_form_header.dart';
 import 'participant_selector.dart';
 import '../event_form_models.dart';
+import '../../../core/widgets/inline_expanding_dropdown_field.dart';
 
 class EventFormContent extends StatelessWidget {
   final GlobalKey<FormState> formKey;
@@ -12,6 +13,7 @@ class EventFormContent extends StatelessWidget {
   final TextEditingController lokasiController;
   final TextEditingController deskripsiController;
   final DateTime? selectedDate;
+  final DateTime? selectedEndDate;
   final DateTime? selectedJamSelesai;
   final bool isSubEvent;
   final String? parentId;
@@ -20,6 +22,7 @@ class EventFormContent extends StatelessWidget {
   final List<EventParentOption> parentOptions;
   final bool canChangeHierarchy;
   final VoidCallback onPickDate;
+  final VoidCallback onPickEndDate;
   final VoidCallback onPickTime;
   final VoidCallback onPickEndTime;
   final VoidCallback onClearEndTime;
@@ -41,6 +44,7 @@ class EventFormContent extends StatelessWidget {
     required this.lokasiController,
     required this.deskripsiController,
     required this.selectedDate,
+    required this.selectedEndDate,
     required this.selectedJamSelesai,
     required this.isSubEvent,
     required this.parentId,
@@ -49,6 +53,7 @@ class EventFormContent extends StatelessWidget {
     required this.parentOptions,
     required this.canChangeHierarchy,
     required this.onPickDate,
+    required this.onPickEndDate,
     required this.onPickTime,
     required this.onPickEndTime,
     required this.onClearEndTime,
@@ -87,23 +92,12 @@ class EventFormContent extends StatelessWidget {
                   },
                 ),
                 const SizedBox(height: 16),
-                _buildInputLabel('Jenis Kegiatan', context),
-                DropdownButtonFormField<String>(
-                  initialValue: selectedJenis,
-                  decoration: _inputDecoration(),
-                  items: const ['Rapat', 'Acara', 'Kegiatan', 'Lainnya']
-                      .map(
-                        (jenis) => DropdownMenuItem<String>(
-                          value: jenis,
-                          child: Text(jenis, style: const TextStyle(fontSize: 14)),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (value) {
-                    if (value != null) {
-                      onJenisChanged(value);
-                    }
-                  },
+                InlineExpandingDropdownField(
+                  label: 'Jenis Kegiatan',
+                  value: selectedJenis,
+                  options: const ['Rapat', 'Acara', 'Kegiatan', 'Lainnya'],
+                  placeholder: 'Pilih jenis kegiatan',
+                  onChanged: onJenisChanged,
                 ),
                 const SizedBox(height: 16),
                 Row(
@@ -112,18 +106,18 @@ class EventFormContent extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildInputLabel('Tanggal', context),
+                          _buildInputLabel('Tanggal Mulai', context),
                           GestureDetector(
                             onTap: onPickDate,
                             child: AbsorbPointer(
-                                child: TextFormField(
-                                  controller: TextEditingController(
-                                    text: selectedDate != null ? formatDate(selectedDate!) : 'Pilih Tanggal'
-                                  ),
-                                  decoration: _inputDecoration(
-                                    suffixIcon: const Icon(Icons.calendar_today, size: 18),
-                                  ),
+                              child: TextFormField(
+                                controller: TextEditingController(
+                                  text: selectedDate != null ? formatDate(selectedDate!) : 'Pilih Tanggal',
                                 ),
+                                decoration: _inputDecoration(
+                                  suffixIcon: const Icon(Icons.calendar_today, size: 18),
+                                ),
+                              ),
                             ),
                           ),
                         ],
@@ -134,18 +128,18 @@ class EventFormContent extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildInputLabel('Waktu (Mulai)', context),
+                          _buildInputLabel('Waktu Mulai', context),
                           GestureDetector(
                             onTap: onPickTime,
                             child: AbsorbPointer(
-                                child: TextFormField(
-                                  controller: TextEditingController(
-                                    text: selectedDate != null ? formatTime(selectedDate!) : 'Pilih Waktu'
-                                  ),
-                                  decoration: _inputDecoration(
-                                    suffixIcon: const Icon(Icons.access_time, size: 18),
-                                  ),
+                              child: TextFormField(
+                                controller: TextEditingController(
+                                  text: selectedDate != null ? formatTime(selectedDate!) : 'Pilih Waktu',
                                 ),
+                                decoration: _inputDecoration(
+                                  suffixIcon: const Icon(Icons.access_time, size: 18),
+                                ),
+                              ),
                             ),
                           ),
                         ],
@@ -154,33 +148,53 @@ class EventFormContent extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 16),
-                _buildInputLabel('Waktu Selesai', context),
                 Row(
                   children: [
                     Expanded(
-                      child: GestureDetector(
-                        onTap: onPickEndTime,
-                        child: AbsorbPointer(
-                          child: TextFormField(
-                            controller: TextEditingController(
-                              text: selectedJamSelesai != null
-                                  ? formatTime(selectedJamSelesai!)
-                                  : 'Tidak ditentukan',
-                            ),
-                            decoration: _inputDecoration(
-                              suffixIcon: const Icon(Icons.access_time, size: 18),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildInputLabel('Tanggal Selesai', context),
+                          GestureDetector(
+                            onTap: onPickEndDate,
+                            child: AbsorbPointer(
+                              child: TextFormField(
+                                controller: TextEditingController(
+                                  text: selectedEndDate != null ? formatDate(selectedEndDate!) : 'Pilih Tanggal',
+                                ),
+                                decoration: _inputDecoration(
+                                  suffixIcon: const Icon(Icons.calendar_today, size: 18),
+                                ),
+                              ),
                             ),
                           ),
-                        ),
+                        ],
                       ),
                     ),
-                    if (selectedJamSelesai != null) ...[
-                      const SizedBox(width: 8),
-                      IconButton(
-                        icon: const Icon(Icons.clear, color: Colors.grey),
-                        onPressed: onClearEndTime,
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildInputLabel('Waktu Selesai', context),
+                          GestureDetector(
+                            onTap: onPickEndTime,
+                            child: AbsorbPointer(
+                              child: TextFormField(
+                                controller: TextEditingController(
+                                  text: selectedJamSelesai != null
+                                      ? formatTime(selectedJamSelesai!)
+                                      : 'Pilih Waktu',
+                                ),
+                                decoration: _inputDecoration(
+                                  suffixIcon: const Icon(Icons.access_time, size: 18),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ],
                 ),
                 const SizedBox(height: 16),

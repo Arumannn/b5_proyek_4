@@ -6,6 +6,8 @@ import '../../models/member_model.dart';
 import '../attendance/scan_screen.dart';
 import 'event_permission.dart';
 import 'event_controller.dart';
+import 'event_form_models.dart';
+import 'event_form_view.dart';
 import '../../widgets/custom_snackbar.dart';
 
 class EventDetailView extends StatefulWidget {
@@ -41,6 +43,13 @@ class _EventDetailViewState extends State<EventDetailView> {
       : EventPermission.canDeleteSubEvent(widget.userRole);
 
   bool get _canAddSubEvent => widget.event.parentEventId == null && EventPermission.canCreateSubEvent(widget.userRole);
+
+  List<EventParentOption> get _parentOptions {
+    return _controller
+        .getRootEvents()
+        .map((event) => EventParentOption(id: event.eventId, name: event.nama))
+        .toList(growable: false);
+  }
 
   String _formatDate(DateTime value) {
     final dd = value.day.toString().padLeft(2, '0');
@@ -82,6 +91,100 @@ class _EventDetailViewState extends State<EventDetailView> {
     return {
       for (final m in HiveService.members.values) m.nim: m,
     };
+  }
+
+  EventFormValue _toFormValue(EventModel event, {bool forceSubEvent = false, String? forcedParentId}) {
+    return EventFormValue(
+      name: event.nama,
+      date: event.tanggalMulai,
+      endDate: event.tanggalSelesai ?? event.tanggalMulai,
+      jamSelesai: event.jamSelesai,
+      isSubEvent: forceSubEvent || event.parentEventId != null,
+      parentId: forcedParentId ?? event.parentEventId,
+      jenis: event.jenis,
+      lokasi: event.lokasi,
+      deskripsi: event.deskripsi,
+      targetPeserta: event.targetPeserta,
+      requiresInvitation: event.requiresInvitation,
+    );
+  }
+
+  Future<void> _openEventForm({
+    required String title,
+    required EventFormValue initialValue,
+    required bool isEdit,
+  }) async {
+    final form = await Navigator.push<EventFormValue>(
+      context,
+      MaterialPageRoute<EventFormValue>(
+        builder: (_) => EventFormView(
+          title: title,
+          initialValue: initialValue,
+          parentOptions: _parentOptions,
+          canChangeHierarchy: false,
+        ),
+      ),
+    );
+
+    if (form == null) return;
+
+    final success = isEdit
+        ? await _controller.updateEvent(
+            _currentEvent.copyWith(
+              nama: form.name,
+              tanggalMulai: form.date,
+              tanggalSelesai: form.endDate,
+              jamSelesai: form.jamSelesai,
+              parentEventId: form.parentId,
+              jenis: form.jenis,
+              lokasi: form.lokasi,
+              deskripsi: form.deskripsi,
+              targetPeserta: form.targetPeserta,
+              requiresInvitation: form.requiresInvitation,
+            ),
+          )
+        : await _controller.createEvent(
+            nama: form.name,
+            tanggalMulai: form.date,
+            tanggalSelesai: form.endDate,
+            jamSelesai: form.jamSelesai,
+            parentEventId: form.parentId,
+            jenis: form.jenis,
+            lokasi: form.lokasi,
+            deskripsi: form.deskripsi,
+            targetPeserta: form.targetPeserta,
+            requiresInvitation: form.requiresInvitation,
+          );
+
+    if (!mounted) return;
+
+    if (success) {
+      if (isEdit) {
+        setState(() {
+          _currentEvent = _currentEvent.copyWith(
+            nama: form.name,
+            tanggalMulai: form.date,
+            tanggalSelesai: form.endDate,
+            jamSelesai: form.jamSelesai,
+            parentEventId: form.parentId,
+            jenis: form.jenis,
+            lokasi: form.lokasi,
+            deskripsi: form.deskripsi,
+            targetPeserta: form.targetPeserta,
+            requiresInvitation: form.requiresInvitation,
+          );
+        });
+      }
+      CustomSnackbar.showSuccess(
+        context,
+        isEdit ? 'Kegiatan berhasil diperbarui.' : 'Sub-event berhasil ditambahkan.',
+      );
+    } else {
+      CustomSnackbar.showError(
+        context,
+        _controller.errorMessage.value ?? 'Gagal menyimpan kegiatan.',
+      );
+    }
   }
 
   int _countStatus(List<AttendanceRecord> records, List<String> tokens) {
@@ -359,7 +462,11 @@ class _EventDetailViewState extends State<EventDetailView> {
                             label: 'Edit',
                             bgColor: const Color(0xFFF3F4F6),
                             textColor: const Color(0xFF1F2937),
-                            onTap: () {}, // Pindah ke form edit (todo)
+                            onTap: () => _openEventForm(
+                              title: 'Edit Event',
+                              initialValue: _toFormValue(_currentEvent),
+                              isEdit: true,
+                            ),
                           ),
                         if (_canAddSubEvent)
                           _buildActionButton(
@@ -367,7 +474,15 @@ class _EventDetailViewState extends State<EventDetailView> {
                             label: 'Sub-Event',
                             bgColor: const Color(0xFFF3F4F6),
                             textColor: const Color(0xFF1F2937),
-                            onTap: () {},
+                            onTap: () => _openEventForm(
+                              title: 'Buat Sub-Event',
+                              initialValue: _toFormValue(
+                                _currentEvent,
+                                forceSubEvent: true,
+                                forcedParentId: _currentEvent.eventId,
+                              ),
+                              isEdit: false,
+                            ),
                           ),
                         if (_canDelete)
                           _buildActionButton(

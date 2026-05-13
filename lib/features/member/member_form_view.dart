@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_constants.dart';
+import '../../core/widgets/inline_expanding_dropdown_field.dart';
 import '../../models/member_model.dart';
 import '../../widgets/custom_snackbar.dart';
 import '../auth/auth_controller.dart';
@@ -39,10 +40,10 @@ class _MemberFormViewState extends State<MemberFormView> {
       (role) => role.trim().toLowerCase() == existingRole,
       orElse: () => AppConstants.roleMember,
     );
-    _selectedDbu =
-        widget.existing?.divisi ?? AppConstants.departmentDbuOptions.first;
-    if (!AppConstants.allDbuOptions.contains(_selectedDbu)) {
-      _selectedDbu = AppConstants.departmentDbuOptions.first;
+    final dbuOptions = AppConstants.dbuOptionsForRole(_selectedRole);
+    _selectedDbu = widget.existing?.divisi ?? dbuOptions.first;
+    if (!dbuOptions.contains(_selectedDbu)) {
+      _selectedDbu = dbuOptions.first;
     }
   }
 
@@ -62,56 +63,6 @@ class _MemberFormViewState extends State<MemberFormView> {
     if (normalized == AppConstants.roleManager) return 'Manager';
     if (normalized == AppConstants.roleOrganizer) return 'Organizer';
     return 'Member';
-  }
-
-  List<DropdownMenuItem<String>> _buildDbuItems() {
-    const headerStyle = TextStyle(
-      fontWeight: FontWeight.bold,
-      color: Colors.black54,
-    );
-
-    return [
-      const DropdownMenuItem<String>(
-        enabled: false,
-        value: '__header_departemen__',
-        child: Text('Departemen', style: headerStyle),
-      ),
-      ...AppConstants.departmentDbuOptions.map(
-        (value) => DropdownMenuItem<String>(value: value, child: Text(value, style: const TextStyle(fontSize: 14))),
-      ),
-      const DropdownMenuItem<String>(
-        enabled: false,
-        value: '__header_biro__',
-        child: Text('Biro', style: headerStyle),
-      ),
-      ...AppConstants.biroDbuOptions.map(
-        (value) => DropdownMenuItem<String>(value: value, child: Text(value, style: const TextStyle(fontSize: 14))),
-      ),
-      const DropdownMenuItem<String>(
-        enabled: false,
-        value: '__header_unit__',
-        child: Text('Unit', style: headerStyle),
-      ),
-      ...AppConstants.unitDbuOptions.map(
-        (value) => DropdownMenuItem<String>(value: value, child: Text(value, style: const TextStyle(fontSize: 14))),
-      ),
-      const DropdownMenuItem<String>(
-        enabled: false,
-        value: '__header_adkes__',
-        child: Text('Adkes', style: headerStyle),
-      ),
-      ...AppConstants.adkesOptions.map(
-        (value) => DropdownMenuItem<String>(value: value, child: Text(value, style: const TextStyle(fontSize: 14))),
-      ),
-      const DropdownMenuItem<String>(
-        enabled: false,
-        value: '__header_hexa__',
-        child: Text('Hexa', style: headerStyle),
-      ),
-      ...AppConstants.hexaOptions.map(
-        (value) => DropdownMenuItem<String>(value: value, child: Text(value, style: const TextStyle(fontSize: 14))),
-      ),
-    ];
   }
 
   Future<void> _submit() async {
@@ -262,41 +213,37 @@ class _MemberFormViewState extends State<MemberFormView> {
               const SizedBox(height: 16),
 
               // Peran (Role Sistem)
-              _buildInputLabel('Peran (Role Sistem)'),
-              DropdownButtonFormField<String>(
-                initialValue: _selectedRole,
-                isExpanded: true,
-                decoration: _inputDecoration(),
-                items: AppConstants.allowedRoles
-                    .map((role) => DropdownMenuItem<String>(
-                          value: role,
-                          child: Text(_roleLabel(role), style: const TextStyle(fontSize: 14)),
-                        ))
-                    .toList(),
+              InlineExpandingDropdownField(
+                label: 'Peran (Role Sistem)',
+                value: _selectedRole,
+                options: AppConstants.allowedRoles,
+                placeholder: 'Pilih role',
+                itemLabelBuilder: _roleLabel,
                 onChanged: (value) {
-                  if (value != null) {
-                    setState(() {
-                      _selectedRole = value;
-                    });
-                  }
+                  setState(() {
+                    _selectedRole = value;
+                    _selectedDbu = AppConstants.defaultDbuForRole(value);
+                  });
                 },
               ),
               const SizedBox(height: 16),
 
-              // Departemen/Biro/Unit (DBU)
-              _buildInputLabel('Departemen/Biro/Unit (DBU)'),
-              DropdownButtonFormField<String>(
-                initialValue: _selectedDbu,
-                isExpanded: true,
-                decoration: _inputDecoration(),
-                items: _buildDbuItems(),
+              InlineExpandingDropdownField(
+                label: 'Departemen/Biro/Unit (DBU)',
+                value: _selectedDbu,
+                options: AppConstants.dbuOptionsForRole(_selectedRole),
+                placeholder: 'Pilih DBU',
                 onChanged: (value) {
-                  if (value == null || !AppConstants.allDbuOptions.contains(value)) {
-                    return;
-                  }
                   setState(() {
                     _selectedDbu = value;
                   });
+                },
+                validator: (value) {
+                  final validOptions = AppConstants.dbuOptionsForRole(_selectedRole);
+                  if (value == null || !validOptions.contains(value)) {
+                    return 'DBU wajib dipilih.';
+                  }
+                  return null;
                 },
               ),
               const SizedBox(height: 16),

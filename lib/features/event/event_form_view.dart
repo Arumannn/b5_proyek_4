@@ -31,6 +31,7 @@ class _EventFormViewState extends State<EventFormView> {
   late final TextEditingController _lokasiController;
   late final TextEditingController _deskripsiController;
   DateTime? _selectedDate;
+  DateTime? _selectedEndDate;
   DateTime? _selectedJamSelesai;
   late bool _isSubEvent;
   String? _parentId;
@@ -54,6 +55,7 @@ class _EventFormViewState extends State<EventFormView> {
     _lokasiController = TextEditingController(text: widget.initialValue?.lokasi ?? '');
     _deskripsiController = TextEditingController(text: widget.initialValue?.deskripsi ?? '');
     _selectedDate = widget.initialValue?.date;
+    _selectedEndDate = widget.initialValue?.endDate ?? widget.initialValue?.date;
     _selectedJamSelesai = widget.initialValue?.jamSelesai;
     _isSubEvent = widget.initialValue?.isSubEvent ?? false;
     _parentId = widget.initialValue?.parentId;
@@ -92,6 +94,37 @@ class _EventFormViewState extends State<EventFormView> {
           picked.day,
           _selectedDate?.hour ?? 0,
           _selectedDate?.minute ?? 0,
+        );
+        _selectedEndDate ??= DateTime(picked.year, picked.month, picked.day);
+      });
+    }
+  }
+
+  Future<void> _pickEndDate() async {
+    final today = DateTime.now();
+    final firstDate = DateTime(today.year, today.month, today.day);
+    final initialDate = _selectedEndDate != null && _selectedEndDate!.isBefore(firstDate)
+        ? firstDate
+        : (_selectedEndDate ?? _selectedDate ?? firstDate);
+
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: firstDate,
+      lastDate: DateTime(2100),
+      helpText: 'Pilih Tanggal Selesai',
+      cancelText: 'Batal',
+      confirmText: 'OK',
+    );
+
+    if (picked != null) {
+      setState(() {
+        _selectedEndDate = DateTime(
+          picked.year,
+          picked.month,
+          picked.day,
+          _selectedEndDate?.hour ?? _selectedJamSelesai?.hour ?? 0,
+          _selectedEndDate?.minute ?? _selectedJamSelesai?.minute ?? 0,
         );
       });
     }
@@ -175,6 +208,8 @@ class _EventFormViewState extends State<EventFormView> {
       return;
     }
 
+    final endDate = _selectedEndDate ?? _selectedDate;
+
     if (_selectedTargetIds.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Target peserta wajib dipilih (minimal 1).')),
@@ -194,7 +229,7 @@ class _EventFormViewState extends State<EventFormView> {
       EventFormValue(
         name: name,
         date: _selectedDate!,
-        endDate: _selectedDate,
+        endDate: endDate,
         jamSelesai: _selectedJamSelesai,
         isSubEvent: _isSubEvent,
         parentId: _isSubEvent ? _parentId : null,
@@ -250,6 +285,7 @@ class _EventFormViewState extends State<EventFormView> {
           lokasiController: _lokasiController,
           deskripsiController: _deskripsiController,
           selectedDate: _selectedDate,
+          selectedEndDate: _selectedEndDate,
           selectedJamSelesai: _selectedJamSelesai,
           isSubEvent: _isSubEvent,
           parentId: _parentId,
@@ -258,6 +294,7 @@ class _EventFormViewState extends State<EventFormView> {
           parentOptions: widget.parentOptions,
           canChangeHierarchy: widget.canChangeHierarchy,
           onPickDate: _pickDate,
+          onPickEndDate: _pickEndDate,
           onPickTime: _pickTime,
           onPickEndTime: _pickEndTime,
           onClearEndTime: () => setState(() => _selectedJamSelesai = null),

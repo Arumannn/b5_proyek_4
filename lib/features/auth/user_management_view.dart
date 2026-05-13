@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_constants.dart';
+import '../../core/widgets/inline_expanding_dropdown_field.dart';
 import '../../models/member_model.dart';
 import '../../widgets/custom_snackbar.dart';
 import '../../widgets/loading_overlay.dart';
@@ -56,54 +57,8 @@ class _UserManagementViewState extends State<UserManagementView> {
     return 'Member';
   }
 
-  List<DropdownMenuItem<String>> _buildDbuItems() {
-    const headerStyle = TextStyle(
-      fontWeight: FontWeight.w700,
-      color: Colors.black54,
-    );
-
-    return [
-      const DropdownMenuItem<String>(
-        enabled: false,
-        value: '__header_departemen__',
-        child: Text('Departemen', style: headerStyle),
-      ),
-      ...AppConstants.departmentDbuOptions.map(
-        (value) => DropdownMenuItem<String>(value: value, child: Text(value)),
-      ),
-      const DropdownMenuItem<String>(
-        enabled: false,
-        value: '__header_biro__',
-        child: Text('Biro', style: headerStyle),
-      ),
-      ...AppConstants.biroDbuOptions.map(
-        (value) => DropdownMenuItem<String>(value: value, child: Text(value)),
-      ),
-      const DropdownMenuItem<String>(
-        enabled: false,
-        value: '__header_unit__',
-        child: Text('Unit', style: headerStyle),
-      ),
-      ...AppConstants.unitDbuOptions.map(
-        (value) => DropdownMenuItem<String>(value: value, child: Text(value)),
-      ),
-      const DropdownMenuItem<String>(
-        enabled: false,
-        value: '__header_adkes__',
-        child: Text('Adkes', style: headerStyle),
-      ),
-      ...AppConstants.adkesOptions.map(
-        (value) => DropdownMenuItem<String>(value: value, child: Text(value)),
-      ),
-      const DropdownMenuItem<String>(
-        enabled: false,
-        value: '__header_hexa__',
-        child: Text('Hexa', style: headerStyle),
-      ),
-      ...AppConstants.hexaOptions.map(
-        (value) => DropdownMenuItem<String>(value: value, child: Text(value)),
-      ),
-    ];
+  List<String> _buildDbuItems(String role) {
+    return AppConstants.dbuOptionsForRole(role);
   }
 
   Future<void> _showUserForm({MemberModel? existing}) async {
@@ -499,7 +454,7 @@ class UserFormDialog extends StatefulWidget {
   final AuthController authController;
   final MemberModel? existing;
   final String Function(String role) roleLabelBuilder;
-  final List<DropdownMenuItem<String>> Function() dbuItemsBuilder;
+  final List<String> Function(String role) dbuItemsBuilder;
 
   @override
   State<UserFormDialog> createState() => _UserFormDialogState();
@@ -529,9 +484,10 @@ class _UserFormDialogState extends State<UserFormDialog> {
       (role) => role.trim().toLowerCase() == existingRole,
       orElse: () => AppConstants.roleMember,
     );
-    _selectedDbu = widget.existing?.divisi ?? AppConstants.departmentDbuOptions.first;
-    if (!AppConstants.allDbuOptions.contains(_selectedDbu)) {
-      _selectedDbu = AppConstants.departmentDbuOptions.first;
+    final dbuOptions = AppConstants.dbuOptionsForRole(_selectedRole);
+    _selectedDbu = widget.existing?.divisi ?? dbuOptions.first;
+    if (!dbuOptions.contains(_selectedDbu)) {
+      _selectedDbu = dbuOptions.first;
     }
   }
 
@@ -705,23 +661,16 @@ class _UserFormDialogState extends State<UserFormDialog> {
                           },
                         ),
                         const SizedBox(height: 12),
-                        _buildFieldLabel('Role'),
-                        DropdownButtonFormField<String>(
-                          initialValue: _selectedRole,
-                          isExpanded: true,
-                          decoration: _inputDecoration(),
-                          items: AppConstants.allowedRoles
-                              .map(
-                                (role) => DropdownMenuItem<String>(
-                                  value: role,
-                                  child: Text(widget.roleLabelBuilder(role)),
-                                ),
-                              )
-                              .toList(growable: false),
+                        InlineExpandingDropdownField(
+                          label: 'Role',
+                          value: _selectedRole,
+                          options: AppConstants.allowedRoles,
+                          placeholder: 'Pilih role',
+                          itemLabelBuilder: widget.roleLabelBuilder,
                           onChanged: (value) {
-                            if (value == null) return;
                             setState(() {
                               _selectedRole = value;
+                              _selectedDbu = AppConstants.defaultDbuForRole(value);
                             });
                           },
                           validator: (value) {
@@ -732,22 +681,19 @@ class _UserFormDialogState extends State<UserFormDialog> {
                           },
                         ),
                         const SizedBox(height: 12),
-                        _buildFieldLabel('Departemen/Biro/Unit (DBU)'),
-                        DropdownButtonFormField<String>(
-                          initialValue: _selectedDbu,
-                          isExpanded: true,
-                          decoration: _inputDecoration(),
-                          items: widget.dbuItemsBuilder(),
+                        InlineExpandingDropdownField(
+                          label: 'Departemen/Biro/Unit (DBU)',
+                          value: _selectedDbu,
+                          options: widget.dbuItemsBuilder(_selectedRole),
+                          placeholder: 'Pilih DBU',
                           onChanged: (value) {
-                            if (value == null || !AppConstants.allDbuOptions.contains(value)) {
-                              return;
-                            }
                             setState(() {
                               _selectedDbu = value;
                             });
                           },
                           validator: (value) {
-                            if (value == null || !AppConstants.allDbuOptions.contains(value)) {
+                            final validOptions = AppConstants.dbuOptionsForRole(_selectedRole);
+                            if (value == null || !validOptions.contains(value)) {
                               return 'DBU wajib dipilih.';
                             }
                             return null;
