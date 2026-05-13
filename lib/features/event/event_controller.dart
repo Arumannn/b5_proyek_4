@@ -33,6 +33,7 @@ class EventController {
 
   // ── Filter & Search State ──────────────────────────────────────
   final ValueNotifier<String?> selectedJenisFilter = ValueNotifier(null);
+  final ValueNotifier<String?> selectedPenyelenggaraFilter = ValueNotifier(null);
   final ValueNotifier<DateTimeRange?> selectedDateRangeFilter = ValueNotifier(
     null,
   );
@@ -598,6 +599,12 @@ class EventController {
           .toList();
     }
 
+    if (selectedPenyelenggaraFilter.value != null) {
+      filtered = filtered
+          .where((e) => e.penyelenggara == selectedPenyelenggaraFilter.value)
+          .toList();
+    }
+
     if (selectedDateRangeFilter.value != null) {
       final range = selectedDateRangeFilter.value!;
       filtered = filtered.where((e) {
@@ -640,6 +647,11 @@ class EventController {
     _applyFilters();
   }
 
+  void setPenyelenggaraFilter(String? penyelenggara) {
+    selectedPenyelenggaraFilter.value = penyelenggara;
+    _applyFilters();
+  }
+
   void setDateRangeFilter(DateTimeRange? range) {
     selectedDateRangeFilter.value = range;
     _applyFilters();
@@ -652,6 +664,7 @@ class EventController {
 
   void clearAllFilters() {
     selectedJenisFilter.value = null;
+    selectedPenyelenggaraFilter.value = null;
     selectedDateRangeFilter.value = null;
     searchQuery.value = '';
     _applyFilters();
@@ -659,6 +672,7 @@ class EventController {
 
   bool get hasActiveFilters =>
       selectedJenisFilter.value != null ||
+      selectedPenyelenggaraFilter.value != null ||
       selectedDateRangeFilter.value != null ||
       searchQuery.value.isNotEmpty;
 
@@ -701,6 +715,7 @@ class EventController {
     isLoading.dispose();
     errorMessage.dispose();
     selectedJenisFilter.dispose();
+    selectedPenyelenggaraFilter.dispose();
     selectedDateRangeFilter.dispose();
     searchQuery.dispose();
   }

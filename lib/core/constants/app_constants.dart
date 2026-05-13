@@ -30,6 +30,7 @@ class AppConstants {
   static const String eventsCollection = 'events';
   static const String attendanceCollection = 'attendance';
   static const String permissionsCollection = 'permissions';
+  static const String invitationsCollection = 'invitations';
 
   // ─── QR Code Format ──────────────────────────────
   // Format QR: "PRASASTI:{nim}"
@@ -139,5 +140,19 @@ class AppConstants {
     'Acara',
     'Kegiatan',
     'Lainnya',
+  ];
+
+  // ─── Penyelenggara (Organizer Tag) ──────────────
+  static const List<String> penyelenggaraOptions = [
+    'Biro Administrasi dan Kesekretariatan',
+    'Biro Kewirausahaan dan Keuangan',
+    'Departemen Komunikasi dan Informasi',
+    'Departemen Luar Himpunan',
+    'Departemen Pengembangan Sumber Daya Himpunan',
+    'Departemen Seni dan Olahraga',
+    'Departemen Keilmuan dan Keprofesian',
+    'Unit Teknologi',
+    'Badan Khusus Manajemen Sumber Daya Himpunan',
+    'Himpunan',
   ];
 }

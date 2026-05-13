@@ -84,6 +84,7 @@ class MyInvitationSection extends StatelessWidget {
                                 return InvitationCard(
                                     invitation: invitation,
                                     eventTitle: eventTitle,
+                                    penyelenggara: event?.penyelenggara,
                                     onAccept: () => _handleInvitationResponse(
                                         context,
                                         invitation,
