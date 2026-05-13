@@ -38,6 +38,7 @@ class _EventFormViewState extends State<EventFormView> {
   late String _selectedJenis;
   late List<String> _selectedTargetIds;
   late bool _requiresInvitation;
+  late String _selectedPenyelenggara;
 
   final _formKey = GlobalKey<FormState>();
 
@@ -62,6 +63,7 @@ class _EventFormViewState extends State<EventFormView> {
     _selectedJenis = widget.initialValue?.jenis ?? 'Kegiatan';
     _selectedTargetIds = List<String>.from(widget.initialValue?.targetPeserta ?? []);
     _requiresInvitation = widget.initialValue?.requiresInvitation ?? false;
+    _selectedPenyelenggara = widget.initialValue?.penyelenggara ?? '';
   }
 
   @override
@@ -238,6 +240,9 @@ class _EventFormViewState extends State<EventFormView> {
         deskripsi: _deskripsiController.text.trim().isEmpty ? null : _deskripsiController.text.trim(),
         targetPeserta: _selectedTargetIds,
         requiresInvitation: _requiresInvitation,
+        penyelenggara: _selectedPenyelenggara.trim().isEmpty
+            ? null
+            : _selectedPenyelenggara.trim(),
       ),
     );
   }
@@ -291,6 +296,7 @@ class _EventFormViewState extends State<EventFormView> {
           parentId: _parentId,
           selectedJenis: _selectedJenis,
           selectedTargetIds: _selectedTargetIds,
+          selectedPenyelenggara: _selectedPenyelenggara,
           parentOptions: widget.parentOptions,
           canChangeHierarchy: widget.canChangeHierarchy,
           onPickDate: _pickDate,
@@ -299,6 +305,7 @@ class _EventFormViewState extends State<EventFormView> {
           onPickEndTime: _pickEndTime,
           onClearEndTime: () => setState(() => _selectedJamSelesai = null),
           onJenisChanged: (value) => setState(() => _selectedJenis = value),
+          onPenyelenggaraChanged: (value) => setState(() => _selectedPenyelenggara = value),
           onSubEventChanged: (value) {
             setState(() {
               _isSubEvent = value;
