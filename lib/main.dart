@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'core/constants/app_constants.dart';
 import 'features/auth/auth_controller.dart';
 import 'features/auth/login_view.dart';
@@ -15,6 +16,9 @@ import 'core/services/sync_manager.dart';
 
   Future<void> main() async {
     WidgetsFlutterBinding.ensureInitialized();
+
+    // Initialize locale date formatting for intl package (used across app)
+    await initializeDateFormatting('id_ID');
 
     // Step 1: Load environment variables
     await dotenv.load(fileName: '.env');
@@ -40,7 +44,7 @@ import 'core/services/sync_manager.dart';
     await NetworkStatusController.instance.startListening();
     debugPrint('✅ Step 5: Network monitoring started');
 
-    // Step 6: Seed default accounts (Executive, member, organizer, manager)
+    // Step 6: Seed default accounts (executive, member, organizer, manager)
     await AuthController.instance.initializeAuth();
     debugPrint('✅ Step 6: Default accounts seeded');
 

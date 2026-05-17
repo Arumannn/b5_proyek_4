@@ -7,6 +7,7 @@ import '../../core/services/hive_service.dart';
 import '../../models/attendance_record.dart';
 import '../../models/event_model.dart';
 import '../../models/member_model.dart';
+import '../../widgets/table_page_body.dart';
 
 class OrganizerAttendanceRecapView extends StatefulWidget {
   const OrganizerAttendanceRecapView({super.key});
@@ -133,57 +134,67 @@ class _OrganizerAttendanceRecapViewState
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        appBar: GradientHeader(
+          title: 'Rekap Kehadiran',
+          subtitle: 'Mode read-only untuk organizer',
+        ),
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_allEvents.isEmpty) {
+      return const Scaffold(
+        appBar: GradientHeader(
+          title: 'Rekap Kehadiran',
+          subtitle: 'Mode read-only untuk organizer',
+        ),
+        body: Center(child: Text('Belum ada event tersedia.')),
+      );
+    }
+
     return Scaffold(
-      appBar: GradientHeader(
-        title: 'Rekap Kehadiran',
-        subtitle: 'Mode read-only untuk organizer',
-        actions: [
-          IconButton(
-            tooltip: 'Refresh',
-            onPressed: _refresh,
-            icon: const Icon(Icons.refresh, color: Colors.white),
-          ),
-        ],
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _allEvents.isEmpty
-          ? const Center(child: Text('Belum ada event tersedia.'))
-          : RefreshIndicator(
-              onRefresh: _refresh,
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  DropdownButtonFormField<String>(
-                    value: _selectedEventId,
-                    decoration: const InputDecoration(
-                      labelText: 'Pilih Event / Sub-Event',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: _allEvents
-                        .map((event) {
-                          return DropdownMenuItem<String>(
-                            value: event.eventId,
-                            child: Text(_eventLabel(event)),
-                          );
-                        })
-                        .toList(growable: false),
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedEventId = value;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: _buildTable(),
-                    ),
-                  ),
-                ],
-              ),
+      backgroundColor: const Color(0xFFF3F7FD),
+      body: TablePageBody(
+        header: GradientHeader(
+          title: 'Rekap Kehadiran',
+          subtitle: 'Mode read-only untuk organizer',
+          actions: [
+            IconButton(
+              tooltip: 'Refresh',
+              onPressed: _refresh,
+              icon: const Icon(Icons.refresh, color: Colors.white),
             ),
+          ],
+        ),
+        summaryArea: const Text(
+          'Pilih event atau sub-event untuk melihat rekap kehadiran terbaru.',
+        ),
+        filterArea: DropdownButtonFormField<String>(
+          value: _selectedEventId,
+          decoration: const InputDecoration(
+            labelText: 'Pilih Event / Sub-Event',
+            border: OutlineInputBorder(),
+          ),
+          items: _allEvents
+              .map((event) {
+                return DropdownMenuItem<String>(
+                  value: event.eventId,
+                  child: Text(_eventLabel(event)),
+                );
+              })
+              .toList(growable: false),
+          onChanged: (value) {
+            setState(() {
+              _selectedEventId = value;
+            });
+          },
+        ),
+        tableBuilder: (context) => _buildTable(),
+        emptyState: const SizedBox.shrink(),
+        onRefresh: _refresh,
+      ),
     );
   }
 }

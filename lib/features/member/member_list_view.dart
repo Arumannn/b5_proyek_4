@@ -5,12 +5,12 @@ import '../../core/services/hive_service.dart';
 import '../../core/services/mongo_service.dart';
 import '../../core/utils/network_status_controller.dart';
 import '../../widgets/custom_snackbar.dart';
-import '../../widgets/gradient_header.dart';
+import '../../widgets/white_status_header.dart';
 import '../auth/auth_controller.dart';
-import '../auth/user_management_view.dart';
 import 'member_form_view.dart';
 import 'member_controller.dart';
 import '../../models/member_model.dart';
+import 'widgets/member_card.dart';
 
 class MemberListView extends StatefulWidget {
   final bool showBottomNav;
@@ -42,21 +42,13 @@ class _MemberListViewState extends State<MemberListView> {
 
   bool get _isExecutive {
     final role = (AuthController.instance.currentUser.value?.role ?? '').trim().toLowerCase();
-    return role == AppConstants.roleExecutive.toLowerCase() ||
-        role == 'executive' ||
-        role == 'eksekutif' ||
-        role == 'admin';
+    return role == AppConstants.roleExecutive.toLowerCase();
   }
 
   Future<void> _editMember(MemberModel member) async {
-    final saved = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) => UserFormDialog(
-        authController: AuthController.instance,
-        existing: member,
-        roleLabelBuilder: _roleLabel,
-        dbuItemsBuilder: _buildDbuItems,
+    final saved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => MemberFormView(existing: member),
       ),
     );
 
@@ -121,50 +113,6 @@ class _MemberListViewState extends State<MemberListView> {
     CustomSnackbar.showSuccess(context, 'Anggota berhasil dihapus.');
   }
 
-  String _roleLabel(String role) {
-    final normalized = role.trim().toLowerCase();
-    if (normalized == 'executive' || normalized == 'eksekutif' || normalized == 'admin') {
-      return 'Executive';
-    }
-    if (normalized == AppConstants.roleManager) return 'Manager';
-    if (normalized == AppConstants.roleOrganizer) return 'Organizer';
-    return 'Member';
-  }
-
-  List<DropdownMenuItem<String>> _buildDbuItems() {
-    const headerStyle = TextStyle(
-      fontWeight: FontWeight.w700,
-      color: Colors.black54,
-    );
-
-    return [
-      const DropdownMenuItem<String>(
-        enabled: false,
-        value: '__header_departemen__',
-        child: Text('Departemen', style: headerStyle),
-      ),
-      ...AppConstants.departmentDbuOptions.map(
-        (value) => DropdownMenuItem<String>(value: value, child: Text(value)),
-      ),
-      const DropdownMenuItem<String>(
-        enabled: false,
-        value: '__header_biro__',
-        child: Text('Biro', style: headerStyle),
-      ),
-      ...AppConstants.biroDbuOptions.map(
-        (value) => DropdownMenuItem<String>(value: value, child: Text(value)),
-      ),
-      const DropdownMenuItem<String>(
-        enabled: false,
-        value: '__header_unit__',
-        child: Text('Unit', style: headerStyle),
-      ),
-      ...AppConstants.unitDbuOptions.map(
-        (value) => DropdownMenuItem<String>(value: value, child: Text(value)),
-      ),
-    ];
-  }
-
   Future<void> _loadMembers({bool syncFromCloud = true}) async {
     if (mounted) {
       _controller.loadMembers();
@@ -205,339 +153,132 @@ class _MemberListViewState extends State<MemberListView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(120),
-        child: GradientHeader(
-          title: 'Daftar Anggota',
-          subtitle: 'Total 156 anggota aktif',
-          showBackButton: true,
-          actions: _isExecutive
-              ? [
-                  Padding(
-                    padding: const EdgeInsets.only(right: 16, top: 16),
-                    child: GestureDetector(
-                      onTap: _addMember,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(999),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.12),
-                              blurRadius: 12,
-                              offset: const Offset(0, 6),
-                            ),
-                          ],
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.person_add_alt_1, size: 18, color: Color(0xFF2563EB)),
-                            SizedBox(width: 8),
-                            Text(
-                              'Tambah',
-                              style: TextStyle(
-                                color: Color(0xFF2563EB),
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+      appBar: WhiteStatusHeader(
+        title: 'Daftar Anggota',
+        subtitle: 'Total ${_controller.members.value.length} anggota aktif',
+        statusBadge: ValueListenableBuilder<bool>(
+          valueListenable: NetworkStatusController.instance.isOnline,
+          builder: (context, isOnline, _) {
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: isOnline ? const Color(0xFFE8F7EF) : const Color(0xFFFFF3E6),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    isOnline ? Icons.wifi : Icons.wifi_off,
+                    size: 10,
+                    color: isOnline ? const Color(0xFF15803D) : const Color(0xFFF97316),
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    isOnline ? 'TERSINKRONISASI' : 'OFFLINE (SIMPAN LOKAL)',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: isOnline ? const Color(0xFF15803D) : const Color(0xFFF97316),
                     ),
                   ),
-                ]
-              : [],
+                ],
+              ),
+            );
+          },
         ),
+        actions: _isExecutive
+            ? [
+                IconButton(
+                  tooltip: 'Tambah Anggota',
+                  onPressed: _addMember,
+                  icon: const Icon(Icons.person_add_alt_1, color: Color(0xFF111827)),
+                ),
+              ]
+            : [],
       ),
-      backgroundColor: const Color(0xFFF3F7FD),
+      backgroundColor: const Color(0xFFF9FAFB), // bg-gray-50
       body: SafeArea(
         child: Column(
           children: [
+            // Search Bar Area
             Container(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-              child: _buildSearchBarCard(),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), // px-4 py-3
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade200), // border-b border-gray-200
+                ),
+              ),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF3F4F6), // bg-gray-100
+                  borderRadius: BorderRadius.circular(12), // rounded-xl
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  style: const TextStyle(
+                    color: Color(0xFF1F2937), // text-gray-800
+                    fontSize: 14, // text-sm
+                  ),
+                  decoration: const InputDecoration(
+                    hintText: 'Cari nama, NIM, atau peran...',
+                    hintStyle: TextStyle(color: Color(0xFF9CA3AF), fontSize: 14),
+                    prefixIcon: Icon(Icons.search, size: 18, color: Color(0xFF9CA3AF)), // text-gray-400
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12), // py-2.5
+                  ),
+                ),
+              ),
             ),
-            _buildFilterChips(),
+            
+            // List Area
             Expanded(
-              child: _buildMemberList(),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSearchBarCard() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: ValueListenableBuilder<TextEditingValue>(
-        valueListenable: _searchController,
-        builder: (context, value, _) {
-          return TextField(
-            controller: _searchController,
-            decoration: InputDecoration(
-              hintText: 'Cari nama atau NIM...',
-              prefixIcon: const Icon(Icons.search),
-              suffixIcon: value.text.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => _searchController.clear(),
-                    )
-                  : null,
-              border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildFilterChips() {
-    return Container(
-      color: const Color(0xFFF3F7FD),
-      padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
-      child: ValueListenableBuilder<List<String>>(
-        valueListenable: _controller.availableDivisions,
-        builder: (context, divisions, _) {
-          return ValueListenableBuilder<String>(
-            valueListenable: _controller.selectedDivision,
-            builder: (context, selectedDiv, _) {
-              return SizedBox(
-                height: 44,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: divisions.length,
-                  itemBuilder: (context, index) {
-                    final div = divisions[index];
-                    final isSelected = div == selectedDiv;
-                    final count = _controller.getDivisionCount(div);
-
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: ChoiceChip(
-                        label: Text('$div ($count)'),
-                        selected: isSelected,
-                        onSelected: (_) => _controller.setDivision(div),
-                        selectedColor: const Color(0xFFDBEAFE),
-                        backgroundColor: Colors.white,
-                        side: BorderSide(color: isSelected ? const Color(0xFF2563EB) : Colors.grey.shade200),
-                        labelStyle: TextStyle(
-                          color: isSelected ? const Color(0xFF1D4ED8) : Colors.black87,
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                        ),
-                      ),
+              child: RefreshIndicator(
+                onRefresh: () => _loadMembers(syncFromCloud: true),
+                child: ValueListenableBuilder<List<MemberModel>>(
+                  valueListenable: _controller.filteredMembers,
+                  builder: (context, filtered, child) {
+                    if (filtered.isEmpty) {
+                      return ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        children: [
+                          SizedBox(height: MediaQuery.of(context).size.height * 0.3),
+                          const Center(
+                            child: Text(
+                              'Tidak ada anggota yang ditemukan.',
+                              style: TextStyle(
+                                color: Color(0xFF6B7280), // text-gray-500
+                                fontSize: 14, // text-sm
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    }
+                    return ListView.separated(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.all(16), // p-4
+                      itemCount: filtered.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 12), // space-y-3 equivalent
+                      itemBuilder: (context, index) {
+                        final member = filtered[index];
+                        return MemberCard(
+                          member: member,
+                          isExecutive: _isExecutive,
+                          onEdit: () => _editMember(member),
+                          onDelete: () => _deleteMember(member),
+                        );
+                      },
                     );
                   },
                 ),
-              );
-            },
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildMemberList() {
-    return RefreshIndicator(
-      onRefresh: () => _loadMembers(syncFromCloud: true),
-      child: ValueListenableBuilder<List<MemberModel>>(
-        valueListenable: _controller.filteredMembers,
-        builder: (context, filtered, child) {
-          if (filtered.isEmpty) {
-            return ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              children: [
-                SizedBox(height: MediaQuery.of(context).size.height * 0.3),
-                const Center(
-                  child: Text('Tidak ada anggota yang cocok', style: TextStyle(color: Colors.grey, fontSize: 16)),
-                ),
-              ],
-            );
-          }
-          return ListView.builder(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-            itemCount: filtered.length,
-            itemBuilder: (context, index) {
-              final member = filtered[index];
-              return _MemberCardDesign(
-                member: member,
-                isExecutive: _isExecutive,
-                onEdit: () => _editMember(member),
-                onDelete: () => _deleteMember(member),
-              );
-            },
-          );
-        },
-      ),
-    );
-  }
-}
-
-// ==================== MEMBER CARD ====================
-
-class _MemberCardDesign extends StatelessWidget {
-  final MemberModel member;
-  final bool isExecutive;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
-
-  const _MemberCardDesign({
-    required this.member,
-    required this.isExecutive,
-    required this.onEdit,
-    required this.onDelete,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final firstName = member.nama.split(' ').first.toLowerCase();
-    final dummyEmail = '$firstName@email.com';
-    final dummyPhone = '081234567890';
-    final attendancePercent = 75 + (member.nama.length % 25);
-    final isHighAttendance = attendancePercent >= 90;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 18, offset: const Offset(0, 8))],
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                CircleAvatar(
-                  radius: 28,
-                  backgroundColor: const Color(0xFF2563EB),
-                  child: Text(
-                    member.nama.isNotEmpty ? member.nama[0].toUpperCase() : '?',
-                    style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
-                  ),
-                ),
-                const SizedBox(width: 16),
-
-                // Info Utama
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              member.nama,
-                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          if (isHighAttendance)
-                            const Icon(Icons.workspace_premium, color: Colors.amber, size: 24),
-                        ],
-                      ),
-                      Text('NIM: ${member.nim}', style: const TextStyle(color: Colors.grey, fontSize: 13)),
-                      const SizedBox(height: 12),
-                      _buildInfoRow(Icons.person_outline, '${member.divisi} - ${member.role}'),
-                      const SizedBox(height: 4),
-                      _buildInfoRow(Icons.mail_outline, dummyEmail),
-                      const SizedBox(height: 4),
-                      _buildInfoRow(Icons.phone_outlined, dummyPhone),
-                    ],
-                  ),
-                ),
-
-                // Titik Tiga (Menu Edit & Hapus)
-                if (isExecutive)
-                  PopupMenuButton<String>(
-                    icon: const Icon(Icons.more_vert, color: Colors.grey),
-                    onSelected: (value) {
-                      if (value == 'edit') {
-                        onEdit();
-                      } else if (value == 'delete') {
-                        onDelete();
-                      }
-                    },
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(
-                      value: 'edit',
-                      child: Row(
-                        children: [Icon(Icons.edit, size: 20), SizedBox(width: 8), Text('Edit')],
-                      ),
-                    ),
-                    const PopupMenuItem(
-                      value: 'delete',
-                      child: Row(
-                        children: [Icon(Icons.delete, size: 20, color: Colors.red), SizedBox(width: 8), Text('Hapus')],
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+              ),
             ),
-            const SizedBox(height: 16),
-            const Divider(height: 1),
-            const SizedBox(height: 16),
-
-            // Progress Kehadiran
-            Row(
-              children: [
-                const Text('Tingkat Kehadiran: ', style: TextStyle(color: Colors.grey, fontSize: 13)),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: attendancePercent / 100,
-                      minHeight: 8,
-                      backgroundColor: Colors.grey.shade200,
-                      color: isHighAttendance ? Colors.green : const Color(0xFF1D4ED8),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Text('$attendancePercent%', style: const TextStyle(fontWeight: FontWeight.bold)),
-              ],
-            ),
+            if (widget.showBottomNav) const SizedBox(height: 80), // pb-20 equivalent for bottom padding if needed
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildInfoRow(IconData icon, String text) {
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: Colors.grey.shade600),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            text,
-            style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
     );
   }
 }

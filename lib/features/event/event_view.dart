@@ -3,16 +3,18 @@
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_constants.dart';
-import '../../core/services/hive_service.dart';
 import '../../models/event_model.dart';
 import '../../models/attendance_record.dart';
 import '../../widgets/custom_snackbar.dart';
 import '../../widgets/white_status_header.dart';
-import '../attendance/scan_screen.dart';
+import '../../widgets/sectioned_list_body.dart';
 import '../auth/auth_controller.dart';
-import 'event_controller.dart';
+import 'event_controller.dart'; 
 import 'event_permission.dart';
+import 'widgets/event_utilities.dart';
+import 'widgets/event_view_card.dart';
 import 'event_detail_view.dart';
+import '../attendance/scan_screen.dart';
 
 class EventView extends StatefulWidget {
   const EventView({super.key});
@@ -25,6 +27,7 @@ class _EventViewState extends State<EventView> {
   final EventController _controller = EventController.instance;
   final TextEditingController _searchController = TextEditingController();
   final Map<String, bool> _expandedState = <String, bool>{};
+  String _selectedTab = 'mendatang';
 
   String get _role =>
       (AuthController.instance.currentUser.value?.role ??
@@ -56,64 +59,6 @@ class _EventViewState extends State<EventView> {
   }
 
   List<EventModel> get _parentOptions => _controller.getRootEvents();
-
-  String _formatDate(DateTime value) {
-    final dd = value.day.toString().padLeft(2, '0');
-    final mm = value.month.toString().padLeft(2, '0');
-    final yyyy = value.year.toString();
-    return '$dd/$mm/$yyyy';
-  }
-
-  Color _chipColor(String jenis) {
-    switch (jenis) {
-      case 'Rapat':
-        return Colors.blue;
-      case 'Acara':
-        return Colors.purple;
-      case 'Kegiatan':
-        return Colors.green;
-      case 'Lainnya':
-        return Colors.orange;
-      default:
-        return Colors.grey;
-    }
-  }
-
-  List<AttendanceRecord> _attendanceForEvent(String eventId) {
-    return HiveService.attendance.values
-        .where((record) => record.eventId == eventId)
-        .toList(growable: false);
-  }
-
-  String _eventStatusLabel(EventModel event) {
-    final now = DateTime.now();
-    final isCompleted = now.isAfter(event.tanggalMulai.add(const Duration(hours: 1)));
-    return isCompleted ? 'Selesai' : 'Berlangsung';
-  }
-
-  Color _eventStatusColor(EventModel event) {
-    final now = DateTime.now();
-    final isCompleted = now.isAfter(event.tanggalMulai.add(const Duration(hours: 1)));
-    return isCompleted ? const Color(0xFF22C55E) : const Color(0xFF2563EB);
-  }
-
-  Color _eventStatusBgColor(EventModel event) {
-    final now = DateTime.now();
-    final isCompleted = now.isAfter(event.tanggalMulai.add(const Duration(hours: 1)));
-    return isCompleted ? const Color(0xFFDCFCE7) : const Color(0xFFDBEAFE);
-  }
-
-  String _eventLocation(EventModel event) {
-    final lokasiValue = event.lokasi?.trim();
-    if (lokasiValue != null && lokasiValue.isNotEmpty) return lokasiValue;
-    return 'Lokasi belum diatur';
-  }
-
-  int _targetCount(EventModel event, int presentCount) {
-    final target = event.targetPeserta.length;
-    if (target > 0) return target;
-    return presentCount > 0 ? presentCount : 1;
-  }
 
   Future<void> _showJenisFilter() async {
     final available =
@@ -155,6 +100,253 @@ class _EventViewState extends State<EventView> {
     if (picked != null) {
       _controller.setDateRangeFilter(picked);
     }
+  }
+
+  String _normalizedStatus(String value) {
+    return value.trim().toLowerCase();
+  }
+
+  bool _matchesSelectedTab(EventModel event) {
+    final status = _normalizedStatus(event.statusEvent);
+
+    switch (_selectedTab) {
+      case 'berlangsung':
+        return status.contains('berlangsung') || status.contains('berjalan');
+      case 'selesai':
+        return status.contains('selesai');
+      default:
+        return status.contains('mendatang') ||
+            status.contains('upcoming') ||
+            (!status.contains('berlangsung') && !status.contains('selesai'));
+    }
+  }
+
+  List<EventModel> _visibleRootEvents() {
+    return _controller.getRootEvents().where(_matchesSelectedTab).toList(growable: false);
+  }
+
+  Color _eventAccentColor(EventModel event) {
+    final status = _normalizedStatus(event.statusEvent);
+    if (status.contains('selesai')) return const Color(0xFF22C55E);
+    if (status.contains('berlangsung') || status.contains('berjalan')) return const Color(0xFF2563EB);
+    return const Color(0xFFF97316);
+  }
+
+  Color _eventTintColor(EventModel event) {
+    final accent = _eventAccentColor(event);
+    if (accent == const Color(0xFF2563EB)) return const Color(0xFFDBEAFE);
+    if (accent == const Color(0xFF22C55E)) return const Color(0xFFDCFCE7);
+    return const Color(0xFFFFF7ED);
+  }
+
+  String _eventStatusTitle(EventModel event) {
+    final status = _normalizedStatus(event.statusEvent);
+    if (status.contains('selesai')) return 'Selesai';
+    if (status.contains('berlangsung') || status.contains('berjalan')) return 'Berlangsung';
+    return 'Mendatang';
+  }
+
+  Widget _buildTabPill(String label) {
+    final selected = _selectedTab == label;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            _selectedTab = label;
+          });
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(vertical: 11),
+          decoration: BoxDecoration(
+            color: selected ? const Color(0xFF2563EB) : const Color(0xFFF3F4F6),
+            borderRadius: BorderRadius.circular(999),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: TextStyle(
+              color: selected ? Colors.white : const Color(0xFF6B7280),
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReferenceEventCard(EventModel event) {
+    final accent = _eventAccentColor(event);
+    final tint = _eventTintColor(event);
+    final status = _eventStatusTitle(event);
+    final dateText = _formatDate(event.tanggalMulai);
+    final timeText = event.jamMulai != null
+        ? '${event.jamMulai!.hour.toString().padLeft(2, '0')}:${event.jamMulai!.minute.toString().padLeft(2, '0')}'
+        : '--:--';
+    final location = _eventLocation(event);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.grey.shade100),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: () {
+          final role = AuthController.instance.currentUser.value?.role ?? AppConstants.roleMember;
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => EventDetailView(event: event, userRole: role)),
+          );
+        },
+        child: Stack(
+          children: [
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              child: Container(
+                width: 4,
+                decoration: BoxDecoration(
+                  color: accent,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(18),
+                    bottomLeft: Radius.circular(18),
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: tint,
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Text(
+                                event.jenis,
+                                style: TextStyle(
+                                  color: accent,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.7,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              event.nama,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF111827),
+                                height: 1.25,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        dateText,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF111827),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  _buildEventMetaRow(Icons.schedule_outlined, '$timeText WIB', const Color(0xFF6B7280)),
+                  const SizedBox(height: 8),
+                  _buildEventMetaRow(Icons.location_on_outlined, location, const Color(0xFF6B7280)),
+                  const SizedBox(height: 8),
+                  _buildEventMetaRow(Icons.groups_outlined, '${_targetCount(event, 0)} target peserta', const Color(0xFF6B7280)),
+                  const SizedBox(height: 14),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: accent.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          status,
+                          style: TextStyle(
+                            color: accent,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          final role = AuthController.instance.currentUser.value?.role ?? AppConstants.roleMember;
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => EventDetailView(event: event, userRole: role)),
+                          );
+                        },
+                        style: TextButton.styleFrom(
+                          foregroundColor: accent,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          minimumSize: const Size(0, 36),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: const Text('Lihat Detail'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEventMetaRow(IconData icon, String text, Color color) {
+    return Row(
+      children: [
+        Icon(icon, size: 14, color: const Color(0xFF9CA3AF)),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: 13, color: color),
+          ),
+        ),
+      ],
+    );
   }
 
   Future<void> _addOrEditEvent({
@@ -201,6 +393,7 @@ class _EventViewState extends State<EventView> {
             lokasi: form.lokasi,
             deskripsi: form.deskripsi,
             targetPeserta: form.targetPeserta,
+            penyelenggara: form.penyelenggara,
           )
         : await _controller.updateEvent(
             existing.copyWith(
@@ -211,6 +404,7 @@ class _EventViewState extends State<EventView> {
               lokasi: form.lokasi,
               deskripsi: form.deskripsi,
               targetPeserta: form.targetPeserta,
+              penyelenggara: form.penyelenggara,
             ),
           );
 
@@ -303,6 +497,7 @@ class _EventViewState extends State<EventView> {
     Set<String> targetDivisi = Set<String>.from(
       initial?.targetPeserta ?? const [],
     );
+    String? selectedPenyelenggara = initial?.penyelenggara;
 
     final allDbu = AppConstants.allDbuOptions;
 
@@ -367,6 +562,28 @@ class _EventViewState extends State<EventView> {
                             if (value == null) return;
                             setDialogState(() {
                               selectedJenis = value;
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          value: selectedPenyelenggara,
+                          decoration: const InputDecoration(
+                            labelText: 'Penyelenggara',
+                            prefixIcon: Icon(Icons.group_outlined),
+                          ),
+                          isExpanded: true,
+                          items: AppConstants.penyelenggaraOptions
+                              .map(
+                                (p) => DropdownMenuItem<String>(
+                                  value: p,
+                                  child: Text(p),
+                                ),
+                              )
+                              .toList(growable: false),
+                          onChanged: (value) {
+                            setDialogState(() {
+                              selectedPenyelenggara = value;
                             });
                           },
                         ),
@@ -504,6 +721,7 @@ class _EventViewState extends State<EventView> {
                             ? null
                             : descController.text.trim(),
                         targetPeserta: targetDivisi.toList(growable: false),
+                        penyelenggara: selectedPenyelenggara,
                       ),
                     );
                   },
@@ -783,15 +1001,12 @@ class _EventViewState extends State<EventView> {
 
   @override
   Widget build(BuildContext context) {
-    final title = 'Daftar Event';
-    final subtitle = _hasAnyCrudAccess
-        ? 'Kelola event utama dan sub-event'
-        : 'Lihat daftar event yang tersedia';
-
     return Scaffold(
       appBar: WhiteStatusHeader(
-        title: title,
-        subtitle: subtitle,
+        title: 'Kegiatan',
+        subtitle: _hasAnyCrudAccess
+            ? 'Cari dan kelola kegiatan yang tersedia'
+            : 'Cari dan buka detail kegiatan',
         actions: [
           IconButton(
             tooltip: 'Refresh',
@@ -806,71 +1021,147 @@ class _EventViewState extends State<EventView> {
             ),
         ],
       ),
-      floatingActionButton: _canCreateMainEvent
-          ? FloatingActionButton.extended(
-              onPressed: () => _addOrEditEvent(),
-              icon: const Icon(Icons.add),
-              label: const Text('Tambah Event'),
-            )
-          : null,
+      backgroundColor: const Color(0xFFF3F7FD),
       body: ValueListenableBuilder<List<EventModel>>(
         valueListenable: _controller.events,
         builder: (context, events, child) {
-          final roots = _controller.getRootEvents();
+          final roots = _visibleRootEvents();
 
-          return ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              TextField(
-                controller: _searchController,
-                decoration: const InputDecoration(
-                  hintText: 'Cari event...',
-                  prefixIcon: Icon(Icons.search),
-                ),
-              ),
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
+          return SafeArea(
+            child: SectionedListBody(
+              searchArea: Column(
                 children: [
-                  FilterChip(
-                    label: Text(
-                      _controller.selectedJenisFilter.value ?? 'Semua Jenis',
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.grey.shade100),
                     ),
-                    selected: _controller.selectedJenisFilter.value != null,
-                    onSelected: (_) => _showJenisFilter(),
-                  ),
-                  FilterChip(
-                    label: const Text('Range Tanggal'),
-                    selected: _controller.selectedDateRangeFilter.value != null,
-                    onSelected: (_) => _showDateRangeFilter(),
-                  ),
-                  if (_controller.hasActiveFilters)
-                    ActionChip(
-                      label: const Text('Reset'),
-                      onPressed: () {
-                        _searchController.clear();
-                        _controller.clearAllFilters();
-                      },
+                    child: TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        hintText: 'Cari nama event...',
+                        hintStyle: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 14),
+                        prefixIcon: const Icon(Icons.search, color: Color(0xFF9CA3AF)),
+                        filled: true,
+                        fillColor: const Color(0xFFF9FAFB),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(color: Colors.grey.shade200),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(color: Colors.grey.shade200),
+                        ),
+                        focusedBorder: const OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(16)),
+                          borderSide: BorderSide(color: Color(0xFF2563EB), width: 1.5),
+                        ),
+                      ),
                     ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      _buildTabPill('berlangsung'),
+                      const SizedBox(width: 8),
+                      _buildTabPill('mendatang'),
+                      const SizedBox(width: 8),
+                      _buildTabPill('selesai'),
+                    ],
+                  ),
                 ],
               ),
-              const SizedBox(height: 12),
-              if (roots.isEmpty)
-                const Card(
-                  child: Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Text('Belum ada event yang tersedia.'),
-                  ),
-                )
-              else
-                ...roots.map(_buildEventCard),
-            ],
+              filterArea: _controller.hasActiveFilters
+                  ? Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          ActionChip(
+                            label: Text(_controller.selectedJenisFilter.value ?? 'Semua Jenis'),
+                            onPressed: _showJenisFilter,
+                          ),
+                          ActionChip(
+                            label: const Text('Range Tanggal'),
+                            onPressed: _showDateRangeFilter,
+                          ),
+                          ActionChip(
+                            label: const Text('Reset'),
+                            onPressed: () {
+                              _searchController.clear();
+                              _controller.clearAllFilters();
+                            },
+                          ),
+                        ],
+                      ),
+                    )
+                  : null,
+              content: RefreshIndicator(
+                onRefresh: () async => _controller.loadEvents(force: true),
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  children: [
+                    if (roots.isEmpty)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: Colors.grey.shade100),
+                        ),
+                        child: const Text(
+                          'Tidak ada kegiatan yang sesuai dengan pencarian Anda.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Color(0xFF6B7280), fontSize: 13),
+                        ),
+                      )
+                    else
+                      ...roots.map(
+                        (event) => EventViewCard(
+                          event: event,
+                          controller: _controller,
+                          expandedState: _expandedState,
+                          canUpdateMainEvent: _canUpdateMainEvent,
+                          canUpdateSubEvent: _canUpdateSubEvent,
+                          canDeleteMainEvent: _canDeleteMainEvent,
+                          canDeleteSubEvent: _canDeleteSubEvent,
+                          canCreateSubEvent: _canCreateSubEvent,
+                          hasAnyCrudAccess: _hasAnyCrudAccess,
+                          onEdit: () => _addOrEditEvent(existing: event),
+                          onDelete: () => _deleteEvent(event),
+                          onAddSubEvent: () => _addOrEditEvent(forcedParentId: event.eventId),
+                          onExpandedChanged: () => setState(() {}),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
           );
         },
       ),
     );
   }
+
+  // Helper methods delegating to EventUtilities
+  String _formatDate(DateTime date) => EventUtilities.formatDate(date);
+  
+  String _eventLocation(EventModel event) => EventUtilities.eventLocation(event);
+  
+  String _eventStatusLabel(EventModel event) => EventUtilities.eventStatusLabel(event);
+  
+  Color _eventStatusColor(EventModel event) => EventUtilities.eventStatusColor(event);
+  
+  Color _eventStatusBgColor(EventModel event) => EventUtilities.eventStatusBgColor(event);
+  
+  int _targetCount(EventModel event, int presentCount) => EventUtilities.targetCount(event, presentCount);
+  
+  List<AttendanceRecord> _attendanceForEvent(String eventId) => EventUtilities.attendanceForEvent(eventId);
 }
 
 class _EventFormData {
@@ -882,6 +1173,7 @@ class _EventFormData {
     this.lokasi,
     this.deskripsi,
     this.targetPeserta = const <String>[],
+    this.penyelenggara,
   });
 
   final String name;
@@ -891,4 +1183,5 @@ class _EventFormData {
   final String? lokasi;
   final String? deskripsi;
   final List<String> targetPeserta;
+  final String? penyelenggara;
 }

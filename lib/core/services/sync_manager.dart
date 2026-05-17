@@ -10,6 +10,7 @@ import 'cloudinary_service.dart';
 import 'hive_service.dart';
 import 'mongo_service.dart';
 import '../../models/event_model.dart';
+import '../../models/event_invitation.dart';
 
 /// SyncManager — Versi lengkap Week 11.
 ///
@@ -136,6 +137,7 @@ class SyncManager {
       await syncPendingAttendance();
       await syncPendingPermissions();
       await syncPendingEvents();
+      await syncPendingInvitations();
       _updatePendingCount();
     } finally {
       _isSyncing = false;
@@ -451,6 +453,95 @@ class SyncManager {
     return _SyncResult.failed;
   }
 
+  // ─── SYNC INVITATIONS ──────────────────────────────────────────────
+
+  /// Sync semua EventInvitation dengan isSynced=false ke MongoDB.
+  Future<void> syncPendingInvitations() async {
+    final pending = HiveService.invitations.values
+        .where((i) => !i.isSynced)
+        .toList(growable: false);
+
+    if (pending.isEmpty) {
+      debugPrint('[SyncManager] invitations: tidak ada pending.');
+      return;
+    }
+
+    debugPrint('[SyncManager] invitations: ${pending.length} record pending.');
+
+    var successCount = 0;
+    var skipCount = 0;
+    var failCount = 0;
+
+    for (final invitation in pending) {
+      final result = await _syncInvitationWithRetry(invitation);
+      if (result == _SyncResult.success) {
+        successCount++;
+      } else if (result == _SyncResult.duplicate) {
+        skipCount++;
+      } else {
+        failCount++;
+      }
+    }
+
+    debugPrint(
+      '[SyncManager] invitations selesai: '
+      '$successCount synced, $skipCount duplicate, $failCount gagal.',
+    );
+  }
+
+  /// Sync satu EventInvitation ke MongoDB dengan retry logic.
+  Future<_SyncResult> _syncInvitationWithRetry(
+      EventInvitation invitation) async {
+    for (var attempt = 1; attempt <= AppConstants.maxSyncRetries; attempt++) {
+      try {
+        await MongoService.instance.insertOne(
+          collectionName: AppConstants.invitationsCollection,
+          document: invitation.toJson(),
+        );
+
+        invitation.isSynced = true;
+        await HiveService.invitations.put(
+            invitation.invitationId, invitation);
+
+        debugPrint(
+          '[SyncManager] invitation ✅ synced: ${invitation.invitationId} '
+          '(attempt $attempt)',
+        );
+        return _SyncResult.success;
+      } catch (e) {
+        if (MongoService.isDuplicateKeyError(e)) {
+          invitation.isSynced = true;
+          await HiveService.invitations.put(
+              invitation.invitationId, invitation);
+          debugPrint(
+            '[SyncManager] invitation ⚠️ duplicate: '
+            '${invitation.invitationId} — ditandai synced.',
+          );
+          return _SyncResult.duplicate;
+        }
+
+        debugPrint(
+          '[SyncManager] invitation ❌ attempt $attempt '
+          'gagal untuk ${invitation.invitationId}: $e',
+        );
+
+        if (attempt < AppConstants.maxSyncRetries) {
+          debugPrint(
+            '[SyncManager] retry dalam '
+            '${AppConstants.syncRetryDelay.inSeconds}s...',
+          );
+          await Future.delayed(AppConstants.syncRetryDelay);
+        }
+      }
+    }
+
+    debugPrint(
+      '[SyncManager] invitation 🔴 maks retry tercapai untuk '
+      '${invitation.invitationId} — tetap pending.',
+    );
+    return _SyncResult.failed;
+  }
+
   // ─── MANUAL TRIGGER (Alias) ──────────────────────────────────────
 
   /// Alias untuk syncAll() — kompatibilitas dengan kode lama.
@@ -465,14 +556,17 @@ class SyncManager {
         HiveService.permissions.values.where((p) => !p.isSynced).length;
     final eventPending =
         HiveService.events.values.where((e) => !e.isSynced).length;
+    final invitationPending =
+        HiveService.invitations.values.where((i) => !i.isSynced).length;
 
-    pendingCount.value = attendancePending + permissionPending + eventPending;
+    pendingCount.value =
+        attendancePending + permissionPending + eventPending + invitationPending;
 
     if (pendingCount.value > 0) {
       debugPrint(
         '[SyncManager] pending total: ${pendingCount.value} '
         '($attendancePending attendance + $permissionPending permission + '
-        '$eventPending events)',
+        '$eventPending events + $invitationPending invitations)',
       );
     }
   }

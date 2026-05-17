@@ -9,6 +9,7 @@ import '../../models/event_model.dart';
 import '../../models/member_model.dart';
 import '../../widgets/gradient_header.dart';
 import '../../widgets/custom_snackbar.dart';
+import '../../widgets/table_page_body.dart';
 import '../auth/auth_controller.dart';
 import 'attendance_controller.dart';
 import 'scan_screen.dart';
@@ -474,72 +475,69 @@ class _AttendanceRecapViewState extends State<AttendanceRecapView> {
   }
 
   Widget _buildReadOnlyOrganizerBody() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        DropdownButtonFormField<String>(
-          initialValue: _selectedReadOnlyEventId,
-          isExpanded: true,
-          decoration: const InputDecoration(
-            labelText: 'Pilih Event / Sub-Event',
-            border: OutlineInputBorder(),
-          ),
-          items: _events
-              .map(
-                (event) => DropdownMenuItem<String>(
-                  value: event.eventId,
-                  child: Text(
-                    _eventLabel(event.eventId),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+    return TablePageBody(
+      header: const SizedBox.shrink(),
+      summaryArea: const Text(
+        'Pilih event atau sub-event untuk melihat rekap kehadiran terbaru.',
+      ),
+      filterArea: DropdownButtonFormField<String>(
+        initialValue: _selectedReadOnlyEventId,
+        isExpanded: true,
+        decoration: const InputDecoration(
+          labelText: 'Pilih Event / Sub-Event',
+          border: OutlineInputBorder(),
+        ),
+        items: _events
+            .map(
+              (event) => DropdownMenuItem<String>(
+                value: event.eventId,
+                child: Text(
+                  _eventLabel(event.eventId),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              )
-              .toList(growable: false),
-          onChanged: (value) {
-            setState(() {
-              _selectedReadOnlyEventId = value;
-            });
-          },
-        ),
-        const SizedBox(height: 12),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: _readOnlyRecords.isEmpty
-                ? const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 24),
-                    child: Center(
-                      child: Text('Belum ada data kehadiran pada event ini.'),
-                    ),
-                  )
-                : SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: DataTable(
-                      columns: const [
-                        DataColumn(label: Text('NIM')),
-                        DataColumn(label: Text('Nama')),
-                        DataColumn(label: Text('Status')),
-                        DataColumn(label: Text('Timestamp')),
-                      ],
-                      rows: _readOnlyRecords
-                          .map((r) {
-                            final member = _memberById[r.nim];
-                            return DataRow(
-                              cells: [
-                                DataCell(Text(member?.nim ?? r.nim)),
-                                DataCell(Text(member?.nama ?? '-')),
-                                DataCell(Text(r.status)),
-                                DataCell(Text(_formatDate(r.timestamp))),
-                              ],
-                            );
-                          })
-                          .toList(growable: false),
-                    ),
-                  ),
-          ),
-        ),
-      ],
+              ),
+            )
+            .toList(growable: false),
+        onChanged: (value) {
+          setState(() {
+            _selectedReadOnlyEventId = value;
+          });
+        },
+      ),
+      tableBuilder: (context) => _readOnlyRecords.isEmpty
+          ? const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Center(
+                child: Text('Belum ada data kehadiran pada event ini.'),
+              ),
+            )
+          : SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: DataTable(
+                columns: const [
+                  DataColumn(label: Text('NIM')),
+                  DataColumn(label: Text('Nama')),
+                  DataColumn(label: Text('Status')),
+                  DataColumn(label: Text('Timestamp')),
+                ],
+                rows: _readOnlyRecords
+                    .map((r) {
+                      final member = _memberById[r.nim];
+                      return DataRow(
+                        cells: [
+                          DataCell(Text(member?.nim ?? r.nim)),
+                          DataCell(Text(member?.nama ?? '-')),
+                          DataCell(Text(r.status)),
+                          DataCell(Text(_formatDate(r.timestamp))),
+                        ],
+                      );
+                    })
+                    .toList(growable: false),
+              ),
+            ),
+      emptyState: const SizedBox.shrink(),
+      onRefresh: _refresh,
     );
   }
 
