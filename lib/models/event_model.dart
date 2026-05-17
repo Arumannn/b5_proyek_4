@@ -9,7 +9,7 @@ class EventModel extends HiveObject {
   final String eventId;
 
   @HiveField(1)
-  final String? parentEventId; // null = Main Event, ada = Sub-Event
+  final String? parentEventId;
 
   @HiveField(2)
   final String nama;
@@ -53,6 +53,20 @@ class EventModel extends HiveObject {
   @HiveField(15)
   final bool requiresInvitation;
 
+  // ─── BARU: Soft Delete ──────────────────────────────────────
+  // null = event aktif. Ada isi = event sudah dihapus (soft delete).
+  // JANGAN benar-benar hapus dokumen — biarkan ada supaya perangkat
+  // lain yang sedang offline bisa tahu event ini sudah dihapus.
+  @HiveField(16)
+  DateTime? deletedAt;
+
+  // ─── BARU: Optimistic Concurrency ───────────────────────────
+  // Naik +1 setiap kali event diupdate. Dipakai saat push ke MongoDB
+  // untuk mendeteksi kalau ada perangkat lain yang sudah mengubah
+  // event ini duluan (konflik versi).
+  @HiveField(17)
+  int version;
+
   EventModel({
     required this.eventId,
     this.parentEventId,
@@ -70,11 +84,16 @@ class EventModel extends HiveObject {
     this.lokasi,
     String? statusEvent,
     this.requiresInvitation = false,
+    this.deletedAt,
+    this.version = 1,
   })  : targetPeserta = targetPeserta ?? [],
         createdAt = createdAt ?? DateTime.now(),
         statusEvent = statusEvent ??
             _calculateInitialStatus(
                 DateTime.now(), tanggalMulai, tanggalSelesai, jamMulai, jamSelesai);
+
+  // Apakah event ini sudah dihapus (soft delete)?
+  bool get isDeleted => deletedAt != null;
 
   static String _calculateInitialStatus(DateTime now, DateTime tanggalMulai,
       DateTime? tanggalSelesai, DateTime? jamMulai, DateTime? jamSelesai) {
@@ -82,9 +101,7 @@ class EventModel extends HiveObject {
       tanggalMulai.year,
       tanggalMulai.month,
       tanggalMulai.day,
-      0,
-      0,
-      0,
+      0, 0, 0,
     );
 
     DateTime endTime;
@@ -94,22 +111,15 @@ class EventModel extends HiveObject {
       endTime = DateTime(tanggalSelesai.year, tanggalSelesai.month,
           tanggalSelesai.day, 23, 59, 59);
     } else {
-      endTime = DateTime(tanggalMulai.year, tanggalMulai.month, tanggalMulai.day, 23, 59, 59);
+      endTime = DateTime(tanggalMulai.year, tanggalMulai.month,
+          tanggalMulai.day, 23, 59, 59);
     }
 
-    if (now.isBefore(startTime)) {
-      return 'Mendatang';
-    }
-
-    if (now.isAfter(endTime)) {
-      return 'Selesai';
-    }
-
+    if (now.isBefore(startTime)) return 'Mendatang';
+    if (now.isAfter(endTime)) return 'Selesai';
     return 'Berlangsung';
   }
 
-  /// Memperbarui status event berdasarkan waktu saat ini.
-  /// Panggil metode ini dan `save()` jika ingin memaksa update status di DB.
   void refreshStatus() {
     final expectedStatus = _calculateInitialStatus(
         DateTime.now(), tanggalMulai, tanggalSelesai, jamMulai, jamSelesai);
@@ -136,6 +146,8 @@ class EventModel extends HiveObject {
       'lokasi': lokasi,
       'statusEvent': statusEvent,
       'requiresInvitation': requiresInvitation,
+      'deletedAt': deletedAt?.toIso8601String(),
+      'version': version,
     };
   }
 
@@ -145,11 +157,19 @@ class EventModel extends HiveObject {
       return [];
     }
 
-    final parsedTanggalMulai = DateTime.tryParse((map['tanggalMulai'] ?? '').toString()) ?? DateTime.now();
-    final parsedTanggalSelesai = DateTime.tryParse((map['tanggalSelesai'] ?? '').toString());
-    final parsedJamMulai = map['jamMulai'] != null ? DateTime.tryParse(map['jamMulai'].toString()) : null;
-    final parsedJamSelesai = map['jamSelesai'] != null ? DateTime.tryParse(map['jamSelesai'].toString()) : null;
-
+    final parsedTanggalMulai =
+        DateTime.tryParse((map['tanggalMulai'] ?? '').toString()) ?? DateTime.now();
+    final parsedTanggalSelesai =
+        DateTime.tryParse((map['tanggalSelesai'] ?? '').toString());
+    final parsedJamMulai = map['jamMulai'] != null
+        ? DateTime.tryParse(map['jamMulai'].toString())
+        : null;
+    final parsedJamSelesai = map['jamSelesai'] != null
+        ? DateTime.tryParse(map['jamSelesai'].toString())
+        : null;
+    final parsedDeletedAt = map['deletedAt'] != null
+        ? DateTime.tryParse(map['deletedAt'].toString())
+        : null;
 
     return EventModel(
       eventId: (map['eventId'] ?? '').toString(),
@@ -162,12 +182,15 @@ class EventModel extends HiveObject {
       targetPeserta: parsePeserta(map['targetPeserta']),
       createdBy: (map['createdBy'] ?? 'system').toString(),
       isSynced: map['isSynced'] == true,
-      createdAt: DateTime.tryParse((map['createdAt'] ?? '').toString()) ?? DateTime.now(),
+      createdAt:
+          DateTime.tryParse((map['createdAt'] ?? '').toString()) ?? DateTime.now(),
       jamMulai: parsedJamMulai,
       jamSelesai: parsedJamSelesai,
       lokasi: map['lokasi']?.toString(),
       statusEvent: map['statusEvent']?.toString(),
       requiresInvitation: map['requiresInvitation'] == true,
+      deletedAt: parsedDeletedAt,
+      version: (map['version'] as int?) ?? 1,
     );
   }
 
@@ -188,6 +211,9 @@ class EventModel extends HiveObject {
     String? lokasi,
     String? statusEvent,
     bool? requiresInvitation,
+    DateTime? deletedAt,
+    bool clearDeletedAt = false, // pakai ini untuk set deletedAt = null
+    int? version,
   }) {
     return EventModel(
       eventId: eventId ?? this.eventId,
@@ -206,6 +232,8 @@ class EventModel extends HiveObject {
       lokasi: lokasi ?? this.lokasi,
       statusEvent: statusEvent ?? this.statusEvent,
       requiresInvitation: requiresInvitation ?? this.requiresInvitation,
+      deletedAt: clearDeletedAt ? null : (deletedAt ?? this.deletedAt),
+      version: version ?? this.version,
     );
   }
 }
