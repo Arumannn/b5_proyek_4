@@ -104,7 +104,7 @@ class SyncManager {
 
   // ─── SYNC ALL ────────────────────────────────────────────────────
 
-  /// Sync semua data pending: Attendance + Permission + Events.
+  /// Sync semua data pending: Push + Pull untuk Attendance, Permission, Events, Invitations.
   /// Aman dipanggil berkali-kali — ada guard _isSyncing.
   Future<void> syncAll() async {
     if (_isSyncing) {
@@ -124,10 +124,17 @@ class SyncManager {
     isSyncing.value = true;
 
     try {
+      // Push pending data ke MongoDB
       await syncPendingAttendance();
       await syncPendingPermissions();
       await syncPendingEvents();
       await syncPendingInvitations();
+
+      // Pull data dari MongoDB ke Hive
+      await pullAttendanceFromCloud();
+      await pullPermissionsFromCloud();
+      await pullInvitationsFromCloud();
+
       _updatePendingCount();
     } finally {
       _isSyncing = false;
@@ -530,6 +537,149 @@ class SyncManager {
       '${invitation.invitationId} — tetap pending.',
     );
     return _SyncResult.failed;
+  }
+
+  // ─── PULL ATTENDANCE FROM CLOUD ──────────────────────────────────
+
+  /// Pull semua AttendanceRecord dari MongoDB dan merge ke Hive lokal.
+  /// Menggunakan compositeKey (eventId + nim) sebagai identifier unik.
+  Future<void> pullAttendanceFromCloud() async {
+    try {
+      final cloudDocs = await MongoService.instance.findMany(
+        collectionName: AppConstants.attendanceCollection,
+      );
+
+      if (cloudDocs.isEmpty) {
+        debugPrint('[SyncManager] pullAttendance: tidak ada data di cloud.');
+        return;
+      }
+
+      var insertCount = 0;
+      var updateCount = 0;
+
+      for (final doc in cloudDocs) {
+        final record = AttendanceRecord.fromMap(doc);
+        final existingKey = HiveService.attendance.keys.cast<dynamic>().firstWhere(
+          (key) {
+            final existing = HiveService.attendance.get(key);
+            return existing?.compositeKey == record.compositeKey;
+          },
+          orElse: () => null,
+        );
+
+        if (existingKey != null) {
+          final existing = HiveService.attendance.get(existingKey)!;
+          // Update hanya jika data cloud lebih baru
+          if (record.timestamp.isAfter(existing.timestamp)) {
+            await HiveService.attendance.put(existingKey, record);
+            updateCount++;
+          }
+        } else {
+          await HiveService.attendance.put(record.compositeKey, record);
+          insertCount++;
+        }
+      }
+
+      debugPrint(
+        '[SyncManager] pullAttendance selesai: '
+        '$insertCount inserted, $updateCount updated dari ${cloudDocs.length} cloud docs.',
+      );
+    } catch (e) {
+      debugPrint('[SyncManager] pullAttendance ❌ error: $e');
+    }
+  }
+
+  // ─── PULL PERMISSIONS FROM CLOUD ───────────────────────────────────
+
+  /// Pull semua PermissionRecord dari MongoDB dan merge ke Hive lokal.
+  /// Menggunakan permissionId sebagai identifier unik.
+  Future<void> pullPermissionsFromCloud() async {
+    try {
+      final cloudDocs = await MongoService.instance.findMany(
+        collectionName: AppConstants.permissionsCollection,
+      );
+
+      if (cloudDocs.isEmpty) {
+        debugPrint('[SyncManager] pullPermissions: tidak ada data di cloud.');
+        return;
+      }
+
+      var insertCount = 0;
+      var updateCount = 0;
+
+      for (final doc in cloudDocs) {
+        final record = PermissionRecord.fromMap(doc);
+        final existing = HiveService.permissions.get(record.permissionId);
+
+        if (existing != null) {
+          if (record.updatedAt.isAfter(existing.updatedAt)) {
+            await HiveService.permissions.put(record.permissionId, record);
+            updateCount++;
+          }
+        } else {
+          await HiveService.permissions.put(record.permissionId, record);
+          insertCount++;
+        }
+      }
+
+      debugPrint(
+        '[SyncManager] pullPermissions selesai: '
+        '$insertCount inserted, $updateCount updated dari ${cloudDocs.length} cloud docs.',
+      );
+    } catch (e) {
+      debugPrint('[SyncManager] pullPermissions ❌ error: $e');
+    }
+  }
+
+  // ─── PULL INVITATIONS FROM CLOUD ───────────────────────────────────
+
+  /// Pull semua EventInvitation dari MongoDB dan merge ke Hive lokal.
+  /// Menggunakan invitationId sebagai identifier unik.
+  Future<void> pullInvitationsFromCloud() async {
+    try {
+      final cloudDocs = await MongoService.instance.findMany(
+        collectionName: AppConstants.invitationsCollection,
+      );
+
+      if (cloudDocs.isEmpty) {
+        debugPrint('[SyncManager] pullInvitations: tidak ada data di cloud.');
+        return;
+      }
+
+      var insertCount = 0;
+      var updateCount = 0;
+
+      for (final doc in cloudDocs) {
+        final invitation = EventInvitation.fromJson(doc);
+        final existing = HiveService.invitations.get(invitation.invitationId);
+
+        if (existing != null) {
+          // Update jika respondedAt cloud lebih baru atau status berubah
+          final cloudRespondedAt = invitation.respondedAt;
+          final localRespondedAt = existing.respondedAt;
+          final shouldUpdate = (cloudRespondedAt != null && localRespondedAt == null) ||
+              (cloudRespondedAt != null &&
+                  localRespondedAt != null &&
+                  cloudRespondedAt.isAfter(localRespondedAt));
+          if (shouldUpdate) {
+            invitation.isSynced = true;
+            await HiveService.invitations.put(invitation.invitationId, invitation);
+            updateCount++;
+          }
+        } else {
+          invitation.isSynced = true;
+          await HiveService.invitations.put(invitation.invitationId, invitation);
+          insertCount++;
+        }
+      }
+
+      debugPrint(
+        '[SyncManager] pullInvitations selesai: '
+        '$insertCount inserted, $updateCount updated dari ${cloudDocs.length} cloud docs.',
+      );
+    } catch (e) {
+      debugPrint('[SyncManager] pullInvitations ❌ error: $e');
+    }
   }
 
   // ─── MANUAL TRIGGER (Alias) ──────────────────────────────────────
