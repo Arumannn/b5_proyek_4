@@ -113,7 +113,7 @@ class _InlineExpandingDropdownFieldState extends State<InlineExpandingDropdownFi
                   shrinkWrap: true,
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   itemCount: widget.options.length,
-                  separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey[100]),
+                  separatorBuilder: (_, _) => Divider(height: 1, color: Colors.grey[100]),
                   itemBuilder: (context, index) {
                     final option = widget.options[index];
                     final isSelected = option == selectedValue;

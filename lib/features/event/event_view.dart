@@ -567,7 +567,7 @@ class _EventViewState extends State<EventView> {
                         ),
                         const SizedBox(height: 12),
                         DropdownButtonFormField<String>(
-                          value: selectedPenyelenggara,
+                          initialValue: selectedPenyelenggara,
                           decoration: const InputDecoration(
                             labelText: 'Penyelenggara',
                             prefixIcon: Icon(Icons.group_outlined),
