@@ -3,6 +3,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../core/services/hive_service.dart';
+import '../../core/utils/network_status_controller.dart';
+import '../../widgets/sectioned_list_body.dart';
+import '../../widgets/white_status_header.dart';
 import '../../features/event/event_controller.dart';
 import '../../models/attendance_record.dart';
 import '../../models/event_model.dart';
@@ -96,111 +99,65 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF3F7FD),
+      appBar: WhiteStatusHeader(
+        title: 'Riwayat Kehadiran',
+        subtitle: 'History absensi Anda',
+        statusBadge: ValueListenableBuilder<bool>(
+          valueListenable: NetworkStatusController.instance.isOnline,
+          builder: (context, isOnline, _) {
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: isOnline ? const Color(0xFFE8F7EF) : const Color(0xFFFFF3E6),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    isOnline ? Icons.wifi : Icons.wifi_off,
+                    size: 10,
+                    color: isOnline ? const Color(0xFF15803D) : const Color(0xFFF97316),
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    isOnline ? 'TERSINKRONISASI' : 'OFFLINE (SIMPAN LOKAL)',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: isOnline ? const Color(0xFF15803D) : const Color(0xFFF97316),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+        actions: [
+          IconButton(
+            tooltip: 'Unduh Riwayat',
+            icon: const Icon(Icons.download_outlined, color: Color(0xFF111827)),
+            onPressed: () {},
+          ),
+        ],
+      ),
       body: SafeArea(
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
-            : Column(
-                children: [
-                  _buildHeader(),
-                  Expanded(
-                    child: RefreshIndicator(
-                      onRefresh: _fetchData,
-                      child: ListView(
-                        padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
-                        children: [
-                          _buildMonthPickerCard(),
-                          const SizedBox(height: 14),
-                          _buildSummaryCards(),
-                          const SizedBox(height: 14),
-                          _buildFilterChips(),
-                          const SizedBox(height: 14),
-                          _buildRecordList(),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              GestureDetector(
-                onTap: () => Navigator.pop(context),
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.14),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.chevron_left, color: Colors.white, size: 24),
-                ),
-              ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            : SectionedListBody(
+                header: Column(
                   children: [
-                    Text(
-                      'Riwayat Kehadiran',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Colors.white),
-                    ),
-                    SizedBox(height: 2),
-                    Text('History absensi Anda', style: TextStyle(fontSize: 12, color: Colors.white70)),
+                    _buildMonthPickerCard(),
+                    const SizedBox(height: 14),
+                    _buildSummaryCards(),
                   ],
                 ),
+                searchBar: const SizedBox.shrink(),
+                filterArea: _buildFilterChips(),
+                listBuilder: (context) => _buildRecordList(),
+                emptyState: const SizedBox.shrink(),
+                onRefresh: _fetchData,
               ),
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.14),
-                  shape: BoxShape.circle,
-                ),
-                child: IconButton(
-                  padding: EdgeInsets.zero,
-                  icon: const Icon(Icons.download_outlined, color: Colors.white),
-                  onPressed: () {},
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          Center(
-            child: Container(
-              width: 88,
-              height: 88,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.12),
-                    blurRadius: 18,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: const Icon(Icons.history_rounded, size: 42, color: Color(0xFF2563EB)),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -293,7 +250,7 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
   Widget _buildSummaryCards() {
     return ValueListenableBuilder<String>(
       valueListenable: _selectedMonth,
-      builder: (context, _, __) {
+      builder: (context, _, _) {
         final stats = _getStats(_recordsForSelectedMonth);
         final percent = stats['total']! == 0 ? 0 : ((stats['hadir']! / stats['total']!) * 100).round();
 
@@ -391,12 +348,12 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
   Widget _buildFilterChips() {
     return ValueListenableBuilder<String>(
       valueListenable: _selectedMonth,
-      builder: (context, _, __) {
+      builder: (context, _, _) {
         final stats = _getStats(_recordsForSelectedMonth);
         
         return ValueListenableBuilder<String>(
           valueListenable: _selectedFilter,
-          builder: (context, selected, ___) {
+          builder: (context, selected, _) {
             return Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -455,22 +412,31 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
   Widget _buildRecordList() {
     return ValueListenableBuilder<String>(
       valueListenable: _selectedFilter,
-      builder: (context, _, __) {
+      builder: (context, _, _) {
         final records = _filteredRecords;
 
         if (records.isEmpty) {
-          return const Padding(
-            padding: EdgeInsets.only(top: 24),
-            child: Center(
-              child: Text('Tidak ada riwayat untuk filter ini.', style: TextStyle(color: Colors.grey)),
-            ),
+          return ListView(
+            children: [
+              Padding(
+                padding: EdgeInsets.only(
+                  top: MediaQuery.of(context).size.height * 0.15,
+                ),
+                child: const Center(
+                  child: Text(
+                    'Tidak ada riwayat untuk filter ini.',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ),
+              ),
+            ],
           );
         }
 
-        return Column(
-          children: records.asMap().entries.map((entry) {
-            final index = entry.key;
-            final record = entry.value;
+        return ListView.builder(
+          itemCount: records.length,
+          itemBuilder: (context, index) {
+            final record = records[index];
             final event = _eventById[record.eventId];
             final eventName = event?.nama ?? 'Event Tidak Diketahui';
             final location = event?.jenis ?? 'Ruang Kelas';
@@ -486,7 +452,7 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
               duration: '2 jam',
               isLast: index == records.length - 1,
             );
-          }).toList(growable: false),
+          },
         );
       },
     );

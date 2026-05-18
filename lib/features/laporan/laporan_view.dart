@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../widgets/gradient_header.dart';
+import '../../core/utils/network_status_controller.dart';
+import '../../widgets/white_status_header.dart';
 
 class LaporanView extends StatefulWidget {
   final bool showBottomNav;
@@ -46,31 +47,47 @@ class _LaporanViewState extends State<LaporanView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(120),
-        child: GradientHeader(
-          title: 'Laporan Kehadiran',
-          subtitle: 'Analisis partisipasi anggota',
-          showBackButton: true,
-          actions: [
-            Padding(
-              padding: const EdgeInsets.only(right: 16, top: 16),
-              child: Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.14),
-                  shape: BoxShape.circle,
-                ),
-                child: IconButton(
-                  padding: EdgeInsets.zero,
-                  icon: const Icon(Icons.file_download_outlined, color: Colors.white),
-                  onPressed: () {},
-                ),
+      appBar: WhiteStatusHeader(
+        title: 'Laporan Kehadiran',
+        subtitle: 'Analisis partisipasi anggota',
+        statusBadge: ValueListenableBuilder<bool>(
+          valueListenable: NetworkStatusController.instance.isOnline,
+          builder: (context, isOnline, _) {
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: isOnline ? const Color(0xFFE8F7EF) : const Color(0xFFFFF3E6),
+                borderRadius: BorderRadius.circular(999),
               ),
-            ),
-          ],
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    isOnline ? Icons.wifi : Icons.wifi_off,
+                    size: 10,
+                    color: isOnline ? const Color(0xFF15803D) : const Color(0xFFF97316),
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    isOnline ? 'TERSINKRONISASI' : 'OFFLINE (SIMPAN LOKAL)',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: isOnline ? const Color(0xFF15803D) : const Color(0xFFF97316),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
         ),
+        actions: [
+          IconButton(
+            tooltip: 'Unduh Laporan',
+            icon: const Icon(Icons.file_download_outlined, color: Color(0xFF111827)),
+            onPressed: () {},
+          ),
+        ],
       ),
       backgroundColor: const Color(0xFFF3F7FD),
       body: SafeArea(

@@ -30,6 +30,7 @@ class AppConstants {
   static const String eventsCollection = 'events';
   static const String attendanceCollection = 'attendance';
   static const String permissionsCollection = 'permissions';
+  static const String invitationsCollection = 'invitations';
 
   // ─── QR Code Format ──────────────────────────────
   // Format QR: "PRASASTI:{nim}"
@@ -42,7 +43,7 @@ class AppConstants {
   static Duration syncRetryDelay = const Duration(seconds: 5);
 
   // ─── Role Definitions ────────────────────────────
-  static const String roleExecutive = 'Executive';
+  static const String roleExecutive = 'executive';
   static const String roleManager = 'manager';
   static const String roleOrganizer = 'organizer';
   static const String roleMember = 'member';
@@ -53,6 +54,15 @@ class AppConstants {
     roleOrganizer,
     roleMember,
   ];
+
+  static List<String> dbuOptionsForRole(String role) {
+    final normalized = role.trim().toLowerCase();
+    if (normalized == roleExecutive) return hexaOptions;
+    if (normalized == roleManager) return adkesOptions;
+    return [...departmentDbuOptions, ...biroDbuOptions, ...unitDbuOptions];
+  }
+
+  static String defaultDbuForRole(String role) => dbuOptionsForRole(role).first;
 
   // DBU options for user management form (Executive only)
   static const List<String> departmentDbuOptions = [
@@ -70,10 +80,30 @@ class AppConstants {
 
   static const List<String> unitDbuOptions = ['Unit Teknologi'];
 
+  static const List<String> adkesOptions = [
+    'Ketua Departemen',
+    'Wakil Ketua Departemen',
+    'Ketua Biro',
+    'Wakil Ketua Biro',
+    'Ketua Unit',
+    'Wakil Ketua Unit',
+  ];
+
+  static const List<String> hexaOptions = [
+    'Ketua Himpunan',
+    'Wakil Ketua Himpunan',
+    'Sekretaris Jenderal',
+    'Sekretaris Umum',
+    'Bendahara Umum',
+    'Ketua Manajemen Sumber Daya Himpunan',
+  ];
+
   static const List<String> allDbuOptions = [
     ...departmentDbuOptions,
     ...biroDbuOptions,
     ...unitDbuOptions,
+    ...adkesOptions,
+    ...hexaOptions,
   ];
 
   // ─── Default Executive Seeding ───────────────────────
@@ -81,9 +111,9 @@ class AppConstants {
   static const String defaultExecutivePassword = '123';
   static const String defaultExecutiveName = 'Executive Utama';
   static const String defaultExecutiveDivision = 'HEXA';
-  static const String executiveSeedFlagKey = '__seed_Executive_done__';
+  static const String executiveSeedFlagKey = '__seed_executive_done__';
 
-    // ─── Default Member Seeding ───────────────────────
+  // ─── Default Member Seeding ───────────────────────
   static const String defaultMemberNim = '39';
   static const String defaultMemberPassword = '123';
   static const String defaultMemberName = 'Member Biasa';
@@ -110,5 +140,19 @@ class AppConstants {
     'Acara',
     'Kegiatan',
     'Lainnya',
+  ];
+
+  // ─── Penyelenggara (Organizer Tag) ──────────────
+  static const List<String> penyelenggaraOptions = [
+    'Biro Administrasi dan Kesekretariatan',
+    'Biro Kewirausahaan dan Keuangan',
+    'Departemen Komunikasi dan Informasi',
+    'Departemen Luar Himpunan',
+    'Departemen Pengembangan Sumber Daya Himpunan',
+    'Departemen Seni dan Olahraga',
+    'Departemen Keilmuan dan Keprofesian',
+    'Unit Teknologi',
+    'Badan Khusus Manajemen Sumber Daya Himpunan',
+    'Himpunan',
   ];
 }

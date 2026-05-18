@@ -349,7 +349,7 @@ class _ParticipantSelectorState extends State<ParticipantSelector> {
 							children: [
 								Text(
 									_selectedIds.isEmpty
-											? 'Semua Anggota (Public)'
+											? 'Belum ada yang dipilih'
 											: '${_selectedIds.length} Peserta Terpilih (Private)',
 									style: TextStyle(
 										color: _selectedIds.isEmpty

@@ -3,10 +3,12 @@
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_constants.dart';
+import '../../core/widgets/inline_expanding_dropdown_field.dart';
 import '../../models/member_model.dart';
 import '../../widgets/custom_snackbar.dart';
 import '../../widgets/loading_overlay.dart';
 import '../../widgets/network_status_banner.dart';
+import '../../widgets/table_page_body.dart';
 import 'auth_controller.dart';
 
 class UserManagementView extends StatefulWidget {
@@ -27,10 +29,7 @@ class _UserManagementViewState extends State<UserManagementView> {
   String get _currentRole => (_authController.currentUser.value?.role ?? '').trim().toLowerCase();
 
   bool get _hasAccess =>
-      _currentRole == AppConstants.roleExecutive.toLowerCase() ||
-      _currentRole == 'executive' ||
-      _currentRole == 'eksekutif' ||
-      _currentRole == 'admin';
+      _currentRole == AppConstants.roleExecutive.toLowerCase();
 
   @override
   void initState() {
@@ -62,76 +61,14 @@ class _UserManagementViewState extends State<UserManagementView> {
 
   String _roleLabel(String role) {
     final normalized = role.trim().toLowerCase();
-    if (normalized == 'executive' || normalized == 'eksekutif' || normalized == 'admin') {
-      return 'Executive';
-    }
+    if (normalized == AppConstants.roleExecutive) return 'Executive';
     if (normalized == AppConstants.roleManager) return 'Manager';
     if (normalized == AppConstants.roleOrganizer) return 'Organizer';
     return 'Member';
   }
 
-  Color _roleColor(String role) {
-    switch (role.trim().toLowerCase()) {
-      case AppConstants.roleExecutive:
-        return const Color(0xFF1E56E5);
-      case AppConstants.roleManager:
-        return const Color(0xFF06C755);
-      case AppConstants.roleOrganizer:
-        return const Color(0xFFB84DFF);
-      default:
-        return const Color(0xFFFD9800);
-    }
-  }
-
-  List<MemberModel> get _filteredUsers {
-    final query = _searchController.text.trim().toLowerCase();
-    return _users
-        .where((user) {
-          final matchesQuery =
-              query.isEmpty ||
-              user.nama.toLowerCase().contains(query) ||
-              user.nim.toLowerCase().contains(query) ||
-              user.divisi.toLowerCase().contains(query);
-          final matchesRole =
-              _selectedRoleFilter == 'Semua' ||
-              _roleLabel(user.role) == _selectedRoleFilter;
-          return matchesQuery && matchesRole;
-        })
-        .toList(growable: false);
-  }
-
-  List<DropdownMenuItem<String>> _buildDbuItems() {
-    const headerStyle = TextStyle(
-      fontWeight: FontWeight.w700,
-      color: Colors.black54,
-    );
-
-    return [
-      const DropdownMenuItem<String>(
-        enabled: false,
-        value: '__header_departemen__',
-        child: Text('Departemen', style: headerStyle),
-      ),
-      ...AppConstants.departmentDbuOptions.map(
-        (value) => DropdownMenuItem<String>(value: value, child: Text(value)),
-      ),
-      const DropdownMenuItem<String>(
-        enabled: false,
-        value: '__header_biro__',
-        child: Text('Biro', style: headerStyle),
-      ),
-      ...AppConstants.biroDbuOptions.map(
-        (value) => DropdownMenuItem<String>(value: value, child: Text(value)),
-      ),
-      const DropdownMenuItem<String>(
-        enabled: false,
-        value: '__header_unit__',
-        child: Text('Unit', style: headerStyle),
-      ),
-      ...AppConstants.unitDbuOptions.map(
-        (value) => DropdownMenuItem<String>(value: value, child: Text(value)),
-      ),
-    ];
+  List<String> _buildDbuItems(String role) {
+    return AppConstants.dbuOptionsForRole(role);
   }
 
   Future<void> _showUserForm({MemberModel? existing}) async {
@@ -526,49 +463,20 @@ Widget _buildTable() {
             backgroundColor: const Color(0xFF2563EB),
             foregroundColor: Colors.white,
           ),
-          body: SafeArea(
-            child: Column(
-              children: [
-                _buildHeader(),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-                  child: _buildSummaryCard(),
-                ),
-                Expanded(
-                  child: RefreshIndicator(
-                    onRefresh: _refreshUsers,
-                    child: ListView(
-                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(24),
-                            border: Border.all(color: Colors.grey.shade100),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.04),
-                                blurRadius: 18,
-                                offset: const Offset(0, 8),
-                              ),
-                            ],
-                          ),
-                          child: _users.isEmpty
-                              ? const Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 24),
-                                  child: Center(
-                                    child: Text('Belum ada data anggota.'),
-                                  ),
-                                )
-                              : _buildTable(),
-                        ),
-                      ],
+          body: TablePageBody(
+            header: _buildHeader(),
+            summaryArea: _buildSummaryCard(),
+            filterArea: const SizedBox.shrink(),
+            tableBuilder: (context) => _users.isEmpty
+                ? const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: Center(
+                      child: Text('Belum ada data anggota.'),
                     ),
-                  ),
-                ),
-              ],
-            ),
+                  )
+                : _buildTable(),
+            emptyState: const SizedBox.shrink(),
+            onRefresh: _refreshUsers,
           ),
         ),
       ),
@@ -588,7 +496,7 @@ class UserFormDialog extends StatefulWidget {
   final AuthController authController;
   final MemberModel? existing;
   final String Function(String role) roleLabelBuilder;
-  final List<DropdownMenuItem<String>> Function() dbuItemsBuilder;
+  final List<String> Function(String role) dbuItemsBuilder;
 
   @override
   State<UserFormDialog> createState() => _UserFormDialogState();
@@ -618,9 +526,10 @@ class _UserFormDialogState extends State<UserFormDialog> {
       (role) => role.trim().toLowerCase() == existingRole,
       orElse: () => AppConstants.roleMember,
     );
-    _selectedDbu = widget.existing?.divisi ?? AppConstants.departmentDbuOptions.first;
-    if (!AppConstants.allDbuOptions.contains(_selectedDbu)) {
-      _selectedDbu = AppConstants.departmentDbuOptions.first;
+    final dbuOptions = AppConstants.dbuOptionsForRole(_selectedRole);
+    _selectedDbu = widget.existing?.divisi ?? dbuOptions.first;
+    if (!dbuOptions.contains(_selectedDbu)) {
+      _selectedDbu = dbuOptions.first;
     }
   }
 
@@ -794,23 +703,16 @@ class _UserFormDialogState extends State<UserFormDialog> {
                           },
                         ),
                         const SizedBox(height: 12),
-                        _buildFieldLabel('Role'),
-                        DropdownButtonFormField<String>(
-                          initialValue: _selectedRole,
-                          isExpanded: true,
-                          decoration: _inputDecoration(),
-                          items: AppConstants.allowedRoles
-                              .map(
-                                (role) => DropdownMenuItem<String>(
-                                  value: role,
-                                  child: Text(widget.roleLabelBuilder(role)),
-                                ),
-                              )
-                              .toList(growable: false),
+                        InlineExpandingDropdownField(
+                          label: 'Role',
+                          value: _selectedRole,
+                          options: AppConstants.allowedRoles,
+                          placeholder: 'Pilih role',
+                          itemLabelBuilder: widget.roleLabelBuilder,
                           onChanged: (value) {
-                            if (value == null) return;
                             setState(() {
                               _selectedRole = value;
+                              _selectedDbu = AppConstants.defaultDbuForRole(value);
                             });
                           },
                           validator: (value) {
@@ -821,22 +723,19 @@ class _UserFormDialogState extends State<UserFormDialog> {
                           },
                         ),
                         const SizedBox(height: 12),
-                        _buildFieldLabel('Departemen/Biro/Unit (DBU)'),
-                        DropdownButtonFormField<String>(
-                          initialValue: _selectedDbu,
-                          isExpanded: true,
-                          decoration: _inputDecoration(),
-                          items: widget.dbuItemsBuilder(),
+                        InlineExpandingDropdownField(
+                          label: 'Departemen/Biro/Unit (DBU)',
+                          value: _selectedDbu,
+                          options: widget.dbuItemsBuilder(_selectedRole),
+                          placeholder: 'Pilih DBU',
                           onChanged: (value) {
-                            if (value == null || !AppConstants.allDbuOptions.contains(value)) {
-                              return;
-                            }
                             setState(() {
                               _selectedDbu = value;
                             });
                           },
                           validator: (value) {
-                            if (value == null || !AppConstants.allDbuOptions.contains(value)) {
+                            final validOptions = AppConstants.dbuOptionsForRole(_selectedRole);
+                            if (value == null || !validOptions.contains(value)) {
                               return 'DBU wajib dipilih.';
                             }
                             return null;

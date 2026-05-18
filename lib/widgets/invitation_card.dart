@@ -4,6 +4,7 @@ import '../models/event_invitation.dart';
 class InvitationCard extends StatelessWidget {
     final EventInvitation invitation;
     final String eventTitle;
+    final String? penyelenggara;
     final VoidCallback onAccept;
     final VoidCallback onDecline;
     final VoidCallback onPermit;
@@ -12,6 +13,7 @@ class InvitationCard extends StatelessWidget {
         super.key,
         required this.invitation,
         required this.eventTitle,
+        this.penyelenggara,
         required this.onAccept,
         required this.onDecline,
         required this.onPermit,
@@ -31,12 +33,14 @@ class InvitationCard extends StatelessWidget {
                         Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                            Text(
-                                eventTitle,
-                                style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                )
+                            Expanded(
+                              child: Text(
+                                  eventTitle,
+                                  style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                  ),
+                              ),
                             ),
                             Chip(
                                 label: Text(
@@ -50,6 +54,24 @@ class InvitationCard extends StatelessWidget {
                             ),
                         ],
                     ),
+                    if (penyelenggara != null && penyelenggara!.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                                color: Colors.teal.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                                penyelenggara!,
+                                style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.teal,
+                                ),
+                            ),
+                        ),
+                    ],
                     const SizedBox(height: 16),
 
                     // Tombol aksi hanya muncul jika status masih pending
