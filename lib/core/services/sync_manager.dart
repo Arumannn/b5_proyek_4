@@ -233,14 +233,27 @@ class SyncManager {
     );
   }
 
-  /// Sync satu AttendanceRecord dengan retry logic.
+  /// Sync satu AttendanceRecord dengan retry logic (upsert pattern).
   Future<_SyncResult> _syncAttendanceWithRetry(AttendanceRecord record) async {
     for (var attempt = 1; attempt <= AppConstants.maxSyncRetries; attempt++) {
       try {
-        await MongoService.instance.insertOne(
+        final existing = await MongoService.instance.findOne(
           collectionName: AppConstants.attendanceCollection,
-          document: record.toMap(),
+          filter: {'compositeKey': record.compositeKey},
         );
+
+        if (existing == null) {
+          await MongoService.instance.insertOne(
+            collectionName: AppConstants.attendanceCollection,
+            document: record.toMap(),
+          );
+        } else {
+          await MongoService.instance.updateOne(
+            collectionName: AppConstants.attendanceCollection,
+            filter: {'compositeKey': record.compositeKey},
+            updateFields: record.toMap(),
+          );
+        }
 
         record.isSynced = true;
         await record.save();

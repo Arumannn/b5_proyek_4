@@ -143,7 +143,6 @@ class EventModel extends HiveObject {
       'deskripsi': deskripsi,
       'targetPeserta': targetPeserta,
       'createdBy': createdBy,
-      'isSynced': isSynced,
       'createdAt': createdAt.toIso8601String(),
       'jamMulai': jamMulai?.toIso8601String(),
       'jamSelesai': jamSelesai?.toIso8601String(),
