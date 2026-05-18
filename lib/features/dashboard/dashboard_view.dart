@@ -10,6 +10,8 @@ import '../auth/auth_controller.dart';
 import '../auth/user_management_view.dart';
 import '../event/event_controller.dart';
 import '../../core/utils/network_status_controller.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import '../../core/services/hive_service.dart';
 import '../../core/auth/dashboard_role_policy.dart';
 import 'widgets/dashboard_content.dart';
 import '../../widgets/white_status_header.dart';
@@ -298,25 +300,57 @@ class _DashboardViewState extends State<DashboardView> {
           appBar: WhiteStatusHeader(
             title: 'PRASASTI',
             subtitle: 'Sistem Presensi & Administrasi Terintegrasi',
-            statusBadge: ValueListenableBuilder<bool>(
-              valueListenable: NetworkStatusController.instance.isOnline,
-              builder: (context, isOnline, _) {
-                return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: isOnline ? const Color(0xFFE8F7EF) : const Color(0xFFFFF3E6),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(isOnline ? Icons.wifi : Icons.wifi_off, size: 10, color: isOnline ? const Color(0xFF15803D) : const Color(0xFFF97316)),
-                      const SizedBox(width: 5),
-                      Text(isOnline ? 'TERSINKRONISASI' : 'OFFLINE (SIMPAN LOKAL)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: isOnline ? const Color(0xFF15803D) : const Color(0xFFF97316))),
-                    ],
-                  ),
-                );
-              },
+            statusBadge: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ValueListenableBuilder<bool>(
+                  valueListenable: NetworkStatusController.instance.isOnline,
+                  builder: (context, isOnline, _) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: isOnline ? const Color(0xFFE8F7EF) : const Color(0xFFFFF3E6),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(isOnline ? Icons.wifi : Icons.wifi_off, size: 10, color: isOnline ? const Color(0xFF15803D) : const Color(0xFFF97316)),
+                          const SizedBox(width: 5),
+                          Text(isOnline ? 'TERSINKRONISASI' : 'OFFLINE (SIMPAN LOKAL)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: isOnline ? const Color(0xFF15803D) : const Color(0xFFF97316))),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(width: 8),
+                // Invitation indicator
+                ValueListenableBuilder(
+                  valueListenable: HiveService.invitations.listenable(),
+                  builder: (context, box, _) {
+                    final pending = HiveService.invitations.values.where((inv) {
+                      final nim = inv.nim.trim();
+                      final status = inv.responseStatus.trim().toLowerCase();
+                      return nim == (currentUser.nim).trim() &&
+                          (status == 'pending' || status == 'permission_requested');
+                    }).length;
+
+                    if (pending == 0) return const SizedBox.shrink();
+
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(color: const Color(0xFFFFF3F2), borderRadius: BorderRadius.circular(999), border: Border.all(color: const Color(0xFFF87171))),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.mail_outline, size: 12, color: Color(0xFFB91C1C)),
+                          const SizedBox(width: 6),
+                          Text('Undangan: $pending', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFFB91C1C))),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ],
             ),
             actions: [
               IconButton(tooltip: 'Logout', icon: const Icon(Icons.logout, color: Color(0xFF111827)), onPressed: () => _confirmAndLogout(context)),

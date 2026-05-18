@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import '../../../models/event_model.dart';
 import '../../../models/member_model.dart';
-import '../../attendance/attendance_history_view.dart';
 import '../../event/event_view.dart';
 import '../../event/event_detail_view.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../auth/auth_controller.dart';
+import '../../member/permission_form_view.dart';
 
-/// Menampilkan daftar kegiatan berlangsung hari ini dan tombol riwayat.
 class MemberTodayEventsSection extends StatelessWidget {
   final List<EventModel> ongoingEvents;
   final MemberModel member;
@@ -24,184 +23,132 @@ class MemberTodayEventsSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            const Expanded(
-              child: Text(
-                'Kegiatan Hari Ini',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF111827),
-                ),
-              ),
-            ),
-            TextButton(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const EventView()),
-              ),
-              style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                minimumSize: const Size(0, 36),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              child: const Text(
-                'Lihat Semua',
-                style: TextStyle(color: Color(0xFF2563EB)),
-              ),
+            const Text('Kegiatan Hari Ini', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1F2937))),
+            GestureDetector(
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EventView())),
+              child: const Text('Lihat Semua', style: TextStyle(color: Color(0xFF2563EB), fontSize: 13, fontWeight: FontWeight.w600)),
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
 
         if (ongoingEvents.isEmpty)
           Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.grey[100],
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Center(
-              child: Text('Belum ada kegiatan hari ini'),
-            ),
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(color: const Color(0xFFF9FAFB), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade200)),
+            child: const Text('Belum ada kegiatan yang berlangsung hari ini.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey, fontSize: 13)),
           )
         else
           Column(
-            children: ongoingEvents
-                .map((event) => _EventCard(event: event))
-                .toList(),
+            children: ongoingEvents.map((event) => _EventCard(event: event)).toList(),
           ),
-
-        const SizedBox(height: 12),
-
-        OutlinedButton.icon(
-          onPressed: member.nim.trim().isEmpty
-              ? null
-              : () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => AttendanceHistoryView(nim: member.nim),
-                    ),
-                  ),
-          icon: const Icon(Icons.history),
-          label: const Text('Lihat Riwayat Saya'),
-        ),
       ],
     );
   }
 }
 
-/// Widget individual untuk satu kartu kegiatan.
 class _EventCard extends StatelessWidget {
   final EventModel event;
 
   const _EventCard({required this.event});
 
+  String _formatTime(DateTime? time) {
+    if (time == null) return '--:--';
+    return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final bool isMainEvent = event.parentEventId == null;
+    final String typeLabel = isMainEvent ? 'Event Utama' : 'Sub-Event';
+    final timeStr = _formatTime(event.jamMulai ?? event.tanggalMulai);
+    final locationStr = event.lokasi ?? event.jenis;
+
     return GestureDetector(
       onTap: () {
-        final role = AuthController.instance.currentUser.value?.role ??
-            AppConstants.roleMember;
-
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => EventDetailView(
-              event: event,
-              userRole: role,
-            ),
-          ),
-        );
+        final role = AuthController.instance.currentUser.value?.role ?? AppConstants.roleMember;
+        Navigator.push(context, MaterialPageRoute(builder: (_) => EventDetailView(event: event, userRole: role)));
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade100),
+          border: Border.all(color: Colors.grey.shade200),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 4, offset: const Offset(0, 2))],
         ),
-        child: Row(
-          children: [
-            // Accent bar kiri
-            Container(
-              width: 6,
-              height: 90,
-              decoration: const BoxDecoration(
-                color: Color(0xFF2563EB),
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(12),
-                  bottomLeft: Radius.circular(12),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                width: 4,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF3B82F6),
+                  borderRadius: BorderRadius.only(topLeft: Radius.circular(12), bottomLeft: Radius.circular(12)),
                 ),
               ),
-            ),
-
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      event.nama,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14,
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(color: const Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(4)),
+                        child: Text(typeLabel.toUpperCase(), style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF2563EB), letterSpacing: 0.5)),
                       ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      '${_formatTime(event.jamMulai)} • ${event.lokasi ?? 'Lokasi belum diatur'}',
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Color(0xFF6B7280),
-                        fontSize: 13,
+                      const SizedBox(height: 8),
+                      Text(event.nama, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF1F2937))),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          const Icon(Icons.access_time, size: 14, color: Colors.grey),
+                          const SizedBox(width: 4),
+                          Text('$timeStr WIB', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                          const SizedBox(width: 12),
+                          const Icon(Icons.location_on_outlined, size: 14, color: Colors.grey),
+                          const SizedBox(width: 4),
+                          Expanded(child: Text(locationStr, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.grey, fontSize: 12))), 
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 10),
-
-                    // Tombol Ajukan Izin / Sakit
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          // T O D O: Navigasi ke halaman pengajuan izin/sakit
-                          // Contoh: Navigator.push(context, MaterialPageRoute(builder: (_) => PermissionRequestView(event: event)));
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFFF7ED),
-                          foregroundColor: const Color(0xFFF97316),
-                          minimumSize: const Size(0, 34),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
+                      const SizedBox(height: 12),
+                      const Divider(height: 1, color: Color(0xFFF3F4F6)),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 36,
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PermissionFormView(
+                            eventId: event.eventId, 
+                            eventTitle: event.nama,
+                            onSuccessSubmit: () {
+                              // Di sini bisa ditambahkan logika tambahan jika butuh
+                            }
+                          ))),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFFFF7ED),
+                            foregroundColor: const Color(0xFFEA580C),
+                            elevation: 0,
+                            side: const BorderSide(color: Color(0xFFFFEDD5)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           ),
-                        ),
-                        child: const Text(
-                          'Ajukan Izin/Sakit',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                          child: const Text('Ajukan Izin/Sakit', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
-  }
-
-  String _formatTime(DateTime? time) {
-    if (time == null) return '--:--';
-    return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
   }
 }
