@@ -4,7 +4,7 @@ import '../../core/constants/app_constants.dart';
 import '../../widgets/gradient_header.dart';
 import '../../widgets/table_page_body.dart';
 
-import '../../features/auth/auth_controller.dart';
+import '../auth/auth_controller.dart';
 import '../../models/member_model.dart';
 
 class ManagerUserReadonlyView extends StatefulWidget {

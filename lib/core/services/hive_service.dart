@@ -12,6 +12,9 @@ class HiveService {
 
   static bool _initialized = false;
   static const String invitationBoxName = 'invitations';
+  static const int _schemaVersion = 2;
+  static const String _schemaVersionKey = '__hive_schema_version__';
+
 
   static Future<void> init() async {
     if (_initialized) {
@@ -29,6 +32,9 @@ class HiveService {
     Hive.registerAdapter(PermissionRecordAdapter()); // typeId: 3
     Hive.registerAdapter(EventInvitationAdapter());
 
+    await _clearBoxesIfSchemaChanged();
+
+
     await _openBoxSafely<MemberModel>(AppConstants.memberBox);
     await _openBoxSafely<EventModel>(AppConstants.eventBox);
     await _openBoxSafely<AttendanceRecord>(AppConstants.attendanceBox);
@@ -41,10 +47,44 @@ class HiveService {
     debugPrint('✅ HiveService initialized — 4 boxes open');
   }
 
+  static Future<void> _clearBoxesIfSchemaChanged() async {
+    // Pakai box settings untuk menyimpan versi schema
+    final settingsBox = await Hive.openBox<int>('__settings__');
+    final storedVersion = settingsBox.get(_schemaVersionKey) ?? 0;
+
+    if (storedVersion < _schemaVersion) {
+      debugPrint(
+        '⚠️ HiveService: schema berubah '
+        '(v$storedVersion → v$_schemaVersion). '
+        'Membersihkan semua box...',
+      );
+
+      // Hapus semua box lama
+      for (final boxName in [
+        AppConstants.memberBox,
+        AppConstants.eventBox,
+        AppConstants.attendanceBox,
+        AppConstants.permissionBox,
+        invitationBoxName,
+        AppConstants.pendingUserUpsertBox,
+        AppConstants.pendingUserDeleteBox,
+      ]) {
+        await Hive.deleteBoxFromDisk(boxName);
+        debugPrint('  - box "$boxName" dihapus');
+      }
+
+      // Simpan versi baru
+      await settingsBox.put(_schemaVersionKey, _schemaVersion);
+      debugPrint('✅ HiveService: schema v$_schemaVersion tersimpan.');
+    }
+
+    await settingsBox.close();
+  }
+
   static Future<Box<T>> _openBoxSafely<T>(String boxName) async {
     try {
       return await Hive.openBox<T>(boxName);
-    } catch (e) {
+    } catch (e) { 
       debugPrint('⚠️ Error opening Hive box $boxName: $e. Clearing and recreating...');
       await Hive.deleteBoxFromDisk(boxName);
       return await Hive.openBox<T>(boxName);

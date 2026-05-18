@@ -181,28 +181,23 @@ class EventController {
       var updatedCount = 0;
 
       for (final doc in cloudDocs) {
-        // Konversi ObjectId mongoDB jika ada
         final cleanDoc = _sanitizeMongoDoc(doc);
         final eventId = cleanDoc['eventId']?.toString();
         if (eventId == null || eventId.isEmpty) continue;
 
+        final cloudEvent = EventModel.fromMap(cleanDoc);
         final existingLocal = HiveService.events.get(eventId);
 
         if (existingLocal == null) {
-          // Event baru dari cloud — simpan ke Hive
-          final cloudEvent = EventModel.fromMap(cleanDoc);
+          // Event baru dari cloud (termasuk yang sudah di-softdelete)
           final synced = cloudEvent.copyWith(isSynced: true);
           await HiveService.events.put(synced.eventId, synced);
           newCount++;
         } else if (!existingLocal.isSynced) {
-          // Event lokal yang belum sync → skip (jangan overwrite)
-          // Nanti SyncManager yang akan push ke cloud
+          // Event lokal belum sync — skip, biarkan SyncManager yang push
           continue;
         } else {
-          // Event sudah synced — lokal tidak ada perubahan pending.
-          // Timpa saja dengan data dari cloud agar selalu up-to-date
-          // (karena Executive lain mungkin telah mengubah event ini).
-          final cloudEvent = EventModel.fromMap(cleanDoc);
+          // Event sudah synced — timpa dengan data cloud (termasuk info deletedAt)
           final synced = cloudEvent.copyWith(isSynced: true);
           await HiveService.events.put(synced.eventId, synced);
           updatedCount++;
@@ -394,7 +389,11 @@ class EventController {
         return false;
       }
 
-      final saved = event.copyWith(nama: trimmed, isSynced: false);
+      final saved = event.copyWith(
+        nama: trimmed,
+        isSynced: false,
+        version: event.version + 1, // increment versi setiap ada perubahan
+);
       await HiveService.events.put(saved.eventId, saved);
       _allEvents[index] = saved;
       _applyFilters();
@@ -419,7 +418,6 @@ class EventController {
   // ══════════════════════════════════════════════════════════════
 
   Future<bool> deleteEvent(String eventId) async {
-    // RBAC: Validasi target delete agar izin dinilai dari tipe event aktual.
     final target = _allEvents.cast<EventModel?>().firstWhere(
       (e) => e?.eventId == eventId,
       orElse: () => null,
@@ -429,14 +427,11 @@ class EventController {
       return false;
     }
 
-    // RBAC: Main event dan sub-event memiliki aturan DELETE yang berbeda.
     final isSubEvent = target.parentEventId != null && target.parentEventId!.isNotEmpty;
-    // RBAC: Tolak DELETE sub-event jika role tidak memiliki izin.
     if (isSubEvent && !EventPermission.canDeleteSubEvent(_currentRole)) {
       errorMessage.value = 'Anda tidak memiliki izin menghapus sub-event.';
       return false;
     }
-    // RBAC: Tolak DELETE main event jika role bukan executive.
     if (!isSubEvent && !EventPermission.canDeleteMainEvent(_currentRole)) {
       errorMessage.value = 'Anda tidak memiliki izin menghapus main event.';
       return false;
@@ -446,30 +441,39 @@ class EventController {
     errorMessage.value = null;
 
     try {
-      // Kumpulkan semua ID yang perlu dihapus (termasuk sub-event)
+      // Kumpulkan semua ID yang perlu di-softdelete (termasuk sub-event)
       final toDelete = _allEvents
           .where((e) => e.eventId == eventId || e.parentEventId == eventId)
-          .map((e) => e.eventId)
           .toList();
 
-      // Hapus dari Hive
-      for (final id in toDelete) {
-        await HiveService.events.delete(id);
+      final now = DateTime.now();
+
+      for (final event in toDelete) {
+        // SOFT DELETE: tandai deletedAt, jangan hapus dari Hive
+        final softDeleted = event.copyWith(
+          deletedAt: now,
+          isSynced: false,
+        );
+        await HiveService.events.put(softDeleted.eventId, softDeleted);
+        debugPrint('[EventCtrl] soft delete: ${event.eventId}');
       }
 
-      // Update cache & UI
-      _allEvents.removeWhere(
-        (e) => e.eventId == eventId || e.parentEventId == eventId,
-      );
+      // Update cache internal — filter event yang sudah dihapus
+      _allEvents = _allEvents.map((e) {
+        if (e.eventId == eventId || e.parentEventId == eventId) {
+          return e.copyWith(deletedAt: now, isSynced: false);
+        }
+        return e;
+      }).toList();
+
       _applyFilters();
 
-      debugPrint(
-        '[EventCtrl] delete: ${toDelete.length} event dihapus dari Hive.',
-      );
+      debugPrint('[EventCtrl] soft delete selesai: ${toDelete.length} event ditandai.');
 
-      // Hapus dari MongoDB di background
-      for (final id in toDelete) {
-        unawaited(_deleteEventFromCloudInBackground(id));
+      // Sync ke MongoDB di background
+      for (final event in toDelete) {
+        final softDeleted = event.copyWith(deletedAt: now, isSynced: false);
+        unawaited(_upsertEventToCloudInBackground(softDeleted));
       }
 
       return true;
@@ -593,7 +597,7 @@ class EventController {
   // ══════════════════════════════════════════════════════════════
 
   void _applyFilters() {
-    var filtered = List<EventModel>.from(_allEvents);
+    var filtered = _allEvents.where((e) => e.deletedAt == null).toList();
 
     if (selectedJenisFilter.value != null) {
       filtered = filtered

@@ -34,6 +34,8 @@ class EventModelAdapter extends TypeAdapter<EventModel> {
       statusEvent: fields[14] as String?,
       requiresInvitation: fields[15] as bool,
       penyelenggara: fields[16] as String?,
+      deletedAt: fields[16] as DateTime?,
+      version: fields[17] as int? ?? 1,
     );
   }
 
@@ -73,8 +75,12 @@ class EventModelAdapter extends TypeAdapter<EventModel> {
       ..write(obj.statusEvent)
       ..writeByte(15)
         ..write(obj.requiresInvitation)
-        ..writeByte(16)
-        ..write(obj.penyelenggara);
+        ..writeByte(17)
+        ..write(obj.penyelenggara)
+      ..writeByte(18)
+      ..write(obj.deletedAt)
+      ..writeByte(19)
+      ..write(obj.version);
   }
 
   @override

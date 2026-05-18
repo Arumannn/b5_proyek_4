@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 // Import halaman-halaman fitur Anda
-import '../dashboard/dashboard_view.dart';
+import 'dashboard_view.dart';
 import '../event/event_list_view.dart';
 import '../member/member_list_view.dart';
 import '../laporan/laporan_view.dart';
