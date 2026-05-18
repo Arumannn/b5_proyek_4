@@ -566,31 +566,7 @@ class EventController {
     }
   }
 
-  /// Hapus event dari MongoDB.
-  Future<void> _deleteEventFromCloudInBackground(String eventId) async {
-    try {
-      if (!await _isOnline()) {
-        debugPrint('[EventCtrl] cloud delete: offline, skip $eventId.');
-        return;
-      }
 
-      if (!MongoService.instance.isConnected) {
-        await MongoService.instance.ensureConnected();
-      }
-
-      final removed = await MongoService.instance.deleteOne(
-        collectionName: AppConstants.eventsCollection,
-        filter: {'eventId': eventId},
-      );
-
-      debugPrint(
-        '[EventCtrl] cloud delete: '
-        '${removed > 0 ? "✅" : "⚠️ tidak ditemukan"} $eventId',
-      );
-    } catch (e) {
-      debugPrint('[EventCtrl] cloud delete error: $e');
-    }
-  }
 
   // ══════════════════════════════════════════════════════════════
   // FILTER & SEARCH
