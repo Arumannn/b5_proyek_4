@@ -5,6 +5,7 @@ import 'event_form_header.dart';
 import 'participant_selector.dart';
 import '../event_form_models.dart';
 import '../../../core/widgets/inline_expanding_dropdown_field.dart';
+import '../../../core/constants/app_constants.dart';
 
 class EventFormContent extends StatelessWidget {
   final GlobalKey<FormState> formKey;
@@ -19,6 +20,7 @@ class EventFormContent extends StatelessWidget {
   final String? parentId;
   final String selectedJenis;
   final List<String> selectedTargetIds;
+  final String selectedPenyelenggara;
   final List<EventParentOption> parentOptions;
   final bool canChangeHierarchy;
   final VoidCallback onPickDate;
@@ -27,6 +29,7 @@ class EventFormContent extends StatelessWidget {
   final VoidCallback onPickEndTime;
   final VoidCallback onClearEndTime;
   final ValueChanged<String> onJenisChanged;
+  final ValueChanged<String> onPenyelenggaraChanged;
   final ValueChanged<bool> onSubEventChanged;
   final ValueChanged<String?> onParentChanged;
   final ValueChanged<List<String>> onTargetChanged;
@@ -50,6 +53,7 @@ class EventFormContent extends StatelessWidget {
     required this.parentId,
     required this.selectedJenis,
     required this.selectedTargetIds,
+    required this.selectedPenyelenggara,
     required this.parentOptions,
     required this.canChangeHierarchy,
     required this.onPickDate,
@@ -58,6 +62,7 @@ class EventFormContent extends StatelessWidget {
     required this.onPickEndTime,
     required this.onClearEndTime,
     required this.onJenisChanged,
+    required this.onPenyelenggaraChanged,
     required this.onSubEventChanged,
     required this.onParentChanged,
     required this.onTargetChanged,
@@ -98,6 +103,14 @@ class EventFormContent extends StatelessWidget {
                   options: const ['Rapat', 'Acara', 'Kegiatan', 'Lainnya'],
                   placeholder: 'Pilih jenis kegiatan',
                   onChanged: onJenisChanged,
+                ),
+                const SizedBox(height: 16),
+                InlineExpandingDropdownField(
+                  label: 'Penyelenggara',
+                  value: selectedPenyelenggara,
+                  options: AppConstants.penyelenggaraOptions,
+                  placeholder: 'Pilih penyelenggara',
+                  onChanged: onPenyelenggaraChanged,
                 ),
                 const SizedBox(height: 16),
                 Row(

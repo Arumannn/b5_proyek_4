@@ -90,7 +90,6 @@ class EventInvitation {
             'invitedBy': invitedBy,
             'invitedAt': invitedAt.toIso8601String(),
             'isRequired': isRequired,
-            'isSynced': isSynced,
         };
     }
 }

@@ -106,6 +106,7 @@ class _EventDetailViewState extends State<EventDetailView> {
       deskripsi: event.deskripsi,
       targetPeserta: event.targetPeserta,
       requiresInvitation: event.requiresInvitation,
+      penyelenggara: event.penyelenggara,
     );
   }
 
@@ -141,6 +142,7 @@ class _EventDetailViewState extends State<EventDetailView> {
               deskripsi: form.deskripsi,
               targetPeserta: form.targetPeserta,
               requiresInvitation: form.requiresInvitation,
+              penyelenggara: form.penyelenggara,
             ),
           )
         : await _controller.createEvent(
@@ -154,6 +156,7 @@ class _EventDetailViewState extends State<EventDetailView> {
             deskripsi: form.deskripsi,
             targetPeserta: form.targetPeserta,
             requiresInvitation: form.requiresInvitation,
+            penyelenggara: form.penyelenggara,
           );
 
     if (!mounted) return;
@@ -172,6 +175,7 @@ class _EventDetailViewState extends State<EventDetailView> {
             deskripsi: form.deskripsi,
             targetPeserta: form.targetPeserta,
             requiresInvitation: form.requiresInvitation,
+            penyelenggara: form.penyelenggara,
           );
         });
       }

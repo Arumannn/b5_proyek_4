@@ -32,14 +32,13 @@ import 'core/services/sync_manager.dart';
   await HiveService.init();
   debugPrint('✅ Step 3: HiveService initialized — 4 boxes open');
 
-  // Step 4: Connect MongoDB Atlas (background, non-blocking agar app tetap jalan offline)
-  MongoService.instance.init().then((connected) {
-    debugPrint(
-      connected
-          ? '✅ Step 4: MongoDB connected to Atlas'
-          : '⚠️ Step 4: MongoDB offline — app tetap berjalan (Hive mode)',
-    );
-  });
+    // Step 4: Connect MongoDB Atlas (BLOCKING — critical dependency untuk auth/sync)
+    final mongoConnected = await MongoService.instance.init();
+    if (mongoConnected) {
+      debugPrint('✅ Step 4: MongoDB connected to Atlas');
+    } else {
+      debugPrint('⚠️ Step 4: MongoDB offline — app tetap berjalan (Hive mode)');
+    }
 
   // Step 5: Start network monitoring
   await NetworkStatusController.instance.startListening();

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../core/services/hive_service.dart';
-import '../../features/auth/auth_controller.dart';
+import '../auth/auth_controller.dart';
 import '../../models/event_model.dart';
 import '../../models/member_model.dart';
 

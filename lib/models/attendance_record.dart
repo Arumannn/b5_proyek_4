@@ -85,6 +85,9 @@ class AttendanceRecord extends HiveObject {
       'isManualOverride': isManualOverride,
       'overrideBy': overrideBy,
       'compositeKey': compositeKey,
+      'permissionId': permissionId,
+      'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt.toIso8601String(),
     };
   }
 
@@ -102,6 +105,13 @@ class AttendanceRecord extends HiveObject {
       isSynced: true,
       compositeKey: map['compositeKey']?.toString() ??
           '${map['eventId']}_${map['nim']}',
+      permissionId: map['permissionId']?.toString(),
+      createdAt: map['createdAt'] != null
+          ? DateTime.parse(map['createdAt'].toString())
+          : null,
+      updatedAt: map['updatedAt'] != null
+          ? DateTime.parse(map['updatedAt'].toString())
+          : null,
     );
   }
 

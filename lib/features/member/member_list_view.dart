@@ -121,6 +121,12 @@ class _MemberListViewState extends State<MemberListView> {
     if (!syncFromCloud) return;
     if (!NetworkStatusController.instance.isOnline.value) return;
 
+    // Check if MongoDB is connected before attempting to query
+    if (!MongoService.instance.isConnected) {
+      debugPrint('[MemberList] MongoDB tidak terkoneksi, skipping cloud sync');
+      return;
+    }
+
     try {
       final docs = await MongoService.instance.findMany(
         collectionName: AppConstants.usersCollection,

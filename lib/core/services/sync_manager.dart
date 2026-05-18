@@ -44,6 +44,7 @@ class SyncManager {
   bool _isListening = false;
   bool _isSyncing = false;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
+  List<EventModel> _allEventsCache = [];
 
   // ─── Reactive State (opsional untuk UI) ─────────────────────────
   /// Jumlah record yang masih menunggu sync — berguna untuk badge di UI.
@@ -76,7 +77,12 @@ class SyncManager {
     Connectivity().checkConnectivity().then((results) {
       if (results.any((r) => r != ConnectivityResult.none)) {
         debugPrint('[SyncManager] 🌐 koneksi awal tersedia → trigger syncAll()');
-        syncAll();
+        // Ensure MongoDB is connected before syncing
+        MongoService.instance.ensureConnected().then((_) {
+          syncAll();
+        }).catchError((e) {
+          debugPrint('[SyncManager] ❌ MongoDB tidak siap untuk sync awal: $e');
+        });
       }
     });
   }
@@ -96,7 +102,12 @@ class SyncManager {
 
     if (isOnline) {
       debugPrint('[SyncManager] 🌐 koneksi tersedia → trigger syncAll()');
-      syncAll();
+      // Ensure MongoDB is connected before syncing
+      MongoService.instance.ensureConnected().then((_) {
+        syncAll();
+      }).catchError((e) {
+        debugPrint('[SyncManager] ⚠️ MongoDB tidak siap untuk sync: $e');
+      });
     } else {
       debugPrint('[SyncManager] 📴 offline — sync ditunda.');
     }
@@ -104,7 +115,7 @@ class SyncManager {
 
   // ─── SYNC ALL ────────────────────────────────────────────────────
 
-  /// Sync semua data pending: Attendance + Permission + Events.
+  /// Sync semua data pending: Push + Pull untuk Attendance, Permission, Events, Invitations.
   /// Aman dipanggil berkali-kali — ada guard _isSyncing.
   Future<void> syncAll() async {
     if (_isSyncing) {
@@ -124,14 +135,65 @@ class SyncManager {
     isSyncing.value = true;
 
     try {
+      // Push pending data ke MongoDB
       await syncPendingAttendance();
       await syncPendingPermissions();
       await syncPendingEvents();
       await syncPendingInvitations();
+
+      // Pull data dari MongoDB ke Hive
+      await pullAttendanceFromCloud();
+      await pullPermissionsFromCloud();
+      await pullInvitationsFromCloud();
+
+      await _pullLatestFromCloud();
       _updatePendingCount();
     } finally {
       _isSyncing = false;
       isSyncing.value = false;
+    }
+  }
+
+  /// Pull data event terbaru dari cloud ke Hive setelah sync selesai.
+  /// Memastikan soft-delete dan perubahan dari perangkat lain masuk ke lokal.
+  Future<void> _pullLatestFromCloud() async {
+    try {
+      if (!MongoService.instance.isConnected) return;
+
+      final cloudDocs = await MongoService.instance.findMany(
+        collectionName: AppConstants.eventsCollection,
+      );
+
+      if (cloudDocs.isEmpty) return;
+
+      var pullCount = 0;
+      for (final doc in cloudDocs) {
+        final clean = Map<String, dynamic>.from(doc)..remove('_id');
+        final eventId = clean['eventId']?.toString();
+        if (eventId == null || eventId.isEmpty) continue;
+
+        final cloudEvent = EventModel.fromMap(clean);
+        final localEvent = HiveService.events.get(eventId);
+
+        // Kalau lokal tidak ada, atau cloud lebih baru (versi lebih tinggi),
+        // atau cloud punya deletedAt tapi lokal belum — update lokal
+        final shouldUpdate = localEvent == null ||
+            cloudEvent.version > localEvent.version ||
+            (cloudEvent.deletedAt != null && localEvent.deletedAt == null);
+
+        if (shouldUpdate) {
+          final synced = cloudEvent.copyWith(isSynced: true);
+          await HiveService.events.put(synced.eventId, synced);
+          pullCount++;
+        }
+      }
+
+      if (pullCount > 0) {
+        debugPrint('[SyncManager] pull-after-push: $pullCount event diperbarui dari cloud.');
+      }
+    } catch (e) {
+      // Pull gagal tidak boleh crash app — cukup log
+      debugPrint('[SyncManager] pull-after-push error: $e');
     }
   }
 
@@ -171,14 +233,27 @@ class SyncManager {
     );
   }
 
-  /// Sync satu AttendanceRecord dengan retry logic.
+  /// Sync satu AttendanceRecord dengan retry logic (upsert pattern).
   Future<_SyncResult> _syncAttendanceWithRetry(AttendanceRecord record) async {
     for (var attempt = 1; attempt <= AppConstants.maxSyncRetries; attempt++) {
       try {
-        await MongoService.instance.insertOne(
+        final existing = await MongoService.instance.findOne(
           collectionName: AppConstants.attendanceCollection,
-          document: record.toMap(),
+          filter: {'compositeKey': record.compositeKey},
         );
+
+        if (existing == null) {
+          await MongoService.instance.insertOne(
+            collectionName: AppConstants.attendanceCollection,
+            document: record.toMap(),
+          );
+        } else {
+          await MongoService.instance.updateOne(
+            collectionName: AppConstants.attendanceCollection,
+            filter: {'compositeKey': record.compositeKey},
+            updateFields: record.toMap(),
+          );
+        }
 
         record.isSynced = true;
         await record.save();
@@ -395,51 +470,77 @@ class SyncManager {
         );
 
         if (existing == null) {
+          // Dokumen belum ada di cloud — insert baru
           await MongoService.instance.insertOne(
             collectionName: AppConstants.eventsCollection,
             document: payload,
           );
         } else {
-          await MongoService.instance.updateOne(
+          // Dokumen sudah ada — update dengan cek versi
+          final cloudVersion = (existing['version'] as int?) ?? 1;
+          final localVersion = event.version;
+
+          if (localVersion < cloudVersion) {
+            // Cloud lebih baru — data lokal ketinggalan, jangan overwrite
+            debugPrint(
+              '[SyncManager] event KONFLIK VERSI: ${event.eventId} '
+              '— lokal v$localVersion < cloud v$cloudVersion. '
+              'Skip push, akan diperbarui saat pull berikutnya.',
+            );
+            // Tandai isSynced=true agar tidak loop, tapi data lokal
+            // akan diperbarui saat loadEvents() berikutnya
+            final updated = event.copyWith(isSynced: true);
+            await HiveService.events.put(updated.eventId, updated);
+            return _SyncResult.duplicate;
+          }
+
+          final nModified = await MongoService.instance.updateOne(
             collectionName: AppConstants.eventsCollection,
             filter: {'eventId': event.eventId},
             updateFields: payload,
           );
+
+          if (nModified == 0) {
+            // Update tidak mengubah apapun — kemungkinan konflik tersembunyi
+            debugPrint(
+              '[SyncManager] WARNING event ${event.eventId}: '
+              'updateOne nModified=0. Mungkin konflik versi atau event '
+              'sudah dihapus perangkat lain.',
+            );
+            final updated = event.copyWith(isSynced: true);
+            await HiveService.events.put(updated.eventId, updated);
+            return _SyncResult.duplicate;
+          }
         }
 
+        // Sukses — tandai isSynced di Hive
         final updated = event.copyWith(isSynced: true);
         await HiveService.events.put(updated.eventId, updated);
 
+        final idx = _allEventsCache.indexOf(event);
+        if (idx >= 0) _allEventsCache[idx] = updated;
+
         debugPrint(
-          '[SyncManager] event ✅ synced: ${event.eventId} '
-          '(attempt $attempt)',
+          '[SyncManager] event synced: ${event.eventId} '
+          'v${event.version} (attempt $attempt)',
         );
         return _SyncResult.success;
       } catch (e) {
         if (MongoService.isDuplicateKeyError(e)) {
           final updated = event.copyWith(isSynced: true);
           await HiveService.events.put(updated.eventId, updated);
-          debugPrint(
-            '[SyncManager] event ⚠️ duplicate: ${event.eventId} '
-            '— ditandai synced.',
-          );
+          debugPrint('[SyncManager] event duplicate: ${event.eventId} — ditandai synced.');
           return _SyncResult.duplicate;
         }
 
-        debugPrint(
-          '[SyncManager] event ❌ attempt $attempt '
-          'gagal untuk ${event.eventId}: $e',
-        );
-
+        debugPrint('[SyncManager] event attempt $attempt gagal ${event.eventId}: $e');
         if (attempt < AppConstants.maxSyncRetries) {
           await Future.delayed(AppConstants.syncRetryDelay);
         }
       }
     }
 
-    debugPrint(
-      '[SyncManager] event 🔴 maks retry untuk ${event.eventId} — tetap pending.',
-    );
+    debugPrint('[SyncManager] event maks retry: ${event.eventId} — tetap pending.');
     return _SyncResult.failed;
   }
 
@@ -530,6 +631,149 @@ class SyncManager {
       '${invitation.invitationId} — tetap pending.',
     );
     return _SyncResult.failed;
+  }
+
+  // ─── PULL ATTENDANCE FROM CLOUD ──────────────────────────────────
+
+  /// Pull semua AttendanceRecord dari MongoDB dan merge ke Hive lokal.
+  /// Menggunakan compositeKey (eventId + nim) sebagai identifier unik.
+  Future<void> pullAttendanceFromCloud() async {
+    try {
+      final cloudDocs = await MongoService.instance.findMany(
+        collectionName: AppConstants.attendanceCollection,
+      );
+
+      if (cloudDocs.isEmpty) {
+        debugPrint('[SyncManager] pullAttendance: tidak ada data di cloud.');
+        return;
+      }
+
+      var insertCount = 0;
+      var updateCount = 0;
+
+      for (final doc in cloudDocs) {
+        final record = AttendanceRecord.fromMap(doc);
+        final existingKey = HiveService.attendance.keys.cast<dynamic>().firstWhere(
+          (key) {
+            final existing = HiveService.attendance.get(key);
+            return existing?.compositeKey == record.compositeKey;
+          },
+          orElse: () => null,
+        );
+
+        if (existingKey != null) {
+          final existing = HiveService.attendance.get(existingKey)!;
+          // Update hanya jika data cloud lebih baru
+          if (record.timestamp.isAfter(existing.timestamp)) {
+            await HiveService.attendance.put(existingKey, record);
+            updateCount++;
+          }
+        } else {
+          await HiveService.attendance.put(record.compositeKey, record);
+          insertCount++;
+        }
+      }
+
+      debugPrint(
+        '[SyncManager] pullAttendance selesai: '
+        '$insertCount inserted, $updateCount updated dari ${cloudDocs.length} cloud docs.',
+      );
+    } catch (e) {
+      debugPrint('[SyncManager] pullAttendance ❌ error: $e');
+    }
+  }
+
+  // ─── PULL PERMISSIONS FROM CLOUD ───────────────────────────────────
+
+  /// Pull semua PermissionRecord dari MongoDB dan merge ke Hive lokal.
+  /// Menggunakan permissionId sebagai identifier unik.
+  Future<void> pullPermissionsFromCloud() async {
+    try {
+      final cloudDocs = await MongoService.instance.findMany(
+        collectionName: AppConstants.permissionsCollection,
+      );
+
+      if (cloudDocs.isEmpty) {
+        debugPrint('[SyncManager] pullPermissions: tidak ada data di cloud.');
+        return;
+      }
+
+      var insertCount = 0;
+      var updateCount = 0;
+
+      for (final doc in cloudDocs) {
+        final record = PermissionRecord.fromMap(doc);
+        final existing = HiveService.permissions.get(record.permissionId);
+
+        if (existing != null) {
+          if (record.updatedAt.isAfter(existing.updatedAt)) {
+            await HiveService.permissions.put(record.permissionId, record);
+            updateCount++;
+          }
+        } else {
+          await HiveService.permissions.put(record.permissionId, record);
+          insertCount++;
+        }
+      }
+
+      debugPrint(
+        '[SyncManager] pullPermissions selesai: '
+        '$insertCount inserted, $updateCount updated dari ${cloudDocs.length} cloud docs.',
+      );
+    } catch (e) {
+      debugPrint('[SyncManager] pullPermissions ❌ error: $e');
+    }
+  }
+
+  // ─── PULL INVITATIONS FROM CLOUD ───────────────────────────────────
+
+  /// Pull semua EventInvitation dari MongoDB dan merge ke Hive lokal.
+  /// Menggunakan invitationId sebagai identifier unik.
+  Future<void> pullInvitationsFromCloud() async {
+    try {
+      final cloudDocs = await MongoService.instance.findMany(
+        collectionName: AppConstants.invitationsCollection,
+      );
+
+      if (cloudDocs.isEmpty) {
+        debugPrint('[SyncManager] pullInvitations: tidak ada data di cloud.');
+        return;
+      }
+
+      var insertCount = 0;
+      var updateCount = 0;
+
+      for (final doc in cloudDocs) {
+        final invitation = EventInvitation.fromJson(doc);
+        final existing = HiveService.invitations.get(invitation.invitationId);
+
+        if (existing != null) {
+          // Update jika respondedAt cloud lebih baru atau status berubah
+          final cloudRespondedAt = invitation.respondedAt;
+          final localRespondedAt = existing.respondedAt;
+          final shouldUpdate = (cloudRespondedAt != null && localRespondedAt == null) ||
+              (cloudRespondedAt != null &&
+                  localRespondedAt != null &&
+                  cloudRespondedAt.isAfter(localRespondedAt));
+          if (shouldUpdate) {
+            invitation.isSynced = true;
+            await HiveService.invitations.put(invitation.invitationId, invitation);
+            updateCount++;
+          }
+        } else {
+          invitation.isSynced = true;
+          await HiveService.invitations.put(invitation.invitationId, invitation);
+          insertCount++;
+        }
+      }
+
+      debugPrint(
+        '[SyncManager] pullInvitations selesai: '
+        '$insertCount inserted, $updateCount updated dari ${cloudDocs.length} cloud docs.',
+      );
+    } catch (e) {
+      debugPrint('[SyncManager] pullInvitations ❌ error: $e');
+    }
   }
 
   // ─── MANUAL TRIGGER (Alias) ──────────────────────────────────────

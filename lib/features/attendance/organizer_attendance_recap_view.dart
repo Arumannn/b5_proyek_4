@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/auth/attendance_role_policy.dart';
-import '../attendance/attendance_recap_shared_view.dart';
+import 'attendance_recap_shared_view.dart';
 
 class OrganizerAttendanceRecapView extends StatelessWidget {
   const OrganizerAttendanceRecapView({super.key});

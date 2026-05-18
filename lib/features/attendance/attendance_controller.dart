@@ -455,10 +455,31 @@ class AttendanceController {
         (r) => r.recordId == recordId,
         orElse: () => throw Exception('Record tidak ditemukan'),
       );
+      final compositeKey = target.compositeKey;
       await target.delete();
+
+      // Delete dari cloud (fire-and-forget)
+      _deleteAttendanceFromCloud(compositeKey);
       return true;
     } catch (_) {
       return false;
+    }
+  }
+
+  Future<void> _deleteAttendanceFromCloud(String compositeKey) async {
+    try {
+      final results = await Connectivity().checkConnectivity();
+      if (!results.any((r) => r != ConnectivityResult.none)) return;
+      if (!MongoService.instance.isConnected) {
+        await MongoService.instance.ensureConnected();
+      }
+      await MongoService.instance.deleteOne(
+        collectionName: AppConstants.attendanceCollection,
+        filter: {'compositeKey': compositeKey},
+      );
+      debugPrint('[AttendanceCtrl] cloud delete ✅ $compositeKey');
+    } catch (e) {
+      debugPrint('[AttendanceCtrl] cloud delete error: $e');
     }
   }
 
