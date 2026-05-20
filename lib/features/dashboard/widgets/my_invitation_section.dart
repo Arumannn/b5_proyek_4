@@ -33,31 +33,48 @@ class MyInvitationSection extends StatelessWidget {
     return ValueListenableBuilder(
       valueListenable: HiveService.invitations.listenable(),
       builder: (context, box, _) {
-        final myInvitations = box.values
-          .where((inv) => inv.nim == currentNim)
-          .toList();
+        final myInvitations = box.values.where((inv) {
+          if (inv.nim.trim() != currentNim.trim()) return false;
 
-        if (myInvitations.isEmpty) {
-          return Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Center(
-                child: Text('Belum ada undangan yang masuk'),
-            ),
-          );
-        }
+          final status = inv.responseStatus.trim().toLowerCase();
+          final isRelevantStatus =
+              status == 'pending' || status == 'permission_requested';
+          if (!isRelevantStatus) return false;
+
+          final event = HiveService.events.get(inv.eventId);
+          return event != null && !event.isDeleted;
+        }).toList();
+
+        if (myInvitations.isEmpty) return const SizedBox.shrink();
+
+        myInvitations.sort((a, b) => b.invitedAt.compareTo(a.invitedAt));
 
         // Tampilkan undangan teratas
         final invitation = myInvitations.first;
-        final event = HiveService.events.get(invitation.eventId);
+        final event = HiveService.events.get(invitation.eventId)!;
+        final normalizedStatus = invitation.responseStatus.trim().toLowerCase();
         
-        // Antisipasi jika data event null saat pemanggilan darurat
-        final eventName = event?.nama ?? 'Undangan Kegiatan';
-        final targetDate = event?.tanggalMulai ?? DateTime.now(); 
-        final startTime = event?.jamMulai ?? targetDate;
+        final eventName = event.nama;
+        final targetDate = event.tanggalMulai;
+        final startTime = event.jamMulai ?? targetDate;
+        final statusLabel = normalizedStatus == 'permission_requested'
+          ? 'MENUNGGU IZIN'
+          : 'UNDANGAN MENUNGGU';
+        final statusColor = normalizedStatus == 'permission_requested'
+          ? const Color(0xFFF59E0B)
+          : const Color(0xFF2563EB);
+        final statusBackground = normalizedStatus == 'permission_requested'
+          ? Colors.white.withValues(alpha: 0.18)
+          : Colors.white.withValues(alpha: 0.2);
+        final actionLabel = normalizedStatus == 'permission_requested'
+          ? 'Tinjau & Konfirmasi'
+          : 'Lihat & Konfirmasi';
+        final actionBackground = normalizedStatus == 'permission_requested'
+          ? const Color(0xFFFDE68A)
+          : Colors.white;
+        final actionForeground = normalizedStatus == 'permission_requested'
+          ? const Color(0xFF92400E)
+          : const Color(0xFFEA580C);
 
         final timeStr = "${startTime.hour.toString().padLeft(2, '0')}:${startTime.minute.toString().padLeft(2, '0')} WIB";
         final dateStr = DateFormat('dd MMMM yyyy', 'id_ID').format(targetDate);
@@ -90,8 +107,33 @@ class MyInvitationSection extends StatelessWidget {
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(4)),
-                      child: const Text('UNDANGAN BARU', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1)),
+                      decoration: BoxDecoration(
+                        color: statusBackground,
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: statusColor.withValues(alpha: 0.25)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            normalizedStatus == 'permission_requested'
+                                ? Icons.mark_email_read_outlined
+                                : Icons.mail_outline,
+                            size: 10,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            statusLabel,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 12),
                     Text(eventName, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
@@ -109,13 +151,13 @@ class MyInvitationSection extends StatelessWidget {
                         _showConfirmationDialog(context, invitation, eventName);
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: const Color(0xFFEA580C),
+                        backgroundColor: actionBackground,
+                        foregroundColor: actionForeground,
                         minimumSize: const Size(140, 36),
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
-                      child: const Text('Lihat & Konfirmasi', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      child: Text(actionLabel, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                     ),
                   ],
                 ),
