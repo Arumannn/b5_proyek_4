@@ -44,7 +44,7 @@ class SyncManager {
   bool _isListening = false;
   bool _isSyncing = false;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
-  List<EventModel> _allEventsCache = [];
+  final List<EventModel> _allEventsCache = [];
 
   // ─── Reactive State (opsional untuk UI) ─────────────────────────
   /// Jumlah record yang masih menunggu sync — berguna untuk badge di UI.

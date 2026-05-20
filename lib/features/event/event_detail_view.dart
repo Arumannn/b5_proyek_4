@@ -6,7 +6,6 @@ import '../../models/member_model.dart';
 import '../attendance/scan_screen.dart';
 import 'event_permission.dart';
 import 'event_controller.dart';
-import 'event_form_models.dart';
 import 'event_form_view.dart';
 import '../../widgets/custom_snackbar.dart';
 
