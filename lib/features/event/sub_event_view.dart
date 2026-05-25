@@ -39,7 +39,7 @@ class _SubEventViewState extends State<SubEventView> {
   }
 
   Future<void> _refresh() async {
-    await _controller.loadEvents(force: true);
+    await _controller.refreshEvents(cloudSync: true);
   }
 
   Future<void> _deleteSubEvent(EventModel subEvent) async {
@@ -229,7 +229,10 @@ class _SubEventViewState extends State<SubEventView> {
             header: const SizedBox.shrink(),
             searchBar: const SizedBox.shrink(),
             filterArea: const SizedBox.shrink(),
+            emptyState: const SizedBox.shrink(),
+            onRefresh: _refresh,
             listBuilder: (context) => ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(16),
               itemCount: mains.length,
               itemBuilder: (context, index) {
@@ -238,8 +241,6 @@ class _SubEventViewState extends State<SubEventView> {
                 return _buildMainEventCard(mainEvent, subs);
               },
             ),
-            emptyState: const SizedBox.shrink(),
-            onRefresh: _refresh,
           );
         },
       ),

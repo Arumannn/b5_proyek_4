@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import '../../core/services/hive_service.dart';
 import '../../models/attendance_record.dart';
+import '../../models/event_invitation.dart';
 import '../../models/event_model.dart';
 import '../../models/member_model.dart';
+import '../../models/permission_record.dart';
 import '../attendance/scan_screen.dart';
 import 'event_permission.dart';
 import 'event_controller.dart';
 import 'event_form_view.dart';
+import '../member/invitation_response_page.dart';
 import '../../widgets/custom_snackbar.dart';
 
 class EventDetailView extends StatefulWidget {
@@ -26,6 +30,7 @@ class EventDetailView extends StatefulWidget {
 class _EventDetailViewState extends State<EventDetailView> {
   late EventModel _currentEvent;
   final EventController _controller = EventController.instance;
+  
 
   @override
   void initState() {
@@ -42,6 +47,11 @@ class _EventDetailViewState extends State<EventDetailView> {
       : EventPermission.canDeleteSubEvent(widget.userRole);
 
   bool get _canAddSubEvent => widget.event.parentEventId == null && EventPermission.canCreateSubEvent(widget.userRole);
+
+  bool get _canManageInvitationResponses {
+    final role = widget.userRole.trim().toLowerCase();
+    return role == 'executive' || role == 'manager';
+  }
 
   List<EventParentOption> get _parentOptions {
     return _controller
@@ -73,10 +83,43 @@ class _EventDetailViewState extends State<EventDetailView> {
     return '';
   }
 
-  String _eventLocation() {
-    final lokasi = _currentEvent.lokasi?.trim();
+  String _eventLocation([EventModel? event]) {
+    final lokasi = (event ?? _currentEvent).lokasi?.trim();
     if (lokasi != null && lokasi.isNotEmpty) return lokasi;
     return 'Lokasi belum diatur';
+  }
+
+  EventModel _resolvedEvent() {
+    return _controller.events.value.firstWhere(
+      (event) => event.eventId == _currentEvent.eventId,
+      orElse: () => _currentEvent,
+    );
+  }
+
+  EventModel? _parentEventOf(EventModel event) {
+    final parentId = event.parentEventId?.trim();
+    if (parentId == null || parentId.isEmpty) return null;
+
+    try {
+      return _controller.events.value.firstWhere((candidate) => candidate.eventId == parentId);
+    } catch (_) {
+      try {
+        return HiveService.events.get(parentId);
+      } catch (_) {
+        return null;
+      }
+    }
+  }
+
+  String _formatDateTimeRange(EventModel event) {
+    final start = event.jamMulai ?? event.tanggalMulai;
+    final end = event.jamSelesai ?? event.tanggalSelesai;
+    return '${_formatDate(start)} • ${_formatTime(start, end)} WIB';
+  }
+
+  List<EventModel> _subEventsOf(String eventId) {
+    return _controller.getSubEvents(eventId)
+      ..sort((a, b) => a.tanggalMulai.compareTo(b.tanggalMulai));
   }
 
   List<AttendanceRecord> _attendanceRecords() {
@@ -84,6 +127,93 @@ class _EventDetailViewState extends State<EventDetailView> {
         .where((r) => r.eventId == _currentEvent.eventId)
         .toList(growable: false)
       ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
+  }
+
+  List<EventInvitation> _invitationsByEvent(String eventId) {
+    return HiveService.invitations.values
+        .where((inv) => inv.eventId == eventId)
+        .toList(growable: false)
+      ..sort((a, b) => b.invitedAt.compareTo(a.invitedAt));
+  }
+
+  List<_AttendanceParticipantItem> _attendanceParticipants(
+    EventModel event,
+    Map<String, MemberModel> memberByNim,
+  ) {
+    final attendanceByNim = <String, AttendanceRecord>{
+      for (final r in HiveService.attendance.values.where((r) => r.eventId == event.eventId)) r.nim: r,
+    };
+
+    final invitations = _invitationsByEvent(event.eventId);
+    final invitationByNim = <String, EventInvitation>{
+      for (final inv in invitations) inv.nim: inv,
+    };
+
+    final permissionByNim = <String, PermissionRecord>{};
+    for (final permission in HiveService.permissions.values.where((p) => p.eventId == event.eventId)) {
+      permissionByNim[permission.nim] = permission;
+    }
+
+    final participantNims = <String>{};
+    if (event.requiresInvitation) {
+      participantNims.addAll(invitationByNim.keys.where((nim) => nim.trim().isNotEmpty));
+    } else {
+      participantNims.addAll(event.targetPeserta.where((nim) => nim.trim().isNotEmpty));
+    }
+
+    final items = participantNims.map((nim) {
+      final member = memberByNim[nim];
+      final attendance = attendanceByNim[nim];
+      final invitation = invitationByNim[nim];
+      final permission = permissionByNim[nim];
+
+      String status;
+      DateTime? time;
+
+      if (attendance != null) {
+        status = attendance.status;
+        time = attendance.timestamp;
+      } else if (event.requiresInvitation && invitation != null) {
+        final response = invitation.responseStatus.toLowerCase();
+        if (response == 'approved' || response == 'auto-approved') {
+          status = 'Disetujui';
+        } else if (response == 'rejected') {
+          status = 'Ditolak';
+        } else if (response == 'permission_requested') {
+          status = 'Izin Diajukan';
+        } else {
+          status = 'Menunggu';
+        }
+        time = invitation.respondedAt ?? invitation.invitedAt;
+      } else if (permission != null) {
+        final izinStatus = permission.status.toLowerCase();
+        if (izinStatus == 'approved') {
+          status = permission.jenisIzin;
+        } else if (izinStatus == 'rejected') {
+          status = 'Izin Ditolak';
+        } else {
+          status = 'Izin Pending';
+        }
+        time = permission.updatedAt;
+      } else {
+        status = 'Belum Absen';
+        time = null;
+      }
+
+      final displayName = (member?.nama.trim().isNotEmpty == true) ? member!.nama : nim;
+      final role = (member?.role.trim().isNotEmpty == true) ? member!.role : 'Peserta';
+
+      return _AttendanceParticipantItem(
+        nim: nim,
+        displayName: displayName,
+        role: role,
+        status: status,
+        time: time,
+      );
+    }).toList(growable: false)
+      ..sort((a, b) => a.displayName.toLowerCase().compareTo(b.displayName.toLowerCase()));
+
+    return items;
   }
 
   Map<String, MemberModel> _memberByNim() {
@@ -106,6 +236,7 @@ class _EventDetailViewState extends State<EventDetailView> {
       targetPeserta: event.targetPeserta,
       requiresInvitation: event.requiresInvitation,
       penyelenggara: event.penyelenggara,
+      penanggungJawab: event.penanggungJawab,
     );
   }
 
@@ -142,6 +273,7 @@ class _EventDetailViewState extends State<EventDetailView> {
               targetPeserta: form.targetPeserta,
               requiresInvitation: form.requiresInvitation,
               penyelenggara: form.penyelenggara,
+              penanggungJawab: form.penanggungJawab,
             ),
           )
         : await _controller.createEvent(
@@ -156,6 +288,7 @@ class _EventDetailViewState extends State<EventDetailView> {
             targetPeserta: form.targetPeserta,
             requiresInvitation: form.requiresInvitation,
             penyelenggara: form.penyelenggara,
+            penanggungJawab: form.penanggungJawab,
           );
 
     if (!mounted) return;
@@ -175,6 +308,7 @@ class _EventDetailViewState extends State<EventDetailView> {
             targetPeserta: form.targetPeserta,
             requiresInvitation: form.requiresInvitation,
             penyelenggara: form.penyelenggara,
+            penanggungJawab: form.penanggungJawab,
           );
         });
       }
@@ -234,18 +368,22 @@ class _EventDetailViewState extends State<EventDetailView> {
 
   @override
   Widget build(BuildContext context) {
+    final currentEvent = _resolvedEvent();
+    final subEvents = _subEventsOf(currentEvent.eventId);
+    final parentEvent = _parentEventOf(currentEvent);
     final records = _attendanceRecords();
     final memberByNim = _memberByNim();
+    final attendanceList = _attendanceParticipants(currentEvent, memberByNim);
     
     final hadirCount = _countStatus(records, ['hadir', 'terlambat']);
     final izinCount = _countStatus(records, ['izin', 'sakit']);
     final alphaCount = _countStatus(records, ['alpha']);
     
-    final targetCount = _currentEvent.targetPeserta.isEmpty ? memberByNim.length : _currentEvent.targetPeserta.length;
+    final targetCount = currentEvent.targetPeserta.isEmpty ? memberByNim.length : currentEvent.targetPeserta.length;
     final recordedCount = hadirCount + izinCount + alphaCount;
     final belumAbsenCount = (targetCount - recordedCount).clamp(0, targetCount);
 
-    final isSubEvent = _currentEvent.parentEventId != null;
+    final isSubEvent = currentEvent.parentEventId != null;
     final eventType = isSubEvent ? 'Sub-Event' : 'Event Utama';
 
     return Scaffold(
@@ -323,12 +461,49 @@ class _EventDetailViewState extends State<EventDetailView> {
                       ),
                     ],
                   ),
+
+                  if (parentEvent != null) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFE5E7EB)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.account_tree_outlined, size: 18, color: Color(0xFF2563EB)),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Parent Event',
+                                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF9CA3AF), letterSpacing: 0.5),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  parentEvent.nama,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF1F2937)),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   
                   const SizedBox(height: 16), // mt-4
                   
                   // Title
                   Text(
-                    _currentEvent.nama,
+                    currentEvent.nama,
                     style: const TextStyle(
                       fontSize: 24, // text-2xl
                       fontWeight: FontWeight.bold,
@@ -338,10 +513,10 @@ class _EventDetailViewState extends State<EventDetailView> {
                   ),
 
                   // Description (if available)
-                  if (_currentEvent.deskripsi != null && _currentEvent.deskripsi!.isNotEmpty) ...[
+                  if (currentEvent.deskripsi != null && currentEvent.deskripsi!.isNotEmpty) ...[
                     const SizedBox(height: 12),
                     Text(
-                      _currentEvent.deskripsi!,
+                      currentEvent.deskripsi!,
                       style: const TextStyle(
                         fontSize: 14,
                         color: Color(0xFF4B5563), // text-gray-600
@@ -409,20 +584,293 @@ class _EventDetailViewState extends State<EventDetailView> {
                         _buildInfoRow(
                           icon: Icons.calendar_today_outlined,
                           label: 'Tanggal',
-                          value: _formatDate(_currentEvent.tanggalMulai),
+                          value: _formatDate(currentEvent.tanggalMulai),
                         ),
                         const SizedBox(height: 12), // space-y-3
                         _buildInfoRow(
                           icon: Icons.access_time_outlined,
                           label: 'Waktu',
-                          value: '${_formatTime(_currentEvent.jamMulai ?? _currentEvent.tanggalMulai, _currentEvent.jamSelesai ?? _currentEvent.tanggalSelesai)} WIB',
+                          value: _formatDateTimeRange(currentEvent),
                         ),
                         const SizedBox(height: 12),
                         _buildInfoRow(
                           icon: Icons.location_on_outlined,
                           label: 'Lokasi',
-                          value: _eventLocation(),
+                          value: _eventLocation(currentEvent),
                         ),
+                        const SizedBox(height: 12),
+                        _buildInfoRow(
+                          icon: Icons.category_outlined,
+                          label: 'Jenis',
+                          value: currentEvent.jenis,
+                        ),
+                        const SizedBox(height: 12),
+                        _buildInfoRow(
+                          icon: Icons.business_outlined,
+                          label: 'Penyelenggara',
+                          value: currentEvent.penyelenggara?.trim().isNotEmpty == true
+                              ? currentEvent.penyelenggara!
+                              : 'Belum diatur',
+                        ),
+                        const SizedBox(height: 12),
+                        _buildInfoRow(
+                          icon: Icons.badge_outlined,
+                          label: 'Penanggung Jawab',
+                          value: currentEvent.penanggungJawab?.trim().isNotEmpty == true
+                              ? currentEvent.penanggungJawab!
+                              : 'Belum diatur',
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  if (_canManageInvitationResponses || HiveService.invitations.values.any((inv) => inv.eventId == currentEvent.eventId)) ...[
+                    ValueListenableBuilder<Box<EventInvitation>>(
+                      valueListenable: HiveService.invitations.listenable(),
+                      builder: (context, box, _) {
+                        final invitations = box.values
+                            .where((inv) => inv.eventId == currentEvent.eventId)
+                            .toList(growable: false);
+
+                        final approved = invitations.where((inv) {
+                          final status = inv.responseStatus.toLowerCase();
+                          return status == 'approved' || status == 'auto-approved';
+                        }).length;
+                        final rejected = invitations.where((inv) => inv.responseStatus.toLowerCase() == 'rejected').length;
+                        final pending = invitations.where((inv) => inv.responseStatus.toLowerCase() == 'pending').length;
+                        final permission = invitations.where((inv) => inv.responseStatus.toLowerCase() == 'permission_requested').length;
+                        final total = invitations.length;
+
+                        return Container(
+                          width: double.infinity,
+                          margin: const EdgeInsets.symmetric(horizontal: 16),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFF59E0B), Color(0xFFF97316)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFFF97316).withValues(alpha: 0.24),
+                                blurRadius: 16,
+                                offset: const Offset(0, 8),
+                              ),
+                            ],
+                          ),
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              Positioned(
+                                right: -6,
+                                top: -10,
+                                child: Opacity(
+                                  opacity: 0.18,
+                                  child: Icon(Icons.mail_outline, size: 92, color: Colors.white),
+                                ),
+                              ),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Tanggapan Undangan',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '$total undangan • $approved hadir, $rejected ditolak, $pending menunggu, $permission izin',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: Color(0xFFFFF7ED),
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 14),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: ElevatedButton(
+                                      onPressed: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute<void>(
+                                            builder: (_) => InvitationResponsePage(
+                                              eventId: currentEvent.eventId,
+                                              eventName: currentEvent.nama,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.white,
+                                        foregroundColor: const Color(0xFFEA580C),
+                                        elevation: 0,
+                                        padding: const EdgeInsets.symmetric(vertical: 12),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                      ),
+                                      child: const Text(
+                                        'Kelola',
+                                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+
+                    const SizedBox(height: 16),
+                  ],
+
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFF3F4F6)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.03),
+                          blurRadius: 4,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Expanded(
+                              child: Text(
+                                'SUB-EVENT',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF1F2937),
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEFF6FF),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Text(
+                                '${subEvents.length} data',
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF2563EB),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        if (subEvents.isEmpty)
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF9FAFB),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: const Color(0xFFE5E7EB)),
+                            ),
+                            child: const Text(
+                              'Belum ada sub-event untuk event ini.',
+                              style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+                            ),
+                          )
+                        else
+                          Column(
+                            children: subEvents.map((subEvent) {
+                              final subEventLocation = subEvent.lokasi?.trim().isNotEmpty == true
+                                  ? subEvent.lokasi!.trim()
+                                  : 'Lokasi belum diatur';
+                              final subEventTime = '${_formatDate(subEvent.tanggalMulai)} • ${_formatTime(subEvent.jamMulai ?? subEvent.tanggalMulai, subEvent.jamSelesai ?? subEvent.tanggalSelesai)} WIB';
+
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 10),
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(12),
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute<void>(
+                                        builder: (_) => EventDetailView(
+                                          event: subEvent,
+                                          userRole: widget.userRole,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  child: Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.all(14),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFFAFBFF),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: const Color(0xFFE5E7EB)),
+                                    ),
+                                    child: Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Container(
+                                          width: 42,
+                                          height: 42,
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFDBEAFE),
+                                            borderRadius: BorderRadius.circular(10),
+                                          ),
+                                          child: const Icon(Icons.event_note_outlined, color: Color(0xFF2563EB), size: 22),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                subEvent.nama,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                subEventTime,
+                                                style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                subEventLocation,
+                                                style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        const Icon(Icons.chevron_right, color: Color(0xFF9CA3AF)),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
                       ],
                     ),
                   ),
@@ -474,7 +922,7 @@ class _EventDetailViewState extends State<EventDetailView> {
                         if (_canAddSubEvent)
                           _buildActionButton(
                             icon: Icons.add_circle_outline,
-                            label: 'Sub-Event',
+                            label: 'Tambah Sub-Event',
                             bgColor: const Color(0xFFF3F4F6),
                             textColor: const Color(0xFF1F2937),
                             onTap: () => _openEventForm(
@@ -530,7 +978,7 @@ class _EventDetailViewState extends State<EventDetailView> {
                             borderRadius: BorderRadius.circular(999), // rounded-full
                           ),
                           child: Text(
-                            '${records.length} Peserta',
+                            '${attendanceList.length} Peserta',
                             style: const TextStyle(
                               fontSize: 10, // text-[10px]
                               fontWeight: FontWeight.bold,
@@ -544,7 +992,7 @@ class _EventDetailViewState extends State<EventDetailView> {
                   
                   const SizedBox(height: 12), // mb-3
                   
-                  if (records.isEmpty)
+                  if (attendanceList.isEmpty)
                     Container(
                       padding: const EdgeInsets.symmetric(vertical: 24),
                       alignment: Alignment.center,
@@ -554,16 +1002,17 @@ class _EventDetailViewState extends State<EventDetailView> {
                       ),
                     )
                   else
-                    ...records.map((record) {
-                      final member = memberByNim[record.nim];
-                      final name = member?.nama ?? 'Anggota';
-                      final role = member?.role ?? 'Member';
+                    ...attendanceList.map((item) {
+                      final name = item.displayName;
+                      final role = item.role;
                       final initial = name.isNotEmpty ? (name.length > 1 ? name.substring(0, 2).toUpperCase() : name[0].toUpperCase()) : '?';
-                      final time = '${record.timestamp.hour.toString().padLeft(2, '0')}:${record.timestamp.minute.toString().padLeft(2, '0')} WIB';
+                      final time = item.time == null
+                          ? '-'
+                          : '${item.time!.hour.toString().padLeft(2, '0')}:${item.time!.minute.toString().padLeft(2, '0')} WIB';
                       
-                      final statusLower = record.status.toLowerCase();
+                      final statusLower = item.status.toLowerCase();
                       final isHadir = statusLower.contains('hadir') || statusLower.contains('terlambat');
-                      final isIzin = statusLower.contains('izin') || statusLower.contains('sakit');
+                      final isIzin = statusLower.contains('izin') || statusLower.contains('sakit') || statusLower.contains('disetujui');
                       final isAlpha = statusLower.contains('alpha');
                       
                       // Avatar Colors
@@ -674,7 +1123,7 @@ class _EventDetailViewState extends State<EventDetailView> {
                                     border: Border.all(color: badgeBorder),
                                   ),
                                   child: Text(
-                                    record.status.toUpperCase(),
+                                    item.status.toUpperCase(),
                                     style: TextStyle(
                                       fontSize: 10, // text-[10px]
                                       fontWeight: FontWeight.bold,
@@ -821,4 +1270,20 @@ class _EventDetailViewState extends State<EventDetailView> {
       ),
     );
   }
+}
+
+class _AttendanceParticipantItem {
+  final String nim;
+  final String displayName;
+  final String role;
+  final String status;
+  final DateTime? time;
+
+  const _AttendanceParticipantItem({
+    required this.nim,
+    required this.displayName,
+    required this.role,
+    required this.status,
+    required this.time,
+  });
 }

@@ -57,7 +57,7 @@ class _EventCard extends StatelessWidget {
   const _EventCard({required this.event});
 
   String _formatTime(DateTime? time) {
-    if (time == null) return '--:--';
+    if (time == null) return '00:00';
     return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
   }
 
@@ -65,7 +65,9 @@ class _EventCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool isMainEvent = event.parentEventId == null;
     final String typeLabel = isMainEvent ? 'Event Utama' : 'Sub-Event';
-    final timeStr = _formatTime(event.jamMulai ?? event.tanggalMulai);
+    final startTime = event.jamMulai ?? event.tanggalMulai;
+    final timeStr = _formatTime(startTime);
+    final dateStr = '${startTime.day.toString().padLeft(2, '0')}/${startTime.month.toString().padLeft(2, '0')}/${startTime.year}';
     final locationStr = event.lokasi ?? event.jenis;
 
     return GestureDetector(
@@ -110,7 +112,7 @@ class _EventCard extends StatelessWidget {
                         children: [
                           const Icon(Icons.access_time, size: 14, color: Colors.grey),
                           const SizedBox(width: 4),
-                          Text('$timeStr WIB', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                          Text('$dateStr • $timeStr WIB', style: const TextStyle(color: Colors.grey, fontSize: 12)),
                           const SizedBox(width: 12),
                           const Icon(Icons.location_on_outlined, size: 14, color: Colors.grey),
                           const SizedBox(width: 4),

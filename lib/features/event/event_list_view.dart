@@ -90,6 +90,7 @@ class _EventListViewState extends State<EventListView> {
       deskripsi: result.deskripsi,
       targetPeserta: result.targetPeserta,
       penyelenggara: result.penyelenggara,
+      penanggungJawab: result.penanggungJawab,
     );
 
     if (!mounted) return;
@@ -289,201 +290,50 @@ class _EventListViewState extends State<EventListView> {
                   return ValueListenableBuilder<List<EventModel>>(
                     valueListenable: _controller.events,
                     builder: (context, allEvents, _) {
-                      // Filter events
-                      final filteredEvents = allEvents.where((e) {
-                        final statusMatches =
-                            (e.statusEvent.toLowerCase() == _activeTab);
-                        final searchMatches = e.nama.toLowerCase().contains(
-                          _searchQuery,
-                        );
-                        return statusMatches && searchMatches;
-                      }).toList();
-
-                      if (filteredEvents.isEmpty) {
-                        return Center(
-                          child: Padding(
-                            padding: const EdgeInsets.only(top: 40), // mt-10
-                            child: Text(
-                              'Tidak ada event yang sesuai dengan pencarian Anda.',
-                              style: TextStyle(
-                                color: const Color(0xFF6B7280), // text-gray-500
-                                fontSize: 14, // text-sm
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        );
-                      }
+                      final rootEvents = allEvents.where((e) => e.parentEventId == null).toList(growable: false);
+                      final filteredEvents = rootEvents.where((mainEvent) {
+                        final statusMatches = mainEvent.statusEvent.toLowerCase() == _activeTab;
+                        final searchMatches = mainEvent.nama.toLowerCase().contains(_searchQuery);
+                        final relatedSubEvents = allEvents.where((event) => event.parentEventId == mainEvent.eventId).toList(growable: false);
+                        final relatedSearchMatches = relatedSubEvents.any((sub) => sub.nama.toLowerCase().contains(_searchQuery));
+                        return statusMatches && (searchMatches || relatedSearchMatches);
+                      }).toList(growable: false);
 
                       return RefreshIndicator(
-                        onRefresh: () => _controller.loadEvents(
-                          force: true,
-                          cloudSync: true,
-                        ),
-                        child: ListView.separated(
-                          padding: const EdgeInsets.all(16), // p-4
-                          itemCount: filteredEvents.length,
-                          separatorBuilder: (_, _) =>
-                              const SizedBox(height: 16), // space-y-4
-                          itemBuilder: (context, index) {
-                            final event = filteredEvents[index];
-                            final isSubEvent = event.parentEventId != null;
-                            final eventType = isSubEvent
-                                ? 'Sub-Event'
-                                : 'Event Utama';
-
-                            final dateStr = _formatDate(event.tanggalMulai);
-                            final timeStart = _formatTime(
-                              event.jamMulai ?? event.tanggalMulai,
-                            );
-                            final timeEnd = _formatTime(
-                              event.jamSelesai ??
-                                  (event.tanggalSelesai ??
-                                      event.tanggalMulai.add(
-                                        const Duration(hours: 1),
-                                      )),
-                            );
-                            final timeStr = '$timeStart - $timeEnd';
-                            final locationStr =
-                                (event.lokasi != null &&
-                                    event.lokasi!.trim().isNotEmpty)
-                                ? event.lokasi!
-                                : 'Lokasi belum ditentukan';
-
-                            return InkWell(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute<void>(
-                                    builder: (_) => EventDetailView(
-                                      event: event,
-                                      userRole: _role,
-                                    ),
-                                  ),
-                                );
-                              },
-                              borderRadius: BorderRadius.circular(12),
-                              child: Container(
+                        edgeOffset: 24,
+                        displacement: 56,
+                        strokeWidth: 3,
+                        onRefresh: () => _controller.refreshEvents(cloudSync: true),
+                        child: filteredEvents.isEmpty
+                            ? ListView(
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                padding: const EdgeInsets.all(16),
+                                children: [
+                                  const SizedBox(height: 80),
+                                  _buildEmptyState(),
+                                ],
+                              )
+                            : ListView.separated(
+                                physics: const AlwaysScrollableScrollPhysics(),
                                 padding: const EdgeInsets.all(16), // p-4
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(
-                                    12,
-                                  ), // rounded-xl
-                                  border: Border.all(
-                                    color: Colors.grey.shade100,
-                                  ), // border-gray-100
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(
-                                        alpha: 0.03,
-                                      ),
-                                      blurRadius: 4,
-                                      offset: const Offset(0, 1), // shadow-sm
-                                    ),
-                                  ],
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          eventType.toUpperCase(),
-                                          style: const TextStyle(
-                                            fontSize: 10, // text-[10px]
-                                            fontWeight: FontWeight.bold,
-                                            color: Color(
-                                              0xFF6B7280,
-                                            ), // text-gray-500
-                                            letterSpacing:
-                                                0.5, // uppercase tracking
-                                          ),
-                                        ),
-                                        Text(
-                                          dateStr,
-                                          style: const TextStyle(
-                                            fontSize: 12, // text-xs
-                                            fontWeight: FontWeight
-                                                .w600, // font-semibold
-                                            color: Color(
-                                              0xFF1F2937,
-                                            ), // text-gray-800
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 8), // mb-2
-                                    Text(
-                                      event.nama,
-                                      style: const TextStyle(
-                                        fontSize: 16, // text-base
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(
-                                          0xFF1F2937,
-                                        ), // text-gray-800
-                                      ),
-                                    ),
-                                    const SizedBox(
-                                      height: 8,
-                                    ), // mb-4 mapped to 8 + spacing
-                                    Row(
-                                      children: [
-                                        const Icon(
-                                          Icons.schedule,
-                                          size: 12,
-                                          color: Color(0xFF9CA3AF),
-                                        ), // text-gray-400
-                                        const SizedBox(width: 8), // mr-2
-                                        Expanded(
-                                          child: Text(
-                                            timeStr,
-                                            style: const TextStyle(
-                                              fontSize: 12, // text-xs
-                                              color: Color(
-                                                0xFF4B5563,
-                                              ), // text-gray-600
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(
-                                      height: 4,
-                                    ), // space-y-1 equivalent
-                                    Row(
-                                      children: [
-                                        const Icon(
-                                          Icons.location_on_outlined,
-                                          size: 12,
-                                          color: Color(0xFF9CA3AF),
-                                        ), // text-gray-400
-                                        const SizedBox(width: 8), // mr-2
-                                        Expanded(
-                                          child: Text(
-                                            locationStr,
-                                            style: const TextStyle(
-                                              fontSize: 12, // text-xs
-                                              color: Color(
-                                                0xFF4B5563,
-                                              ), // text-gray-600
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
+                                itemCount: filteredEvents.length,
+                                separatorBuilder: (_, _) =>
+                                    const SizedBox(height: 16), // space-y-4
+                                itemBuilder: (context, index) {
+                                  final mainEvent = filteredEvents[index];
+                                  final relatedSubEvents = allEvents.where((event) {
+                                    final isChild = event.parentEventId == mainEvent.eventId;
+                                    final statusMatches = event.statusEvent.toLowerCase() == _activeTab;
+                                    final searchMatches = event.nama.toLowerCase().contains(_searchQuery);
+                                    return isChild && statusMatches && (searchMatches || _searchQuery.isEmpty);
+                                  }).toList(growable: false);
+
+                                  return _buildEventHierarchyCard(
+                                    mainEvent,
+                                    relatedSubEvents,
+                                  );
+                                },
                               ),
-                            );
-                          },
-                        ),
                       );
                     },
                   );
@@ -495,6 +345,289 @@ class _EventListViewState extends State<EventListView> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF3F4F6),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Icon(Icons.event_busy_outlined, size: 36, color: Color(0xFF9CA3AF)),
+            ),
+            const SizedBox(height: 14),
+            const Text(
+              'Tidak ada event yang sesuai dengan pencarian Anda.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Color(0xFF6B7280),
+                fontSize: 14,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Tarik ke bawah untuk memuat ulang.',
+              style: TextStyle(
+                color: Colors.grey.shade500,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEventHierarchyCard(EventModel mainEvent, List<EventModel> relatedSubEvents) {
+    final dateStr = _formatDate(mainEvent.tanggalMulai);
+    final timeStart = _formatTime(mainEvent.jamMulai ?? mainEvent.tanggalMulai);
+    final timeEnd = _formatTime(
+      mainEvent.jamSelesai ??
+          (mainEvent.tanggalSelesai ?? mainEvent.tanggalMulai.add(const Duration(hours: 1))),
+    );
+    final timeStr = '$timeStart - $timeEnd';
+    final locationStr =
+        (mainEvent.lokasi != null && mainEvent.lokasi!.trim().isNotEmpty)
+            ? mainEvent.lokasi!
+            : 'Lokasi belum ditentukan';
+    final penanggungJawabStr =
+        (mainEvent.penanggungJawab != null && mainEvent.penanggungJawab!.trim().isNotEmpty)
+            ? mainEvent.penanggungJawab!
+            : 'Belum diatur';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute<void>(
+                builder: (_) => EventDetailView(
+                  event: mainEvent,
+                  userRole: _role,
+                ),
+              ),
+            );
+          },
+          borderRadius: BorderRadius.circular(18),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: Colors.grey.shade100),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 14,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Stack(
+              children: [
+                Positioned(
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  child: Container(
+                    width: 4,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF2563EB),
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(18),
+                        bottomLeft: Radius.circular(18),
+                      ),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(left: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEFF6FF),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              'EVENT UTAMA',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF2563EB),
+                                letterSpacing: 0.7,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            dateStr,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF111827),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        mainEvent.nama,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF111827),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      _buildEventLine(Icons.schedule_outlined, timeStr),
+                      const SizedBox(height: 4),
+                      _buildEventLine(Icons.location_on_outlined, locationStr),
+                      const SizedBox(height: 4),
+                      _buildEventLine(Icons.badge_outlined, penanggungJawabStr),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (relatedSubEvents.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Container(
+            margin: const EdgeInsets.only(left: 24),
+            padding: const EdgeInsets.only(left: 16),
+            decoration: const BoxDecoration(
+              border: Border(left: BorderSide(color: Color(0xFFE5E7EB), width: 2)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: relatedSubEvents.map((subEvent) {
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  child: InkWell(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute<void>(
+                          builder: (_) => EventDetailView(
+                            event: subEvent,
+                            userRole: _role,
+                          ),
+                        ),
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.grey.shade100),
+                      ),
+                      child: Stack(
+                        children: [
+                          Positioned(
+                            left: -18,
+                            top: 10,
+                            child: Icon(
+                              Icons.subdirectory_arrow_right_outlined,
+                              size: 14,
+                              color: Colors.grey.shade300,
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.only(left: 6),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFE6FFFB),
+                                        borderRadius: BorderRadius.circular(999),
+                                      ),
+                                      child: const Text(
+                                        'SUB-EVENT',
+                                        style: TextStyle(
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w800,
+                                          color: Color(0xFF0F766E),
+                                          letterSpacing: 0.7,
+                                        ),
+                                      ),
+                                    ),
+                                    Text(
+                                      _formatTime(subEvent.jamMulai ?? subEvent.tanggalMulai),
+                                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF6B7280)),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  subEvent.nama,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF111827)),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${_formatDate(subEvent.tanggalMulai)} • ${subEvent.lokasi ?? 'Lokasi belum ditentukan'}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280)),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildEventLine(IconData icon, String text) {
+    return Row(
+      children: [
+        Icon(icon, size: 12, color: const Color(0xFF9CA3AF)),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 12, color: Color(0xFF4B5563)),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -56,6 +56,9 @@ class EventModel extends HiveObject {
   @HiveField(16)
   final String? penyelenggara;
 
+  @HiveField(19)
+  final String? penanggungJawab;
+
   // ─── BARU: Soft Delete ──────────────────────────────────────
   // null = event aktif. Ada isi = event sudah dihapus (soft delete).
   // JANGAN benar-benar hapus dokumen — biarkan ada supaya perangkat
@@ -88,6 +91,7 @@ class EventModel extends HiveObject {
     String? statusEvent,
     this.requiresInvitation = false,
     this.penyelenggara,
+    this.penanggungJawab,
     this.deletedAt,
     this.version = 1,
   })  : targetPeserta = targetPeserta ?? [],
@@ -150,6 +154,7 @@ class EventModel extends HiveObject {
       'statusEvent': statusEvent,
       'requiresInvitation': requiresInvitation,
       'penyelenggara': penyelenggara,
+      'penanggungJawab': penanggungJawab,
       'deletedAt': deletedAt?.toIso8601String(),
       'version': version,
     };
@@ -194,6 +199,7 @@ class EventModel extends HiveObject {
       statusEvent: map['statusEvent']?.toString(),
       requiresInvitation: map['requiresInvitation'] == true,
       penyelenggara: map['penyelenggara']?.toString(),
+      penanggungJawab: map['penanggungJawab']?.toString(),
       deletedAt: parsedDeletedAt,
       version: (map['version'] as int?) ?? 1,
     );
@@ -217,6 +223,7 @@ class EventModel extends HiveObject {
     String? statusEvent,
     bool? requiresInvitation,
     String? penyelenggara,
+    String? penanggungJawab,
     DateTime? deletedAt,
     bool clearDeletedAt = false, // pakai ini untuk set deletedAt = null
     int? version,
@@ -239,6 +246,7 @@ class EventModel extends HiveObject {
       statusEvent: statusEvent ?? this.statusEvent,
       requiresInvitation: requiresInvitation ?? this.requiresInvitation,
       penyelenggara: penyelenggara ?? this.penyelenggara,
+      penanggungJawab: penanggungJawab ?? this.penanggungJawab,
       deletedAt: clearDeletedAt ? null : (deletedAt ?? this.deletedAt),
       version: version ?? this.version,
     );

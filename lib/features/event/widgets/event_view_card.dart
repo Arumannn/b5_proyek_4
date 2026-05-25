@@ -100,6 +100,13 @@ class _EventViewCardState extends State<EventViewCard> {
                         ),
                         const SizedBox(height: 8),
                         _buildMetaRow(
+                          Icons.badge_outlined,
+                          widget.event.penanggungJawab?.trim().isNotEmpty == true
+                              ? widget.event.penanggungJawab!
+                              : 'Penanggung jawab belum diatur',
+                        ),
+                        const SizedBox(height: 8),
+                        _buildMetaRow(
                           Icons.groups_outlined,
                           attendanceText,
                         ),

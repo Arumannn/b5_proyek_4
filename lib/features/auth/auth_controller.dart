@@ -246,7 +246,7 @@ class AuthController {
     String? nama,
     String? divisi,
     String? role,
-    String? password,
+    required String password,
   }) async {
     isLoading.value = true;
     errorMessage.value = null;
@@ -277,9 +277,11 @@ class AuthController {
       if (role != null && role.trim().isNotEmpty) {
         updatedDoc['role'] = _normalizeRole(role);
       }
-      if (password != null && password.isNotEmpty) {
-        updatedDoc['password'] = _hashPassword(password);
+      if (password.trim().isEmpty) {
+        errorMessage.value = 'Password wajib diisi.';
+        return false;
       }
+      updatedDoc['password'] = _hashPassword(password);
 
       updatedDoc['isSynced'] = false;
       updatedDoc['updatedAt'] = DateTime.now().toIso8601String();

@@ -5,6 +5,7 @@ import '../attendance/attendance_history_view.dart';
 import '../auth/auth_controller.dart';
 import '../event/event_controller.dart';
 import '../event/event_view.dart';
+import '../member/qr_display_view.dart';
 import '../../core/utils/network_status_controller.dart';
 import 'widgets/my_invitation_section.dart';
 import 'widgets/executive_dashboard_section.dart';
@@ -88,7 +89,7 @@ class _DashboardViewState extends State<DashboardView> {
             ],
           ),
           body: RefreshIndicator(
-            onRefresh: () async => await _eventController.loadEvents(force: true, cloudSync: true),
+            onRefresh: () async => _eventController.refreshEvents(cloudSync: true),
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
@@ -101,19 +102,55 @@ class _DashboardViewState extends State<DashboardView> {
                   const SizedBox(height: 12),
 
                   // QR Card
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.grey.shade100)),
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.center, children: [
-                      const Text('QR Code Kehadiran Anda', style: TextStyle(color: Color(0xFF6B7280), fontSize: 13)),
-                      const SizedBox(height: 12),
-                      Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey.shade200)), child: const Icon(Icons.qr_code, size: 120, color: Color(0xFF111827))),
-                      const SizedBox(height: 10),
-                        Text(currentUser.nama, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF111827))),
-                      const SizedBox(height: 6),
-                      Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6), decoration: BoxDecoration(color: const Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(999)), child: Text('NIM: ${currentUser.nim}', style: const TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.w600))),
-                    ]),
+                  Material(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(20),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute<void>(
+                            builder: (_) => QrDisplayView(nim: currentUser.nim),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.grey.shade100),
+                        ),
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.center, children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Text(
+                                'Buka kode QR',
+                                style: TextStyle(color: Color(0xFF6B7280), fontSize: 13, fontWeight: FontWeight.w600),
+                              ),
+                              const SizedBox(width: 10),
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade200)),
+                                child: const Icon(Icons.qr_code, size: 34, color: Color(0xFF111827)),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          const SizedBox(height: 10),
+                          Text(currentUser.nama, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF111827))),
+                          const SizedBox(height: 6),
+                          Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6), decoration: BoxDecoration(color: const Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(999)), child: Text('NIM: ${currentUser.nim}', style: const TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.w600))),
+                          const SizedBox(height: 10),
+                          const Text(
+                            'Tap untuk membuka QR',
+                            style: TextStyle(color: Color(0xFF6B7280), fontSize: 12),
+                          ),
+                        ]),
+                      ),
+                    ),
                   ),
 
                   const SizedBox(height: 16),
@@ -139,6 +176,7 @@ class _DashboardViewState extends State<DashboardView> {
                           Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(12)), child: const Center(child: Text('Belum ada kegiatan hari ini'))),
                         ] else ...[
                           Column(children: ongoing.map((e) {
+                            final startTime = e.jamMulai ?? e.tanggalMulai;
                             return Container(
                               margin: const EdgeInsets.only(bottom: 12),
                               decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade100)),
@@ -148,7 +186,7 @@ class _DashboardViewState extends State<DashboardView> {
                                   Text(e.nama, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
                                   const SizedBox(height: 6),
                                   Text(
-                                    '${e.jamMulai != null ? '${e.jamMulai!.hour.toString().padLeft(2, '0')}:${e.jamMulai!.minute.toString().padLeft(2, '0')}' : '--:--'} • ${e.lokasi ?? 'Lokasi belum diatur'}',
+                                    '${startTime.day.toString().padLeft(2, '0')}/${startTime.month.toString().padLeft(2, '0')}/${startTime.year} • ${startTime.hour.toString().padLeft(2, '0')}:${startTime.minute.toString().padLeft(2, '0')} WIB • ${e.lokasi ?? 'Lokasi belum diatur'}',
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(color: Color(0xFF6B7280), fontSize: 13),

@@ -143,11 +143,24 @@ class EventController {
     }
   }
 
+  /// Reload event dan tunggu sinkronisasi cloud selesai.
+  Future<void> refreshEvents({bool cloudSync = true}) async {
+    await loadEvents(force: true, cloudSync: false);
+
+    if (cloudSync) {
+      await _pullFromCloud();
+    }
+  }
+
   /// Pull semua event dari MongoDB dan merge ke Hive + state.
   ///
   /// Dipanggil fire-and-forget setelah load Hive selesai,
   /// sehingga UI tidak menunggu koneksi cloud.
   Future<void> _pullFromCloudInBackground() async {
+    unawaited(_pullFromCloud());
+  }
+
+  Future<void> _pullFromCloud() async {
     try {
       if (!await _isOnline()) {
         debugPrint('[EventCtrl] pull cloud: offline, skip.');
@@ -244,6 +257,7 @@ class EventController {
     List<String>? targetPeserta,
     bool requiresInvitation = false,
     String? penyelenggara,
+    String? penanggungJawab,
   }) async {
     // RBAC: Tentukan scope izin berdasarkan apakah data adalah sub-event atau main event.
     final isSubEvent = parentEventId != null && parentEventId.isNotEmpty;
@@ -305,6 +319,7 @@ class EventController {
         targetPeserta: targetPeserta,
         requiresInvitation: requiresInvitation,
         penyelenggara: penyelenggara,
+        penanggungJawab: penanggungJawab,
         isSynced: false, // akan di-update setelah cloud sync berhasil
       );
 

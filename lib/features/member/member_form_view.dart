@@ -80,9 +80,7 @@ class _MemberFormViewState extends State<MemberFormView> {
             nama: _namaController.text,
             divisi: _selectedDbu,
             role: _selectedRole,
-            password: _passwordController.text.trim().isEmpty
-                ? null
-                : _passwordController.text,
+        password: _passwordController.text,
           )
         : await AuthController.instance.createUserByExecutive(
             nama: _namaController.text,
@@ -249,13 +247,13 @@ class _MemberFormViewState extends State<MemberFormView> {
               const SizedBox(height: 16),
 
               // Password
-              _buildInputLabel(_isEdit ? 'Password Baru (Opsional)' : 'Password'),
+              _buildInputLabel('Password'),
               TextFormField(
                 controller: _passwordController,
                 obscureText: true,
                 decoration: _inputDecoration(hintText: 'Masukkan password'),
                 validator: (value) {
-                  if (!_isEdit && (value == null || value.isEmpty)) {
+                  if (value == null || value.trim().isEmpty) {
                     return 'Password wajib diisi.';
                   }
                   return null;

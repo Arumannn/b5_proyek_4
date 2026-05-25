@@ -12,7 +12,7 @@ class HiveService {
 
   static bool _initialized = false;
   static const String invitationBoxName = 'invitations';
-  static const int _schemaVersion = 2;
+  static const int _schemaVersion = 3;
   static const String _schemaVersionKey = '__hive_schema_version__';
 
 
@@ -84,9 +84,13 @@ class HiveService {
   static Future<Box<T>> _openBoxSafely<T>(String boxName) async {
     try {
       return await Hive.openBox<T>(boxName);
-    } catch (e) { 
+    } catch (e) {
       debugPrint('⚠️ Error opening Hive box $boxName: $e. Clearing and recreating...');
-      await Hive.deleteBoxFromDisk(boxName);
+      try {
+        await Hive.deleteBoxFromDisk(boxName);
+      } catch (deleteError) {
+        debugPrint('⚠️ Failed deleting Hive box $boxName: $deleteError');
+      }
       return await Hive.openBox<T>(boxName);
     }
   }

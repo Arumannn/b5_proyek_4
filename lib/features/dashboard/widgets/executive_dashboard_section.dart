@@ -239,6 +239,7 @@ class _ExecutiveDashboardSectionState extends State<ExecutiveDashboardSection> {
   }
 
   Widget _ongoingEventCard(BuildContext context, EventModel event, {bool highlight = false}) {
+    final startTime = event.jamMulai ?? event.tanggalMulai;
     return GestureDetector(
       onTap: () {
         final role = AuthController.instance.currentUser.value?.role ?? AppConstants.roleMember;
@@ -281,7 +282,14 @@ class _ExecutiveDashboardSectionState extends State<ExecutiveDashboardSection> {
             ],
           ),
           const SizedBox(height: 8),
-          Text('${event.tanggalMulai.day}/${event.tanggalMulai.month}/${event.tanggalMulai.year} • ${event.jamMulai?.hour.toString().padLeft(2, '0') ?? '--'}:${event.jamMulai?.minute.toString().padLeft(2, '0') ?? '--'} WIB', style: const TextStyle(color: Color(0xFF566377), fontSize: 13)),
+          Text(
+            event.penanggungJawab?.trim().isNotEmpty == true
+                ? 'PJ: ${event.penanggungJawab}'
+                : 'PJ belum diatur',
+            style: const TextStyle(color: Color(0xFF6B7280), fontSize: 12),
+          ),
+          const SizedBox(height: 6),
+          Text('${startTime.day.toString().padLeft(2, '0')}/${startTime.month.toString().padLeft(2, '0')}/${startTime.year} • ${startTime.hour.toString().padLeft(2, '0')}:${startTime.minute.toString().padLeft(2, '0')} WIB', style: const TextStyle(color: Color(0xFF566377), fontSize: 13)),
           const SizedBox(height: 10),
           SizedBox(
             width: double.infinity,

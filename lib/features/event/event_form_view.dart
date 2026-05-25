@@ -30,6 +30,7 @@ class _EventFormViewState extends State<EventFormView> {
   late final TextEditingController _nameController;
   late final TextEditingController _lokasiController;
   late final TextEditingController _deskripsiController;
+  late final TextEditingController _penanggungJawabController;
   DateTime? _selectedDate;
   DateTime? _selectedEndDate;
   DateTime? _selectedJamSelesai;
@@ -55,6 +56,7 @@ class _EventFormViewState extends State<EventFormView> {
     _nameController = TextEditingController(text: widget.initialValue?.name ?? '');
     _lokasiController = TextEditingController(text: widget.initialValue?.lokasi ?? '');
     _deskripsiController = TextEditingController(text: widget.initialValue?.deskripsi ?? '');
+    _penanggungJawabController = TextEditingController(text: widget.initialValue?.penanggungJawab ?? '');
     _selectedDate = widget.initialValue?.date;
     _selectedEndDate = widget.initialValue?.endDate ?? widget.initialValue?.date;
     _selectedJamSelesai = widget.initialValue?.jamSelesai;
@@ -64,6 +66,19 @@ class _EventFormViewState extends State<EventFormView> {
     _selectedTargetIds = List<String>.from(widget.initialValue?.targetPeserta ?? []);
     _requiresInvitation = widget.initialValue?.requiresInvitation ?? false;
     _selectedPenyelenggara = widget.initialValue?.penyelenggara ?? '';
+
+    if (_isSubEvent && (_parentId == null || _parentId!.isEmpty) && widget.parentOptions.isNotEmpty) {
+      _parentId = widget.parentOptions.first.id;
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant EventFormView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (_isSubEvent && (_parentId == null || _parentId!.isEmpty) && widget.parentOptions.isNotEmpty) {
+      _parentId = widget.parentOptions.first.id;
+    }
   }
 
   @override
@@ -71,6 +86,7 @@ class _EventFormViewState extends State<EventFormView> {
     _nameController.dispose();
     _lokasiController.dispose();
     _deskripsiController.dispose();
+    _penanggungJawabController.dispose();
     super.dispose();
   }
 
@@ -243,6 +259,9 @@ class _EventFormViewState extends State<EventFormView> {
         penyelenggara: _selectedPenyelenggara.trim().isEmpty
             ? null
             : _selectedPenyelenggara.trim(),
+        penanggungJawab: _penanggungJawabController.text.trim().isEmpty
+          ? null
+          : _penanggungJawabController.text.trim(),
       ),
     );
   }
@@ -289,6 +308,7 @@ class _EventFormViewState extends State<EventFormView> {
           nameController: _nameController,
           lokasiController: _lokasiController,
           deskripsiController: _deskripsiController,
+          penanggungJawabController: _penanggungJawabController,
           selectedDate: _selectedDate,
           selectedEndDate: _selectedEndDate,
           selectedJamSelesai: _selectedJamSelesai,
@@ -309,7 +329,11 @@ class _EventFormViewState extends State<EventFormView> {
           onSubEventChanged: (value) {
             setState(() {
               _isSubEvent = value;
-              if (!_isSubEvent) _parentId = null;
+              if (!_isSubEvent) {
+                _parentId = null;
+              } else if ((_parentId == null || _parentId!.isEmpty) && widget.parentOptions.isNotEmpty) {
+                _parentId = widget.parentOptions.first.id;
+              }
             });
           },
           onParentChanged: (value) => setState(() => _parentId = value),

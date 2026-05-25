@@ -13,6 +13,7 @@ class EventFormContent extends StatelessWidget {
   final TextEditingController nameController;
   final TextEditingController lokasiController;
   final TextEditingController deskripsiController;
+  final TextEditingController penanggungJawabController;
   final DateTime? selectedDate;
   final DateTime? selectedEndDate;
   final DateTime? selectedJamSelesai;
@@ -46,6 +47,7 @@ class EventFormContent extends StatelessWidget {
     required this.nameController,
     required this.lokasiController,
     required this.deskripsiController,
+    required this.penanggungJawabController,
     required this.selectedDate,
     required this.selectedEndDate,
     required this.selectedJamSelesai,
@@ -111,6 +113,13 @@ class EventFormContent extends StatelessWidget {
                   options: AppConstants.penyelenggaraOptions,
                   placeholder: 'Pilih penyelenggara',
                   onChanged: onPenyelenggaraChanged,
+                ),
+                const SizedBox(height: 16),
+                _buildInputLabel('Penanggung Jawab', context),
+                TextFormField(
+                  controller: penanggungJawabController,
+                  decoration: _inputDecoration(hintText: 'Contoh: Nama PIC event'),
+                  textCapitalization: TextCapitalization.words,
                 ),
                 const SizedBox(height: 16),
                 Row(
@@ -274,7 +283,7 @@ class EventFormContent extends StatelessWidget {
                   ),
                 ],
                 const SizedBox(height: 16),
-                _buildInputLabel('Target Peserta', context),
+                _buildInputLabel('Target Peserta *', context),
                 Container(
                   decoration: BoxDecoration(
                     border: Border.all(color: Colors.grey[200]!),
@@ -285,6 +294,13 @@ class EventFormContent extends StatelessWidget {
                     onSelectionChanged: onTargetChanged,
                   ),
                 ),
+                if (selectedTargetIds.isEmpty) ...[
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Wajib pilih minimal 1 target peserta.',
+                    style: TextStyle(fontSize: 12, color: Colors.red),
+                  ),
+                ],
                 const SizedBox(height: 16),
                 Container(
                   decoration: BoxDecoration(

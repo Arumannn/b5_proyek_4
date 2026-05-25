@@ -554,7 +554,7 @@ class _UserFormDialogState extends State<UserFormDialog> {
             nama: _namaController.text,
             divisi: _selectedDbu,
             role: _selectedRole,
-            password: _passwordController.text.trim().isEmpty ? null : _passwordController.text,
+            password: _passwordController.text,
           )
         : await widget.authController.createUserByExecutive(
             nama: _namaController.text,
@@ -742,13 +742,13 @@ class _UserFormDialogState extends State<UserFormDialog> {
                           },
                         ),
                         const SizedBox(height: 12),
-                        _buildFieldLabel(_isEdit ? 'Password Baru (Opsional)' : 'Password'),
+                        _buildFieldLabel('Password'),
                         TextFormField(
                           controller: _passwordController,
                           obscureText: true,
                           decoration: _inputDecoration(hintText: 'Masukkan password'),
                           validator: (value) {
-                            if (!_isEdit && (value == null || value.isEmpty)) {
+                            if (value == null || value.trim().isEmpty) {
                               return 'Password wajib diisi.';
                             }
                             return null;

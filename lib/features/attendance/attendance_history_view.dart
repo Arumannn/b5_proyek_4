@@ -33,7 +33,7 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
   @override
   void initState() {
     super.initState();
-    _fetchData();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _fetchData());
   }
 
   Future<void> _fetchData() async {

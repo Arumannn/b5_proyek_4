@@ -181,9 +181,8 @@ class _EventViewState extends State<EventView> {
     final tint = _eventTintColor(event);
     final status = _eventStatusTitle(event);
     final dateText = _formatDate(event.tanggalMulai);
-    final timeText = event.jamMulai != null
-        ? '${event.jamMulai!.hour.toString().padLeft(2, '0')}:${event.jamMulai!.minute.toString().padLeft(2, '0')}'
-        : '--:--';
+    final startTime = event.jamMulai ?? event.tanggalMulai;
+    final timeText = '${startTime.hour.toString().padLeft(2, '0')}:${startTime.minute.toString().padLeft(2, '0')}';
     final location = _eventLocation(event);
 
     return Container(
@@ -394,6 +393,7 @@ class _EventViewState extends State<EventView> {
             deskripsi: form.deskripsi,
             targetPeserta: form.targetPeserta,
             penyelenggara: form.penyelenggara,
+            penanggungJawab: form.penanggungJawab,
           )
         : await _controller.updateEvent(
             existing.copyWith(
@@ -405,6 +405,7 @@ class _EventViewState extends State<EventView> {
               deskripsi: form.deskripsi,
               targetPeserta: form.targetPeserta,
               penyelenggara: form.penyelenggara,
+              penanggungJawab: form.penanggungJawab,
             ),
           );
 
@@ -488,6 +489,9 @@ class _EventViewState extends State<EventView> {
     final lokasiController = TextEditingController(text: initial?.lokasi ?? '');
     final descController = TextEditingController(
       text: initial?.deskripsi ?? '',
+    );
+    final penanggungJawabController = TextEditingController(
+      text: initial?.penanggungJawab ?? '',
     );
 
     DateTime selectedDate = initial?.tanggalMulai ?? DateTime.now();
@@ -588,6 +592,14 @@ class _EventViewState extends State<EventView> {
                           },
                         ),
                         const SizedBox(height: 12),
+                        TextFormField(
+                          controller: penanggungJawabController,
+                          decoration: const InputDecoration(
+                            labelText: 'Penanggung Jawab',
+                            prefixIcon: Icon(Icons.badge_outlined),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
                         ListTile(
                           contentPadding: EdgeInsets.zero,
                           leading: const Icon(Icons.calendar_today_outlined),
@@ -668,7 +680,7 @@ class _EventViewState extends State<EventView> {
                         Align(
                           alignment: Alignment.centerLeft,
                           child: Text(
-                            'Target Divisi (Opsional)',
+                            'Target Divisi *',
                             style: Theme.of(context).textTheme.bodyMedium,
                           ),
                         ),
@@ -695,6 +707,15 @@ class _EventViewState extends State<EventView> {
                               })
                               .toList(growable: false),
                         ),
+                        const SizedBox(height: 8),
+                        if (targetDivisi.isEmpty)
+                          const Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'Wajib pilih minimal 1 target divisi.',
+                              style: TextStyle(fontSize: 12, color: Colors.red),
+                            ),
+                          ),
                       ],
                     ),
                   ),
@@ -708,6 +729,12 @@ class _EventViewState extends State<EventView> {
                 FilledButton(
                   onPressed: () {
                     if (!(formKey.currentState?.validate() ?? false)) return;
+                    if (targetDivisi.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Target divisi wajib dipilih (minimal 1).')),
+                      );
+                      return;
+                    }
                     Navigator.of(dialogContext).pop(
                       _EventFormData(
                         name: nameController.text.trim(),
@@ -722,6 +749,9 @@ class _EventViewState extends State<EventView> {
                             : descController.text.trim(),
                         targetPeserta: targetDivisi.toList(growable: false),
                         penyelenggara: selectedPenyelenggara,
+                          penanggungJawab: penanggungJawabController.text.trim().isEmpty
+                              ? null
+                              : penanggungJawabController.text.trim(),
                       ),
                     );
                   },
@@ -737,6 +767,7 @@ class _EventViewState extends State<EventView> {
     nameController.dispose();
     lokasiController.dispose();
     descController.dispose();
+    penanggungJawabController.dispose();
     return result;
   }
 
@@ -841,7 +872,7 @@ class _EventViewState extends State<EventView> {
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                '${_formatDate(event.tanggalMulai)} • ${event.jamMulai != null ? '${event.jamMulai!.hour.toString().padLeft(2, '0')}:${event.jamMulai!.minute.toString().padLeft(2, '0')} WIB' : 'WIB'}',
+                                '${_formatDate(event.tanggalMulai)} • ${_formatTime(event.jamMulai ?? event.tanggalMulai)} WIB',
                                 style: const TextStyle(fontSize: 15, color: Color(0xFF4B5563)),
                               ),
                             ),
@@ -1010,7 +1041,7 @@ class _EventViewState extends State<EventView> {
         actions: [
           IconButton(
             tooltip: 'Refresh',
-            onPressed: () => _controller.loadEvents(force: true),
+              onPressed: () => _controller.refreshEvents(cloudSync: true),
             icon: const Icon(Icons.refresh, color: Color(0xFF111827)),
           ),
           if (_canCreateMainEvent)
@@ -1101,8 +1132,12 @@ class _EventViewState extends State<EventView> {
                     )
                   : null,
               content: RefreshIndicator(
-                onRefresh: () async => _controller.loadEvents(force: true),
+                edgeOffset: 24,
+                displacement: 56,
+                strokeWidth: 3,
+                onRefresh: () async => _controller.refreshEvents(cloudSync: true),
                 child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                   children: [
                     if (roots.isEmpty)
@@ -1150,6 +1185,9 @@ class _EventViewState extends State<EventView> {
 
   // Helper methods delegating to EventUtilities
   String _formatDate(DateTime date) => EventUtilities.formatDate(date);
+
+  String _formatTime(DateTime dateTime) =>
+      '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
   
   String _eventLocation(EventModel event) => EventUtilities.eventLocation(event);
   
@@ -1174,6 +1212,7 @@ class _EventFormData {
     this.deskripsi,
     this.targetPeserta = const <String>[],
     this.penyelenggara,
+    this.penanggungJawab,
   });
 
   final String name;
@@ -1184,4 +1223,5 @@ class _EventFormData {
   final String? deskripsi;
   final List<String> targetPeserta;
   final String? penyelenggara;
+  final String? penanggungJawab;
 }
