@@ -1,5 +1,6 @@
 /// Main Navigation Screen dengan Bottom Navigation Bar
 /// Mengikuti referensi UI HIMAKOM Attendance
+library;
 import 'package:flutter/material.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/constants/design_system.dart';

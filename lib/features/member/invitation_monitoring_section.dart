@@ -397,6 +397,7 @@ class _InvitationMonitoringSectionState extends State<InvitationMonitoringSectio
     if (approved == null) return;
 
     await _updateInvitationStatus(
+      // ignore: use_build_context_synchronously
       context,
       invitation,
       approved ? 'approved' : 'rejected',

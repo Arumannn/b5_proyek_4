@@ -1,5 +1,6 @@
 /// Custom widgets untuk UI redesign
 /// Mengikuti design system dan referensi UI
+library;
 import 'package:flutter/material.dart';
 import '../core/constants/design_system.dart';
 
@@ -52,7 +53,7 @@ class HeaderCard extends StatelessWidget {
                 ],
               ),
             ),
-            if (trailing != null) trailing!,
+            ?trailing,
           ],
         ),
         if (child != null) ...[const SizedBox(height: AppSpacing.lg), child!],
@@ -392,7 +393,7 @@ class SectionHeader extends StatelessWidget {
               fontWeight: FontWeight.w600,
             ),
           ),
-          if (trailing != null) trailing!,
+          ?trailing,
         ],
       ),
     );
