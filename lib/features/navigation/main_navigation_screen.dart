@@ -1,5 +1,3 @@
-/// Main Navigation Screen dengan Bottom Navigation Bar
-/// Mengikuti referensi UI HIMAKOM Attendance
 import 'package:flutter/material.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/constants/design_system.dart';
@@ -7,7 +5,7 @@ import '../auth/auth_controller.dart';
 import '../auth/user_management_view.dart';
 import '../dashboard/dashboard_view.dart';
 import '../event/event_view.dart';
-import '../attendance/attendance_recap_view.dart';
+import '../laporan/laporan_view.dart';
 import '../attendance/attendance_history_view.dart';
 
 class MainNavigationScreen extends StatefulWidget {
@@ -43,8 +41,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       case 2:
         return const UserManagementView();
       case 3:
-        // Laporan/Reports - gunakan AttendanceRecapView
-        return const AttendanceRecapView();
+        // Laporan/Reports
+        return const LaporanView();
       case 4:
         // Riwayat - gunakan AttendanceHistoryView (jika member)
         if (role == AppConstants.roleMember) {

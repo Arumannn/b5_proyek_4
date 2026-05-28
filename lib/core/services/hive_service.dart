@@ -6,6 +6,7 @@ import '../../models/event_model.dart';
 import '../../models/attendance_record.dart';
 import '../../models/permission_record.dart';
 import '../../models/event_invitation.dart';
+import '../../models/notulensi_model.dart';
 
 class HiveService {
   HiveService._();
@@ -31,6 +32,7 @@ class HiveService {
     Hive.registerAdapter(AttendanceRecordAdapter()); // typeId: 2
     Hive.registerAdapter(PermissionRecordAdapter()); // typeId: 3
     Hive.registerAdapter(EventInvitationAdapter());
+    Hive.registerAdapter(NotulensiModelAdapter());
 
     await _clearBoxesIfSchemaChanged();
 
@@ -42,6 +44,7 @@ class HiveService {
     await _openBoxSafely<EventInvitation>(invitationBoxName);
     await _openBoxSafely<String>(AppConstants.pendingUserUpsertBox);
     await _openBoxSafely<String>(AppConstants.pendingUserDeleteBox);
+    await _openBoxSafely<NotulensiModel>(AppConstants.notulensiBox);
 
     _initialized = true;
     debugPrint('✅ HiveService initialized — 4 boxes open');
@@ -68,6 +71,7 @@ class HiveService {
         invitationBoxName,
         AppConstants.pendingUserUpsertBox,
         AppConstants.pendingUserDeleteBox,
+        AppConstants.notulensiBox,
       ]) {
         await Hive.deleteBoxFromDisk(boxName);
         debugPrint('  - box "$boxName" dihapus');
@@ -128,6 +132,11 @@ class HiveService {
   static Box<String> get pendingUserDeletes {
     _assertInitialized();
     return Hive.box<String>(AppConstants.pendingUserDeleteBox);
+  }
+
+  static Box<NotulensiModel> get notulensi {
+    _assertInitialized();
+    return Hive.box<NotulensiModel>(AppConstants.notulensiBox);
   }
 
   static void _assertInitialized() {

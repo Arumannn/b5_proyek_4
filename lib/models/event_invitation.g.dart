@@ -29,13 +29,14 @@ class EventInvitationAdapter extends TypeAdapter<EventInvitation> {
       invitedAt: fields[9] as DateTime,
       isRequired: fields[10] as bool,
       isSynced: fields[11] as bool,
+      organizationId: fields[12] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, EventInvitation obj) {
     writer
-      ..writeByte(12)
+      ..writeByte(13)
       ..writeByte(0)
       ..write(obj.invitationId)
       ..writeByte(1)
@@ -59,7 +60,9 @@ class EventInvitationAdapter extends TypeAdapter<EventInvitation> {
       ..writeByte(10)
       ..write(obj.isRequired)
       ..writeByte(11)
-      ..write(obj.isSynced);
+      ..write(obj.isSynced)
+      ..writeByte(12)
+      ..write(obj.organizationId);
   }
 
   @override

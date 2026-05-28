@@ -44,6 +44,7 @@ dependencies:
   cloudinary_url_gen: ^1.4.0
   image_picker: ^1.2.1
   intl: ^0.20.2
+  lucide_icons: ^0.257.0
 
 dev_dependencies:
   flutter_test:

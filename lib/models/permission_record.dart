@@ -41,6 +41,9 @@ class PermissionRecord extends HiveObject {
   @HiveField(11)
   DateTime updatedAt;
 
+  @HiveField(12)
+  final String? organizationId;
+
   PermissionRecord({
     required this.permissionId,
     required this.eventId,
@@ -54,6 +57,7 @@ class PermissionRecord extends HiveObject {
     this.isSynced = false,
     DateTime? createdAt,
     DateTime? updatedAt,
+    this.organizationId,
   })  : createdAt = createdAt ?? DateTime.now(),
         updatedAt = updatedAt ?? DateTime.now();
 
@@ -69,6 +73,7 @@ class PermissionRecord extends HiveObject {
       'validatedBy': validatedBy,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
+      'organizationId': organizationId,
     };
   }
 
@@ -85,6 +90,7 @@ class PermissionRecord extends HiveObject {
       isSynced: true,
       createdAt: map['createdAt'] != null ? DateTime.parse(map['createdAt'].toString()) : DateTime.now(),
       updatedAt: map['updatedAt'] != null ? DateTime.parse(map['updatedAt'].toString()) : DateTime.now(),
+      organizationId: map['organizationId']?.toString(),
     );
   }
 }

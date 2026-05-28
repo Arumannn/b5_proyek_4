@@ -73,6 +73,9 @@ class EventModel extends HiveObject {
   @HiveField(18)
   int version;
 
+  @HiveField(20)
+  final String? organizationId;
+
   EventModel({
     required this.eventId,
     this.parentEventId,
@@ -94,6 +97,7 @@ class EventModel extends HiveObject {
     this.penanggungJawab,
     this.deletedAt,
     this.version = 1,
+    this.organizationId,
   })  : targetPeserta = targetPeserta ?? [],
         createdAt = createdAt ?? DateTime.now(),
         statusEvent = statusEvent ??
@@ -105,22 +109,44 @@ class EventModel extends HiveObject {
 
   static String _calculateInitialStatus(DateTime now, DateTime tanggalMulai,
       DateTime? tanggalSelesai, DateTime? jamMulai, DateTime? jamSelesai) {
-    final startTime = jamMulai ?? DateTime(
-      tanggalMulai.year,
-      tanggalMulai.month,
-      tanggalMulai.day,
-      0, 0, 0,
-    );
+    DateTime startTime;
+    if (jamMulai != null) {
+      startTime = DateTime(
+        tanggalMulai.year,
+        tanggalMulai.month,
+        tanggalMulai.day,
+        jamMulai.hour,
+        jamMulai.minute,
+        0,
+      );
+    } else {
+      startTime = DateTime(
+        tanggalMulai.year,
+        tanggalMulai.month,
+        tanggalMulai.day,
+        0, 0, 0,
+      );
+    }
 
     DateTime endTime;
+    final endDate = tanggalSelesai ?? tanggalMulai;
+    
     if (jamSelesai != null) {
-      endTime = jamSelesai;
-    } else if (tanggalSelesai != null) {
-      endTime = DateTime(tanggalSelesai.year, tanggalSelesai.month,
-          tanggalSelesai.day, 23, 59, 59);
+      endTime = DateTime(
+        endDate.year,
+        endDate.month,
+        endDate.day,
+        jamSelesai.hour,
+        jamSelesai.minute,
+        0,
+      );
     } else {
-      endTime = DateTime(tanggalMulai.year, tanggalMulai.month,
-          tanggalMulai.day, 23, 59, 59);
+      endTime = DateTime(
+        endDate.year,
+        endDate.month,
+        endDate.day,
+        23, 59, 59,
+      );
     }
 
     if (now.isBefore(startTime)) return 'Mendatang';
@@ -157,6 +183,7 @@ class EventModel extends HiveObject {
       'penanggungJawab': penanggungJawab,
       'deletedAt': deletedAt?.toIso8601String(),
       'version': version,
+      'organizationId': organizationId,
     };
   }
 
@@ -202,6 +229,7 @@ class EventModel extends HiveObject {
       penanggungJawab: map['penanggungJawab']?.toString(),
       deletedAt: parsedDeletedAt,
       version: (map['version'] as int?) ?? 1,
+      organizationId: map['organizationId']?.toString(),
     );
   }
 
@@ -227,6 +255,7 @@ class EventModel extends HiveObject {
     DateTime? deletedAt,
     bool clearDeletedAt = false, // pakai ini untuk set deletedAt = null
     int? version,
+    String? organizationId,
   }) {
     return EventModel(
       eventId: eventId ?? this.eventId,
@@ -249,6 +278,7 @@ class EventModel extends HiveObject {
       penanggungJawab: penanggungJawab ?? this.penanggungJawab,
       deletedAt: clearDeletedAt ? null : (deletedAt ?? this.deletedAt),
       version: version ?? this.version,
+      organizationId: organizationId ?? this.organizationId,
     );
   }
 }

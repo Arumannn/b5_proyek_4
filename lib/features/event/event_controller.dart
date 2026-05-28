@@ -408,7 +408,8 @@ class EventController {
         nama: trimmed,
         isSynced: false,
         version: event.version + 1, // increment versi setiap ada perubahan
-);
+      );
+      saved.refreshStatus(); // Recalculate status in case dates were modified
       await HiveService.events.put(saved.eventId, saved);
       _allEvents[index] = saved;
       _applyFilters();

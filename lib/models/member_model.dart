@@ -29,6 +29,12 @@ class MemberModel extends HiveObject {
   @HiveField(7)
   String? fcmToken; // token FCM perangkat aktif
 
+  @HiveField(8)
+  final String? organizationId;
+
+  @HiveField(9)
+  final String? jobTitle;
+
   MemberModel({
     required this.nama,
     required String nim,
@@ -37,6 +43,8 @@ class MemberModel extends HiveObject {
     required this.password,
     required this.qrCodeValue,
     this.fcmToken,
+    this.organizationId,
+    this.jobTitle,
   })  : nim = nim.trim();
 
   Map<String, dynamic> toMap() {
@@ -47,6 +55,8 @@ class MemberModel extends HiveObject {
       'role': role,
       'qrCodeValue': qrCodeValue,
       'fcmToken': fcmToken,
+      'organizationId': organizationId,
+      'jobTitle': jobTitle,
       // password TIDAK disertakan
     };
   }
@@ -64,6 +74,8 @@ class MemberModel extends HiveObject {
       qrCodeValue: map['qrCodeValue']?.toString() ??
           map['qrData']?.toString() ?? '',
       fcmToken: map['fcmToken']?.toString(),
+      organizationId: map['organizationId']?.toString(),
+      jobTitle: map['jobTitle']?.toString(),
     );
   }
 
@@ -75,6 +87,8 @@ class MemberModel extends HiveObject {
     String? password,
     String? qrCodeValue,
     String? fcmToken,
+    String? organizationId,
+    String? jobTitle,
   }) {
     final nextNim = (nim ?? this.nim).trim();
     return MemberModel(
@@ -85,9 +99,11 @@ class MemberModel extends HiveObject {
       password: password ?? this.password,
       qrCodeValue: qrCodeValue ?? this.qrCodeValue,
       fcmToken: fcmToken ?? this.fcmToken,
+      organizationId: organizationId ?? this.organizationId,
+      jobTitle: jobTitle ?? this.jobTitle,
     );
   }
 
   @override
-  String toString() => 'MemberModel(nim: $nim, nama: $nama, role: $role)';
+  String toString() => 'MemberModel(nim: $nim, nama: $nama, role: $role, jobTitle: $jobTitle, orgId: $organizationId)';
 }

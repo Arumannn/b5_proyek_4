@@ -29,13 +29,14 @@ class PermissionRecordAdapter extends TypeAdapter<PermissionRecord> {
       isSynced: fields[9] as bool,
       createdAt: fields[10] as DateTime?,
       updatedAt: fields[11] as DateTime?,
+      organizationId: fields[12] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, PermissionRecord obj) {
     writer
-      ..writeByte(12)
+      ..writeByte(13)
       ..writeByte(0)
       ..write(obj.permissionId)
       ..writeByte(1)
@@ -59,7 +60,9 @@ class PermissionRecordAdapter extends TypeAdapter<PermissionRecord> {
       ..writeByte(10)
       ..write(obj.createdAt)
       ..writeByte(11)
-      ..write(obj.updatedAt);
+      ..write(obj.updatedAt)
+      ..writeByte(12)
+      ..write(obj.organizationId);
   }
 
   @override

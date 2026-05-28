@@ -41,6 +41,9 @@ class AttendanceRecord extends HiveObject {
   @HiveField(11)
   DateTime updatedAt;
 
+  @HiveField(12)
+  final String? organizationId;
+
   AttendanceRecord({
     required this.recordId,
     required this.eventId,
@@ -54,6 +57,7 @@ class AttendanceRecord extends HiveObject {
     this.permissionId,
     DateTime? createdAt,
     DateTime? updatedAt,
+    this.organizationId,
   })  : createdAt = createdAt ?? DateTime.now(),
         updatedAt = updatedAt ?? DateTime.now();
 
@@ -62,6 +66,7 @@ class AttendanceRecord extends HiveObject {
     required String eventId,
     required String nim,
     String status = 'Hadir',
+    String? organizationId,
   }) {
     return AttendanceRecord(
       recordId: recordId,
@@ -72,6 +77,7 @@ class AttendanceRecord extends HiveObject {
       isManualOverride: false,
       isSynced: false,
       compositeKey: '${eventId}_$nim',
+      organizationId: organizationId,
     );
   }
 
@@ -88,6 +94,7 @@ class AttendanceRecord extends HiveObject {
       'permissionId': permissionId,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
+      'organizationId': organizationId,
     };
   }
 
@@ -112,6 +119,7 @@ class AttendanceRecord extends HiveObject {
       updatedAt: map['updatedAt'] != null
           ? DateTime.parse(map['updatedAt'].toString())
           : null,
+      organizationId: map['organizationId']?.toString(),
     );
   }
 

@@ -187,7 +187,7 @@ class _EventFormViewState extends State<EventFormView> {
     );
     if (picked != null) {
       setState(() {
-        final baseDate = _selectedDate ?? DateTime.now();
+        final baseDate = _selectedEndDate ?? _selectedDate ?? DateTime.now();
         _selectedJamSelesai = DateTime(
           baseDate.year,
           baseDate.month,

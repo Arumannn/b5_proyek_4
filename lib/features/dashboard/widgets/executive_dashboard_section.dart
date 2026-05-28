@@ -44,60 +44,61 @@ class _ExecutiveDashboardSectionState extends State<ExecutiveDashboardSection> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Top stats area: big left card + two small right cards
-            Row(
-              children: [
-                Expanded(
-                  flex: 2,
-                  child: GestureDetector(
-                    onTap: () {},
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF2563EB),
-                        borderRadius: BorderRadius.circular(18),
-                        boxShadow: [
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {},
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2563EB),
+                          borderRadius: BorderRadius.circular(18),
+                          boxShadow: [
                             BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.06),
-                            blurRadius: 14,
-                            offset: const Offset(0, 6),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text('Total Hadir', style: TextStyle(color: Color(0xFFDFF6F0), fontSize: 12, fontWeight: FontWeight.w600)),
-                              Icon(Icons.bar_chart, color: const Color(0xFFDBEAFE)),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Text('$totalHadir', style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(color: const Color(0x3356A3F7), borderRadius: BorderRadius.circular(999)),
-                            child: const Text('+12 dari kemarin', style: TextStyle(color: Color(0xFFE6F2FF), fontSize: 11, fontWeight: FontWeight.w700)),
-                          ),
-                        ],
+                              color: Colors.black.withValues(alpha: 0.06),
+                              blurRadius: 14,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text('Total Hadir', style: TextStyle(color: Color(0xFFDFF6F0), fontSize: 12, fontWeight: FontWeight.w600)),
+                                Icon(Icons.bar_chart, color: const Color(0xFFDBEAFE)),                              ],
+                            ),
+                            const Spacer(),
+                            Text('$totalHadir', style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 4),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(color: const Color(0x3356A3F7), borderRadius: BorderRadius.circular(999)),
+                              child: const Text('+12 dari kemarin', style: TextStyle(color: Color(0xFFE6F2FF), fontSize: 10, fontWeight: FontWeight.w700)),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  flex: 1,
-                  child: Column(
-                    children: [
-                      _smallStatCard('Izin / Sakit', '$izinSakit', Icons.description, const Color(0xFFFFEDD5), const Color(0xFFF97316)),
-                      const SizedBox(height: 12),
-                      _smallStatCard('Perlu Validasi', '$perluValidasi', Icons.check_circle, const Color(0xFFFEE2E2), const Color(0xFFDC2626)),
-                    ],
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _smallStatCard('Izin / Sakit', '$izinSakit', Icons.description, const Color(0xFFFFEDD5), const Color(0xFFF97316)),
+                        const SizedBox(height: 12),
+                        _smallStatCard('Perlu Validasi', '$perluValidasi', Icons.check_circle, const Color(0xFFFEE2E2), const Color(0xFFDC2626)),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
             const SizedBox(height: 18),
             const Text(

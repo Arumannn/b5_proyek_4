@@ -6,6 +6,7 @@ import '../../models/event_invitation.dart';
 import '../../models/event_model.dart';
 import '../../models/member_model.dart';
 import '../../models/permission_record.dart';
+import '../../models/notulensi_model.dart';
 import '../attendance/scan_screen.dart';
 import 'event_permission.dart';
 import 'event_controller.dart';
@@ -30,12 +31,21 @@ class EventDetailView extends StatefulWidget {
 class _EventDetailViewState extends State<EventDetailView> {
   late EventModel _currentEvent;
   final EventController _controller = EventController.instance;
-  
+  bool _isEditingNotulensi = false;
+  final TextEditingController _notulensiController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _currentEvent = widget.event;
+    final notulensiRecord = HiveService.notulensi.get(_currentEvent.eventId);
+    _notulensiController.text = notulensiRecord?.content ?? '';
+  }
+
+  @override
+  void dispose() {
+    _notulensiController.dispose();
+    super.dispose();
   }
 
   bool get _canUpdate => widget.event.parentEventId == null 
@@ -877,6 +887,138 @@ class _EventDetailViewState extends State<EventDetailView> {
 
                   // Actions for Executive/Manager
                   if (_canUpdate || _canDelete || _canAddSubEvent) ...[
+                    const SizedBox(height: 24),
+                    // Notulensi Section Header
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          const Text(
+                            'NOTULENSI KEGIATAN',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF1F2937), // gray-800
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          if (widget.userRole.toLowerCase() == 'manager' || widget.userRole.toLowerCase() == 'executive')
+                            GestureDetector(
+                              onTap: () async {
+                                if (_isEditingNotulensi) {
+                                  // Save logic
+                                  final newNotulensi = _notulensiController.text.trim();
+                                  
+                                  if (newNotulensi.isEmpty) {
+                                    await HiveService.notulensi.delete(_currentEvent.eventId);
+                                  } else {
+                                    final record = NotulensiModel(
+                                      eventId: _currentEvent.eventId,
+                                      content: newNotulensi,
+                                      updatedAt: DateTime.now(),
+                                      updatedBy: widget.userRole, // Store the role or user info
+                                      isSynced: false,
+                                    );
+                                    await HiveService.notulensi.put(_currentEvent.eventId, record);
+                                  }
+
+                                  setState(() {
+                                    _isEditingNotulensi = false;
+                                  });
+                                } else {
+                                  setState(() {
+                                    _isEditingNotulensi = true;
+                                  });
+                                }
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEFF6FF), // bg-blue-50
+                                  borderRadius: BorderRadius.circular(6), // rounded-md
+                                  border: Border.all(color: const Color(0xFFDBEAFE)), // border-blue-100
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      _isEditingNotulensi ? Icons.save_outlined : Icons.edit_note_outlined, 
+                                      size: 12, 
+                                      color: const Color(0xFF2563EB)
+                                    ), // text-blue-600
+                                    const SizedBox(width: 4), // mr-1
+                                    Text(
+                                      _isEditingNotulensi ? 'Simpan Teks' : 'Edit (MD)',
+                                      style: const TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF2563EB),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    if (_isEditingNotulensi)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF9FAFB),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFE5E7EB)),
+                        ),
+                        child: TextFormField(
+                          controller: _notulensiController,
+                          maxLines: null,
+                          minLines: 5,
+                          style: const TextStyle(fontSize: 13, color: Color(0xFF1F2937)),
+                          decoration: const InputDecoration(
+                            hintText: 'Tulis notulensi kegiatan di sini...',
+                            hintStyle: TextStyle(color: Color(0xFF9CA3AF)),
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.zero,
+                          ),
+                        ),
+                      )
+                    else
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFF3F4F6)),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.03),
+                              blurRadius: 4,
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        child: ValueListenableBuilder(
+                          valueListenable: HiveService.notulensi.listenable(keys: [_currentEvent.eventId]),
+                          builder: (context, box, child) {
+                            final notulensi = box.get(_currentEvent.eventId)?.content.trim();
+                            final hasNotulensi = notulensi != null && notulensi.isNotEmpty;
+                            return Text(
+                              hasNotulensi ? notulensi : 'Belum ada notulensi.',
+                              style: TextStyle(
+                                fontSize: 13, 
+                                color: hasNotulensi ? const Color(0xFF1F2937) : const Color(0xFF6B7280),
+                              ),
+                              textAlign: hasNotulensi ? TextAlign.left : TextAlign.center,
+                            );
+                          },
+                        ),
+                      ),
+                    
                     const SizedBox(height: 24),
                     const Text(
                       'KONTROL EKSEKUTIF',

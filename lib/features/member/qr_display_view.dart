@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../core/utils/qr_service.dart';
-import '../../widgets/gradient_header.dart';
+import '../../widgets/white_status_header.dart';
 
 class QrDisplayView extends StatelessWidget {
   final String nim;
@@ -11,7 +11,7 @@ class QrDisplayView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const GradientHeader(title: 'QR Code Saya', subtitle: 'Gunakan saat absensi'),
+      appBar: const WhiteStatusHeader(title: 'QR Code Saya', subtitle: 'Gunakan saat absensi'),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(24.0),

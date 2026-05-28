@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../widgets/custom_snackbar.dart';
 import '../../widgets/loading_overlay.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'auth_controller.dart';
 
 /// Layar Login dengan state reaktif dari AuthController.
@@ -78,27 +79,23 @@ class _LoginViewState extends State<LoginView> {
                           children: [
                             Center(
                               child: Container(
-                                width: 84,
-                                height: 84,
+                                margin: const EdgeInsets.only(bottom: 24),
+                                padding: const EdgeInsets.all(16),
                                 decoration: BoxDecoration(
-                                  gradient: const LinearGradient(
-                                    colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
-                                  borderRadius: BorderRadius.circular(24),
-                                  boxShadow: const [
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
                                     BoxShadow(
-                                      color: Color(0x332563EB),
-                                      blurRadius: 24,
-                                      offset: Offset(0, 12),
+                                      color: Colors.black.withValues(alpha: 0.1),
+                                      blurRadius: 15,
+                                      offset: const Offset(0, 8),
                                     ),
                                   ],
                                 ),
                                 child: const Icon(
-                                  Icons.lock_outline,
-                                  size: 40,
-                                  color: Colors.white,
+                                  LucideIcons.qrCode,
+                                  size: 64,
+                                  color: Color(0xFF2563EB),
                                 ),
                               ),
                             ),
@@ -213,7 +210,11 @@ class _LoginViewState extends State<LoginView> {
                                       const SizedBox(height: 6),
                                       ElevatedButton(
                                         onPressed: isLoading ? null : _onLoginPressed,
-                                        child: const Text('Login'),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: const Color(0xFF2563EB),
+                                          foregroundColor: Colors.white,
+                                        ),
+                                        child: const Text('Login', style: TextStyle(fontWeight: FontWeight.bold)),
                                       ),
                                       const SizedBox(height: 12),
                                       Text(

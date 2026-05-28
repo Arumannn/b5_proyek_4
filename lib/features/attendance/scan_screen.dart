@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../core/utils/qr_service.dart';
-import '../../widgets/gradient_header.dart';
+import '../../widgets/white_status_header.dart';
 import 'attendance_controller.dart';
 // import 'package:b5_proyek_4/features/attendance/attendance_controller.dart';
 // import 'package:b5_proyek_4/widgets/custom_snackbar.dart';
@@ -175,12 +175,12 @@ class _ScanScreenState extends State<ScanScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: GradientHeader(
+      appBar: WhiteStatusHeader(
         title: 'Scan Absensi',
         subtitle: 'Arahkan kamera ke QR anggota',
         actions: [
           IconButton(
-            icon: const Icon(Icons.flashlight_on, color: Colors.white),
+            icon: const Icon(Icons.flashlight_on, color: Color(0xFF111827)),
             tooltip: 'Nyalakan/Matikan Senter',
             onPressed: () {
               try {

@@ -39,6 +39,9 @@ class EventInvitation {
     @HiveField(11)
     bool isSynced;
 
+    @HiveField(12)
+    final String? organizationId;
+
     EventInvitation({
         required this.invitationId,
         required this.eventId,
@@ -52,6 +55,7 @@ class EventInvitation {
         required this.invitedAt,
         this.isRequired = true,
         this.isSynced = false,
+        this.organizationId,
     });
 
     factory EventInvitation.fromJson(Map<String, dynamic> json) {
@@ -74,6 +78,7 @@ class EventInvitation {
             invitedAt: parseDate(json['invitedAt']) ?? DateTime.now(),
             isRequired: json['isRequired'] == true,
             isSynced: json['isSynced'] == true,
+            organizationId: json['organizationId']?.toString(),
         );
     }
 
@@ -90,6 +95,7 @@ class EventInvitation {
             'invitedBy': invitedBy,
             'invitedAt': invitedAt.toIso8601String(),
             'isRequired': isRequired,
+            'organizationId': organizationId,
         };
     }
 }

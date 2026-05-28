@@ -17,6 +17,7 @@ class AppConstants {
   static const String permissionBox = 'permission_box';
   static const String pendingUserUpsertBox = 'pending_user_upsert_box';
   static const String pendingUserDeleteBox = 'pending_user_delete_box';
+  static const String notulensiBox = 'notulensi_box';
 
   // ─── Hive TypeId Registry ────────────────────────
   // Setiap model Hive harus punya typeId unik. Jangan ubah nilai ini!
@@ -24,6 +25,7 @@ class AppConstants {
   static const int eventTypeId = 1;
   static const int attendanceTypeId = 2;
   static const int permissionTypeId = 3;
+  static const int notulensiTypeId = 8;
 
   // ─── MongoDB Collections ─────────────────────────
   static const String usersCollection = 'users';

@@ -36,7 +36,7 @@ class SectionedListBody extends StatelessWidget {
 
     return Column(
       children: [
-        ?header,
+        if (header != null) header!,
         if (effectiveSearch != null)
           Padding(
             padding: searchPadding,

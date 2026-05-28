@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
 import '../../../core/services/hive_service.dart';
-import '../../../models/event_invitation.dart';
-import '../../../widgets/custom_snackbar.dart';
-import '../../member/permission_form_view.dart';
+import '../invitation_detail_view.dart';
 
 class MyInvitationSection extends StatelessWidget {
   final String currentNim;
@@ -13,20 +11,6 @@ class MyInvitationSection extends StatelessWidget {
     super.key,
     required this.currentNim,
   });
-
-  Future<void> _handleInvitationResponse(BuildContext context, EventInvitation invitation, String newStatus) async {
-    try {
-      invitation.responseStatus = newStatus;
-      invitation.respondedAt = DateTime.now();
-      invitation.isSynced = false;
-      await HiveService.invitations.put(invitation.invitationId, invitation);
-      if (!context.mounted) return;
-      CustomSnackbar.showSuccess(context, 'Respon berhasil diperbarui');
-    } catch (e) {
-      if (!context.mounted) return;
-      CustomSnackbar.showError(context, 'Gagal memperbarui respon: $e');
-    }
-  }
 
 @override
   Widget build(BuildContext context) {
@@ -37,12 +21,15 @@ class MyInvitationSection extends StatelessWidget {
           if (inv.nim.trim() != currentNim.trim()) return false;
 
           final status = inv.responseStatus.trim().toLowerCase();
-          final isRelevantStatus =
-              status == 'pending' || status == 'permission_requested';
-          if (!isRelevantStatus) return false;
+          if (status != 'pending') return false;
 
           final event = HiveService.events.get(inv.eventId);
-          return event != null && !event.isDeleted;
+          if (event == null || event.isDeleted) return false;
+          
+          final eventStatus = event.statusEvent.toLowerCase();
+          if (eventStatus == 'selesai' || eventStatus.contains('arsip') || eventStatus == 'batal') return false;
+          
+          return true;
         }).toList();
 
         if (myInvitations.isEmpty) return const SizedBox.shrink();
@@ -52,112 +39,87 @@ class MyInvitationSection extends StatelessWidget {
         // Tampilkan undangan teratas
         final invitation = myInvitations.first;
         final event = HiveService.events.get(invitation.eventId)!;
-        final normalizedStatus = invitation.responseStatus.trim().toLowerCase();
         
         final eventName = event.nama;
         final targetDate = event.tanggalMulai;
         final startTime = event.jamMulai ?? targetDate;
-        final statusLabel = normalizedStatus == 'permission_requested'
-          ? 'MENUNGGU IZIN'
-          : 'UNDANGAN MENUNGGU';
-        final statusColor = normalizedStatus == 'permission_requested'
-          ? const Color(0xFFF59E0B)
-          : const Color(0xFF2563EB);
-        final statusBackground = normalizedStatus == 'permission_requested'
-          ? Colors.white.withValues(alpha: 0.18)
-          : Colors.white.withValues(alpha: 0.2);
-        final actionLabel = normalizedStatus == 'permission_requested'
-          ? 'Tinjau & Konfirmasi'
-          : 'Lihat & Konfirmasi';
-        final actionBackground = normalizedStatus == 'permission_requested'
-          ? const Color(0xFFFDE68A)
-          : Colors.white;
-        final actionForeground = normalizedStatus == 'permission_requested'
-          ? const Color(0xFF92400E)
-          : const Color(0xFFEA580C);
-
+        
         final timeStr = "${startTime.hour.toString().padLeft(2, '0')}:${startTime.minute.toString().padLeft(2, '0')} WIB";
         final dateStr = DateFormat('dd MMMM yyyy', 'id_ID').format(targetDate);
 
         return Container(
-          margin: const EdgeInsets.only(bottom: 16),
+          margin: const EdgeInsets.only(bottom: 24), // matching space-y-6 roughly
           width: double.infinity,
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [Color(0xFFF59E0B), Color(0xFFF97316)], 
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+              colors: [Color(0xFFF59E0B), Color(0xFFF97316)], // from-amber-500 to-orange-500
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
             ),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(16), // rounded-2xl roughly
             boxShadow: [
-              BoxShadow(color: Colors.orange.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4)),
+              BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4)), // shadow-lg
             ],
           ),
+          clipBehavior: Clip.antiAlias,
           child: Stack(
             children: [
               Positioned(
-                right: -20,
-                top: -20,
-                child: Icon(Icons.mail_rounded, size: 120, color: Colors.white.withValues(alpha: 0.2)),
+                right: -16, // -right-4
+                top: -16, // -top-4
+                child: Icon(Icons.mail_outline, size: 100, color: Colors.white.withValues(alpha: 0.2)),
               ),
               Padding(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(20), // p-5
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), // px-2 py-1
                       decoration: BoxDecoration(
-                        color: statusBackground,
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(color: statusColor.withValues(alpha: 0.25)),
+                        color: Colors.white.withValues(alpha: 0.2), // bg-white/20
+                        borderRadius: BorderRadius.circular(4), // rounded
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            normalizedStatus == 'permission_requested'
-                                ? Icons.mark_email_read_outlined
-                                : Icons.mail_outline,
-                            size: 10,
-                            color: Colors.white,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            statusLabel,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1,
-                            ),
-                          ),
-                        ],
+                      child: const Text(
+                        'UNDANGAN BARU', // uppercase
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5, // tracking-wide
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                     Text(eventName, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 4), // mb-4
                     Row(
                       children: [
-                        const Icon(Icons.access_time, color: Colors.white70, size: 14),
-                        const SizedBox(width: 6),
-                        Text('$dateStr • $timeStr', style: const TextStyle(color: Colors.white, fontSize: 12)),
+                        Icon(Icons.access_time, color: Colors.orange.shade100, size: 12),
+                        const SizedBox(width: 4), // mr-1
+                        Text('$dateStr • $timeStr', style: TextStyle(color: Colors.orange.shade100, fontSize: 12)),
                       ],
                     ),
                     const SizedBox(height: 16),
                     ElevatedButton(
                       onPressed: () {
-                        _showConfirmationDialog(context, invitation, eventName);
+                        Navigator.push(context, MaterialPageRoute(
+                          builder: (_) => InvitationDetailView(
+                            invitation: invitation,
+                            eventTitle: eventName,
+                          ),
+                        ));
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: actionBackground,
-                        foregroundColor: actionForeground,
-                        minimumSize: const Size(140, 36),
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        backgroundColor: Colors.white,
+                        foregroundColor: const Color(0xFFEA580C), // text-orange-600
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8), // px-4 py-2
+                        minimumSize: const Size(0, 36), // Ensures it's compact
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        elevation: 1, // shadow-sm
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)), // rounded-lg
                       ),
-                      child: Text(actionLabel, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      child: const Text('Lihat & Konfirmasi', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)), // text-sm font-bold
                     ),
                   ],
                 ),
@@ -166,55 +128,6 @@ class MyInvitationSection extends StatelessWidget {
           ),
         );
       },
-    );
-  }
-
-  void _showConfirmationDialog(BuildContext context, EventInvitation invitation, String eventTitle) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.mail_outline, size: 48, color: Colors.amber),
-              const SizedBox(height: 16),
-              const Text('Konfirmasi Kehadiran', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Text('Apakah Anda bersedia hadir pada kegiatan $eventTitle?', textAlign: TextAlign.center, style: const TextStyle(color: Colors.grey)),
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  _handleInvitationResponse(context, invitation, 'approved');
-                },
-                icon: const Icon(Icons.check),
-                label: const Text('Ya, Saya Akan Hadir'),
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
-              ),
-              const SizedBox(height: 12),
-              OutlinedButton.icon(
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => PermissionFormView(
-                    eventId: invitation.eventId, 
-                    eventTitle: eventTitle,
-                    onSuccessSubmit: () {
-                      // Status undangan akan terupdate menjadi permission_requested setelah izin dikirim
-                      _handleInvitationResponse(context, invitation, 'permission_requested');
-                    }
-                  )));
-                },
-                icon: const Icon(Icons.close),
-                label: const Text('Tidak, Ajukan Izin'),
-                style: OutlinedButton.styleFrom(foregroundColor: Colors.orange, side: const BorderSide(color: Colors.orange)),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }
