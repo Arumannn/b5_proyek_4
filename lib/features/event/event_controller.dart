@@ -4,6 +4,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_constants.dart';
+import '../../core/controllers/config_controller.dart';
 import '../../core/services/hive_service.dart';
 import '../../core/services/mongo_service.dart';
 import '../../models/event_model.dart';
@@ -285,7 +286,7 @@ class EventController {
       errorMessage.value = 'Nama event wajib diisi.';
       return false;
     }
-    if (!AppConstants.eventTypes.contains(jenis)) {
+    if (!ConfigController.instance.eventTypes.contains(jenis)) {
       errorMessage.value = 'Jenis event tidak valid.';
       return false;
     }
@@ -385,7 +386,7 @@ class EventController {
       errorMessage.value = 'Nama event wajib diisi.';
       return false;
     }
-    if (!AppConstants.eventTypes.contains(event.jenis)) {
+    if (!ConfigController.instance.eventTypes.contains(event.jenis)) {
       errorMessage.value = 'Jenis event tidak valid.';
       return false;
     }

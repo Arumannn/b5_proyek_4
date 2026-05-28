@@ -57,57 +57,6 @@ class AppConstants {
     roleMember,
   ];
 
-  static List<String> dbuOptionsForRole(String role) {
-    final normalized = role.trim().toLowerCase();
-    if (normalized == roleExecutive) return hexaOptions;
-    if (normalized == roleManager) return adkesOptions;
-    return [...departmentDbuOptions, ...biroDbuOptions, ...unitDbuOptions];
-  }
-
-  static String defaultDbuForRole(String role) => dbuOptionsForRole(role).first;
-
-  // DBU options for user management form (Executive only)
-  static const List<String> departmentDbuOptions = [
-    'Departemen Komunikasi dan Informasi',
-    'Departemen Luar Himpunan',
-    'Departemen Pengembangan Sumber Daya Himpunan',
-    'Departemen Seni dan Olahraga',
-    'Departemen Keilmuan dan Keprofesian',
-  ];
-
-  static const List<String> biroDbuOptions = [
-    'Biro Kewirausahaan dan Keuangan',
-    'Biro Administrasi dan Kesekretariatan',
-  ];
-
-  static const List<String> unitDbuOptions = ['Unit Teknologi'];
-
-  static const List<String> adkesOptions = [
-    'Ketua Departemen',
-    'Wakil Ketua Departemen',
-    'Ketua Biro',
-    'Wakil Ketua Biro',
-    'Ketua Unit',
-    'Wakil Ketua Unit',
-  ];
-
-  static const List<String> hexaOptions = [
-    'Ketua Himpunan',
-    'Wakil Ketua Himpunan',
-    'Sekretaris Jenderal',
-    'Sekretaris Umum',
-    'Bendahara Umum',
-    'Ketua Manajemen Sumber Daya Himpunan',
-  ];
-
-  static const List<String> allDbuOptions = [
-    ...departmentDbuOptions,
-    ...biroDbuOptions,
-    ...unitDbuOptions,
-    ...adkesOptions,
-    ...hexaOptions,
-  ];
-
   // ─── Default Executive Seeding ───────────────────────
   static const String defaultExecutiveNim = '38';
   static const String defaultExecutivePassword = '123';
@@ -135,26 +84,4 @@ class AppConstants {
   static const String defaultManagerName = 'Manager Biasa';
   static const String defaultManagerDivision = 'Administrasi dan Kesekretariatan';
   static const String managerSeedFlagKey = '__seed_manager_done__';
-
-  // ─── Event Types ─────────────────────────────────
-  static const List<String> eventTypes = [
-    'Rapat',
-    'Acara',
-    'Kegiatan',
-    'Lainnya',
-  ];
-
-  // ─── Penyelenggara (Organizer Tag) ──────────────
-  static const List<String> penyelenggaraOptions = [
-    'Biro Administrasi dan Kesekretariatan',
-    'Biro Kewirausahaan dan Keuangan',
-    'Departemen Komunikasi dan Informasi',
-    'Departemen Luar Himpunan',
-    'Departemen Pengembangan Sumber Daya Himpunan',
-    'Departemen Seni dan Olahraga',
-    'Departemen Keilmuan dan Keprofesian',
-    'Unit Teknologi',
-    'Badan Khusus Manajemen Sumber Daya Himpunan',
-    'Himpunan',
-  ];
 }

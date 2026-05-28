@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_constants.dart';
+import '../../core/controllers/config_controller.dart';
 import '../../models/event_model.dart';
 import '../../models/attendance_record.dart';
 import '../../widgets/custom_snackbar.dart';
@@ -495,7 +496,7 @@ class _EventViewState extends State<EventView> {
     );
 
     DateTime selectedDate = initial?.tanggalMulai ?? DateTime.now();
-    String selectedJenis = initial?.jenis ?? AppConstants.eventTypes.first;
+    String selectedJenis = initial?.jenis ?? ConfigController.instance.eventTypes.first;
     bool isSubEvent = forcedParentId != null || initial?.parentEventId != null;
     String? parentId = forcedParentId ?? initial?.parentEventId;
     Set<String> targetDivisi = Set<String>.from(
@@ -554,7 +555,7 @@ class _EventViewState extends State<EventView> {
                             labelText: 'Jenis Event',
                             prefixIcon: Icon(Icons.category_outlined),
                           ),
-                          items: AppConstants.eventTypes
+                          items: ConfigController.instance.eventTypes
                               .map(
                                 (jenis) => DropdownMenuItem<String>(
                                   value: jenis,
@@ -577,7 +578,7 @@ class _EventViewState extends State<EventView> {
                             prefixIcon: Icon(Icons.group_outlined),
                           ),
                           isExpanded: true,
-                          items: AppConstants.penyelenggaraOptions
+                          items: ConfigController.instance.penyelenggaraOptions
                               .map(
                                 (p) => DropdownMenuItem<String>(
                                   value: p,

@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_constants.dart';
+import '../../core/controllers/config_controller.dart';
 import '../../core/widgets/inline_expanding_dropdown_field.dart';
 import '../../models/member_model.dart';
 import '../../widgets/custom_snackbar.dart';
@@ -68,7 +69,7 @@ class _UserManagementViewState extends State<UserManagementView> {
   }
 
   List<String> _buildDbuItems(String role) {
-    return AppConstants.dbuOptionsForRole(role);
+    return ConfigController.instance.dbuOptionsForRole(role);
   }
 
   Future<void> _showUserForm({MemberModel? existing}) async {
@@ -526,7 +527,7 @@ class _UserFormDialogState extends State<UserFormDialog> {
       (role) => role.trim().toLowerCase() == existingRole,
       orElse: () => AppConstants.roleMember,
     );
-    final dbuOptions = AppConstants.dbuOptionsForRole(_selectedRole);
+    final dbuOptions = ConfigController.instance.dbuOptionsForRole(_selectedRole);
     _selectedDbu = widget.existing?.divisi ?? dbuOptions.first;
     if (!dbuOptions.contains(_selectedDbu)) {
       _selectedDbu = dbuOptions.first;
@@ -712,7 +713,7 @@ class _UserFormDialogState extends State<UserFormDialog> {
                           onChanged: (value) {
                             setState(() {
                               _selectedRole = value;
-                              _selectedDbu = AppConstants.defaultDbuForRole(value);
+                              _selectedDbu = ConfigController.instance.defaultDbuForRole(value);
                             });
                           },
                           validator: (value) {
@@ -734,7 +735,7 @@ class _UserFormDialogState extends State<UserFormDialog> {
                             });
                           },
                           validator: (value) {
-                            final validOptions = AppConstants.dbuOptionsForRole(_selectedRole);
+                            final validOptions = ConfigController.instance.dbuOptionsForRole(_selectedRole);
                             if (value == null || !validOptions.contains(value)) {
                               return 'DBU wajib dipilih.';
                             }

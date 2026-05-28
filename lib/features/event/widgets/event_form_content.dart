@@ -14,6 +14,7 @@ class EventFormContent extends StatelessWidget {
   final TextEditingController lokasiController;
   final TextEditingController deskripsiController;
   final TextEditingController penanggungJawabController;
+  final TextEditingController customPenyelenggaraController;
   final DateTime? selectedDate;
   final DateTime? selectedEndDate;
   final DateTime? selectedJamSelesai;
@@ -22,6 +23,7 @@ class EventFormContent extends StatelessWidget {
   final String selectedJenis;
   final List<String> selectedTargetIds;
   final String selectedPenyelenggara;
+  final List<String> penyelenggaraOptions;
   final List<EventParentOption> parentOptions;
   final bool canChangeHierarchy;
   final VoidCallback onPickDate;
@@ -48,6 +50,7 @@ class EventFormContent extends StatelessWidget {
     required this.lokasiController,
     required this.deskripsiController,
     required this.penanggungJawabController,
+    required this.customPenyelenggaraController,
     required this.selectedDate,
     required this.selectedEndDate,
     required this.selectedJamSelesai,
@@ -56,6 +59,7 @@ class EventFormContent extends StatelessWidget {
     required this.selectedJenis,
     required this.selectedTargetIds,
     required this.selectedPenyelenggara,
+    required this.penyelenggaraOptions,
     required this.parentOptions,
     required this.canChangeHierarchy,
     required this.onPickDate,
@@ -110,10 +114,25 @@ class EventFormContent extends StatelessWidget {
                 InlineExpandingDropdownField(
                   label: 'Penyelenggara',
                   value: selectedPenyelenggara,
-                  options: AppConstants.penyelenggaraOptions,
+                  options: penyelenggaraOptions,
                   placeholder: 'Pilih penyelenggara',
                   onChanged: onPenyelenggaraChanged,
                 ),
+                if (selectedPenyelenggara == 'Lainnya (Pihak Eksternal)') ...[
+                  const SizedBox(height: 16),
+                  _buildInputLabel('Nama Penyelenggara Eksternal', context),
+                  TextFormField(
+                    controller: customPenyelenggaraController,
+                    decoration: _inputDecoration(hintText: 'Contoh: BEM UI, Sponsor X'),
+                    textCapitalization: TextCapitalization.words,
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Nama penyelenggara wajib diisi';
+                      }
+                      return null;
+                    },
+                  ),
+                ],
                 const SizedBox(height: 16),
                 _buildInputLabel('Penanggung Jawab', context),
                 TextFormField(

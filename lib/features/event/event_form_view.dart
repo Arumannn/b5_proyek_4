@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_constants.dart';
+import '../../core/controllers/config_controller.dart';
 import '../../widgets/gradient_header.dart';
 import '../auth/auth_controller.dart';
 import 'event_form_models.dart';
@@ -41,6 +42,8 @@ class _EventFormViewState extends State<EventFormView> {
   late bool _requiresInvitation;
   late String _selectedPenyelenggara;
 
+  late final TextEditingController _customPenyelenggaraController;
+
   final _formKey = GlobalKey<FormState>();
 
   String get _currentRole =>
@@ -62,10 +65,22 @@ class _EventFormViewState extends State<EventFormView> {
     _selectedJamSelesai = widget.initialValue?.jamSelesai;
     _isSubEvent = widget.initialValue?.isSubEvent ?? false;
     _parentId = widget.initialValue?.parentId;
-    _selectedJenis = widget.initialValue?.jenis ?? 'Kegiatan';
+    _selectedJenis = widget.initialValue?.jenis ?? ConfigController.instance.eventTypes.first;
+    if (!ConfigController.instance.eventTypes.contains(_selectedJenis)) {
+      _selectedJenis = ConfigController.instance.eventTypes.first;
+    }
+
     _selectedTargetIds = List<String>.from(widget.initialValue?.targetPeserta ?? []);
     _requiresInvitation = widget.initialValue?.requiresInvitation ?? false;
-    _selectedPenyelenggara = widget.initialValue?.penyelenggara ?? '';
+    
+    final options = ConfigController.instance.penyelenggaraOptions;
+    _selectedPenyelenggara = widget.initialValue?.penyelenggara ?? options.first;
+    _customPenyelenggaraController = TextEditingController();
+
+    if (!options.contains(_selectedPenyelenggara)) {
+      _customPenyelenggaraController.text = _selectedPenyelenggara;
+      _selectedPenyelenggara = 'Lainnya (Pihak Eksternal)';
+    }
 
     if (_isSubEvent && (_parentId == null || _parentId!.isEmpty) && widget.parentOptions.isNotEmpty) {
       _parentId = widget.parentOptions.first.id;
@@ -87,6 +102,7 @@ class _EventFormViewState extends State<EventFormView> {
     _lokasiController.dispose();
     _deskripsiController.dispose();
     _penanggungJawabController.dispose();
+    _customPenyelenggaraController.dispose();
     super.dispose();
   }
 
@@ -256,8 +272,8 @@ class _EventFormViewState extends State<EventFormView> {
         deskripsi: _deskripsiController.text.trim().isEmpty ? null : _deskripsiController.text.trim(),
         targetPeserta: _selectedTargetIds,
         requiresInvitation: _requiresInvitation,
-        penyelenggara: _selectedPenyelenggara.trim().isEmpty
-            ? null
+        penyelenggara: _selectedPenyelenggara == 'Lainnya (Pihak Eksternal)'
+            ? _customPenyelenggaraController.text.trim()
             : _selectedPenyelenggara.trim(),
         penanggungJawab: _penanggungJawabController.text.trim().isEmpty
           ? null
@@ -309,6 +325,7 @@ class _EventFormViewState extends State<EventFormView> {
           lokasiController: _lokasiController,
           deskripsiController: _deskripsiController,
           penanggungJawabController: _penanggungJawabController,
+          customPenyelenggaraController: _customPenyelenggaraController,
           selectedDate: _selectedDate,
           selectedEndDate: _selectedEndDate,
           selectedJamSelesai: _selectedJamSelesai,
@@ -317,6 +334,10 @@ class _EventFormViewState extends State<EventFormView> {
           selectedJenis: _selectedJenis,
           selectedTargetIds: _selectedTargetIds,
           selectedPenyelenggara: _selectedPenyelenggara,
+          penyelenggaraOptions: [
+            ...ConfigController.instance.penyelenggaraOptions,
+            'Lainnya (Pihak Eksternal)'
+          ],
           parentOptions: widget.parentOptions,
           canChangeHierarchy: widget.canChangeHierarchy,
           onPickDate: _pickDate,

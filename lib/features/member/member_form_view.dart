@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_constants.dart';
+import '../../core/controllers/config_controller.dart';
 import '../../core/widgets/inline_expanding_dropdown_field.dart';
 import '../../models/member_model.dart';
 import '../../widgets/custom_snackbar.dart';
@@ -40,7 +41,7 @@ class _MemberFormViewState extends State<MemberFormView> {
       (role) => role.trim().toLowerCase() == existingRole,
       orElse: () => AppConstants.roleMember,
     );
-    final dbuOptions = AppConstants.dbuOptionsForRole(_selectedRole);
+    final dbuOptions = ConfigController.instance.dbuOptionsForRole(_selectedRole);
     _selectedDbu = widget.existing?.divisi ?? dbuOptions.first;
     if (!dbuOptions.contains(_selectedDbu)) {
       _selectedDbu = dbuOptions.first;
@@ -220,7 +221,7 @@ class _MemberFormViewState extends State<MemberFormView> {
                 onChanged: (value) {
                   setState(() {
                     _selectedRole = value;
-                    _selectedDbu = AppConstants.defaultDbuForRole(value);
+                    _selectedDbu = ConfigController.instance.defaultDbuForRole(value);
                   });
                 },
               ),
@@ -229,7 +230,7 @@ class _MemberFormViewState extends State<MemberFormView> {
               InlineExpandingDropdownField(
                 label: 'Departemen/Biro/Unit (DBU)',
                 value: _selectedDbu,
-                options: AppConstants.dbuOptionsForRole(_selectedRole),
+                options: ConfigController.instance.dbuOptionsForRole(_selectedRole),
                 placeholder: 'Pilih DBU',
                 onChanged: (value) {
                   setState(() {
@@ -237,7 +238,7 @@ class _MemberFormViewState extends State<MemberFormView> {
                   });
                 },
                 validator: (value) {
-                  final validOptions = AppConstants.dbuOptionsForRole(_selectedRole);
+                  final validOptions = ConfigController.instance.dbuOptionsForRole(_selectedRole);
                   if (value == null || !validOptions.contains(value)) {
                     return 'DBU wajib dipilih.';
                   }
