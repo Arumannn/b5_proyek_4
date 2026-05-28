@@ -4,6 +4,9 @@ import '../auth/auth_controller.dart';
 import '../../models/permission_record.dart';
 import '../../widgets/white_status_header.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
+import '../event/event_controller.dart';
 
 class PermissionFormView extends StatefulWidget {
   final String eventId;
@@ -24,6 +27,32 @@ class PermissionFormView extends StatefulWidget {
 class _PermissionFormViewState extends State<PermissionFormView> {
   String _selectedType = 'Sakit (Lampirkan Surat)';
   bool _isLoading = false;
+  String? _buktiFotoPath;
+  final ImagePicker _picker = ImagePicker();
+  String? _selectedEventId;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedEventId = widget.eventId;
+  }
+
+  Future<void> _pickImage() async {
+    try {
+      final XFile? image = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+      if (image != null) {
+        setState(() {
+          _buktiFotoPath = image.path;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal memilih gambar: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
 
   Future<void> _submitPermission() async {
     setState(() => _isLoading = true);
@@ -35,10 +64,11 @@ class _PermissionFormViewState extends State<PermissionFormView> {
 
       final newPermission = PermissionRecord(
         permissionId: permissionId,
-        eventId: widget.eventId,
+        eventId: _selectedEventId ?? widget.eventId,
         nim: currentNim,
         jenisIzin: _selectedType.startsWith('Sakit') ? 'Sakit' : 'Izin',
         alasan: _selectedType,
+        buktiFotoPath: _buktiFotoPath,
         status: 'Pending',
         isSynced: false,
       );
@@ -101,17 +131,36 @@ class _PermissionFormViewState extends State<PermissionFormView> {
               const SizedBox(height: 4),
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF9FAFB), // gray-50
-                  border: Border.all(color: const Color(0xFFE5E7EB)), // gray-200
-                  borderRadius: BorderRadius.circular(12), // rounded-xl
+                  color: const Color(0xFFF9FAFB),
+                  border: Border.all(color: const Color(0xFFE5E7EB)),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: Text(
-                  widget.eventTitle,
-                  style: const TextStyle(
-                    fontSize: 14, // text-sm
-                    color: Color(0xFF1F2937), // gray-800
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: _selectedEventId,
+                    isExpanded: true,
+                    icon: const Icon(Icons.keyboard_arrow_down, color: Colors.grey),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF1F2937),
+                    ),
+                    items: EventController.instance.events.value
+                        .map((event) => DropdownMenuItem(
+                              value: event.eventId,
+                              child: Text(
+                                event.nama,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ))
+                        .toList(),
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() => _selectedEventId = value);
+                      }
+                    },
                   ),
                 ),
               ),
@@ -181,31 +230,54 @@ class _PermissionFormViewState extends State<PermissionFormView> {
               ),
               const SizedBox(height: 4),
               GestureDetector(
-                onTap: () {
-                  // ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Upload fitur akan segera hadir')));
-                },
+                onTap: _pickImage,
                 child: Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(32), // p-8
+                  padding: _buktiFotoPath != null ? EdgeInsets.zero : const EdgeInsets.all(32),
+                  clipBehavior: Clip.hardEdge,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF9FAFB), // bg-gray-50
-                    borderRadius: BorderRadius.circular(12), // rounded-xl
-                    // Using solid border, dashed border needs custom painter or package
-                    border: Border.all(color: const Color(0xFFD1D5DB), width: 2), // border-2 border-gray-300
+                    color: const Color(0xFFF9FAFB),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFD1D5DB), width: 2),
                   ),
-                  child: const Column(
-                    children: [
-                      Icon(LucideIcons.upload, size: 32, color: Color(0xFF9CA3AF)), // gray-400
-                      SizedBox(height: 8), // mb-2
-                      Text(
-                        'Unggah File/Foto',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF9CA3AF),
+                  child: _buktiFotoPath != null
+                      ? Stack(
+                          alignment: Alignment.topRight,
+                          children: [
+                            Image.file(
+                              File(_buktiFotoPath!),
+                              width: double.infinity,
+                              height: 200,
+                              fit: BoxFit.cover,
+                            ),
+                            Container(
+                              margin: const EdgeInsets.all(8),
+                              decoration: const BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                              ),
+                              child: IconButton(
+                                icon: const Icon(Icons.close, color: Colors.red, size: 20),
+                                padding: const EdgeInsets.all(4),
+                                constraints: const BoxConstraints(),
+                                onPressed: () => setState(() => _buktiFotoPath = null),
+                              ),
+                            ),
+                          ],
+                        )
+                      : const Column(
+                          children: [
+                            Icon(LucideIcons.upload, size: 32, color: Color(0xFF9CA3AF)),
+                            SizedBox(height: 8),
+                            Text(
+                              'Unggah File/Foto',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Color(0xFF9CA3AF),
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                    ],
-                  ),
                 ),
               ),
 

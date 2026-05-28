@@ -79,7 +79,7 @@ class _EventFormViewState extends State<EventFormView> {
 
     if (!options.contains(_selectedPenyelenggara)) {
       _customPenyelenggaraController.text = _selectedPenyelenggara;
-      _selectedPenyelenggara = 'Lainnya (Pihak Eksternal)';
+      _selectedPenyelenggara = 'Lainnya';
     }
 
     if (_isSubEvent && (_parentId == null || _parentId!.isEmpty) && widget.parentOptions.isNotEmpty) {
@@ -272,7 +272,7 @@ class _EventFormViewState extends State<EventFormView> {
         deskripsi: _deskripsiController.text.trim().isEmpty ? null : _deskripsiController.text.trim(),
         targetPeserta: _selectedTargetIds,
         requiresInvitation: _requiresInvitation,
-        penyelenggara: _selectedPenyelenggara == 'Lainnya (Pihak Eksternal)'
+        penyelenggara: _selectedPenyelenggara == 'Lainnya'
             ? _customPenyelenggaraController.text.trim()
             : _selectedPenyelenggara.trim(),
         penanggungJawab: _penanggungJawabController.text.trim().isEmpty
@@ -336,7 +336,7 @@ class _EventFormViewState extends State<EventFormView> {
           selectedPenyelenggara: _selectedPenyelenggara,
           penyelenggaraOptions: [
             ...ConfigController.instance.penyelenggaraOptions,
-            'Lainnya (Pihak Eksternal)'
+            'Lainnya'
           ],
           parentOptions: widget.parentOptions,
           canChangeHierarchy: widget.canChangeHierarchy,

@@ -504,7 +504,7 @@ class _EventViewState extends State<EventView> {
     );
     String? selectedPenyelenggara = initial?.penyelenggara;
 
-    final allDbu = AppConstants.allDbuOptions;
+    final allDbu = ConfigController.instance.allDbuOptions;
 
     final result = await showDialog<_EventFormData>(
       context: context,
@@ -613,7 +613,7 @@ class _EventViewState extends State<EventView> {
                         TextFormField(
                           controller: lokasiController,
                           decoration: const InputDecoration(
-                            labelText: 'Lokasi (Opsional)',
+                            labelText: 'Lokasi',
                             prefixIcon: Icon(Icons.place_outlined),
                           ),
                         ),

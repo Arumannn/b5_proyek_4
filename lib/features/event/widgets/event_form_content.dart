@@ -118,12 +118,11 @@ class EventFormContent extends StatelessWidget {
                   placeholder: 'Pilih penyelenggara',
                   onChanged: onPenyelenggaraChanged,
                 ),
-                if (selectedPenyelenggara == 'Lainnya (Pihak Eksternal)') ...[
+                if (selectedPenyelenggara == 'Lainnya') ...[
                   const SizedBox(height: 16),
-                  _buildInputLabel('Nama Penyelenggara Eksternal', context),
+                  _buildInputLabel('Nama Penyelenggara', context),
                   TextFormField(
                     controller: customPenyelenggaraController,
-                    decoration: _inputDecoration(hintText: 'Contoh: BEM UI, Sponsor X'),
                     textCapitalization: TextCapitalization.words,
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {

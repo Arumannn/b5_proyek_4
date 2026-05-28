@@ -68,4 +68,12 @@ class ConfigController extends ChangeNotifier {
   }
 
   String defaultDbuForRole(String role) => dbuOptionsForRole(role).first;
+
+  List<String> get allDbuOptions {
+    final set = <String>{};
+    for (final role in AppConstants.allowedRoles) {
+      set.addAll(dbuOptionsForRole(role));
+    }
+    return set.toList();
+  }
 }

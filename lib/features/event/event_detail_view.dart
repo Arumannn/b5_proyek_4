@@ -121,10 +121,20 @@ class _EventDetailViewState extends State<EventDetailView> {
     }
   }
 
-  String _formatDateTimeRange(EventModel event) {
-    final start = event.jamMulai ?? event.tanggalMulai;
-    final end = event.jamSelesai ?? event.tanggalSelesai;
-    return '${_formatDate(start)} • ${_formatTime(start, end)} WIB';
+  String _formatDateRange(EventModel event) {
+    final startDateStr = _formatDate(event.tanggalMulai);
+    final endDateStr = event.tanggalSelesai != null ? _formatDate(event.tanggalSelesai!) : startDateStr;
+    
+    if (startDateStr == endDateStr) {
+      return startDateStr;
+    }
+    return '$startDateStr - $endDateStr';
+  }
+
+  String _formatTimeRange(EventModel event) {
+    final startTime = event.jamMulai ?? event.tanggalMulai;
+    final endTime = event.jamSelesai ?? event.tanggalSelesai;
+    return '${_formatTime(startTime, endTime)} WIB';
   }
 
   List<EventModel> _subEventsOf(String eventId) {
@@ -594,13 +604,13 @@ class _EventDetailViewState extends State<EventDetailView> {
                         _buildInfoRow(
                           icon: Icons.calendar_today_outlined,
                           label: 'Tanggal',
-                          value: _formatDate(currentEvent.tanggalMulai),
+                          value: _formatDateRange(currentEvent),
                         ),
                         const SizedBox(height: 12), // space-y-3
                         _buildInfoRow(
                           icon: Icons.access_time_outlined,
                           label: 'Waktu',
-                          value: _formatDateTimeRange(currentEvent),
+                          value: _formatTimeRange(currentEvent),
                         ),
                         const SizedBox(height: 12),
                         _buildInfoRow(
@@ -636,7 +646,7 @@ class _EventDetailViewState extends State<EventDetailView> {
 
                   const SizedBox(height: 16),
 
-                  if (_canManageInvitationResponses || HiveService.invitations.values.any((inv) => inv.eventId == currentEvent.eventId)) ...[
+                  if (currentEvent.requiresInvitation && (_canManageInvitationResponses || HiveService.invitations.values.any((inv) => inv.eventId == currentEvent.eventId))) ...[
                     ValueListenableBuilder<Box<EventInvitation>>(
                       valueListenable: HiveService.invitations.listenable(),
                       builder: (context, box, _) {
