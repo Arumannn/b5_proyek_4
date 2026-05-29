@@ -41,7 +41,7 @@ class CustomBottomNavBar extends StatelessWidget {
           BottomNavigationBarItem(
             icon: Icon(Icons.calendar_today_outlined),
             activeIcon: Icon(Icons.calendar_today), // Icon terisi saat aktif
-            label: 'Kegiatan',
+            label: 'Event',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.people_outline),

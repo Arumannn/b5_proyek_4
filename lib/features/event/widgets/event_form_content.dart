@@ -90,7 +90,7 @@ class EventFormContent extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               children: [
-                _buildInputLabel('Nama Kegiatan', context),
+                _buildInputLabel('Nama Event', context),
                 TextFormField(
                   controller: nameController,
                   decoration: _inputDecoration(hintText: 'Contoh: Musyawarah Besar'),
@@ -104,10 +104,10 @@ class EventFormContent extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 InlineExpandingDropdownField(
-                  label: 'Jenis Kegiatan',
+                  label: 'Jenis Event',
                   value: selectedJenis,
                   options: const ['Rapat', 'Acara', 'Kegiatan', 'Lainnya'],
-                  placeholder: 'Pilih jenis kegiatan',
+                  placeholder: 'Pilih jenis event',
                   onChanged: onJenisChanged,
                 ),
                 const SizedBox(height: 16),

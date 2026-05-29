@@ -17,10 +17,10 @@ class LaporanView extends StatefulWidget {
 
 class _LaporanViewState extends State<LaporanView> {
   String timeFilter = 'Bulan Ini';
-  String typeFilter = 'Semua Kegiatan';
+  String typeFilter = 'Semua Event';
 
   final List<String> timeFilters = ['Minggu Ini', 'Bulan Ini', 'Semester Ini', 'Tahun Ini'];
-  final List<String> typeFilters = ['Semua Kegiatan', 'Event Utama', 'Sub-Event'];
+  final List<String> typeFilters = ['Semua Event', 'Event Utama', 'Sub-Event'];
 
   bool _isLoading = true;
   List<EventModel> _allEvents = [];
@@ -67,7 +67,7 @@ class _LaporanViewState extends State<LaporanView> {
 
       // Filter Jenis
       bool matchType = false;
-      if (typeFilter == 'Semua Kegiatan') {
+      if (typeFilter == 'Semua Event') {
         matchType = true;
       } else if (typeFilter == 'Event Utama') {
         matchType = e.parentEventId == null;
@@ -190,7 +190,7 @@ class _LaporanViewState extends State<LaporanView> {
                       padding: EdgeInsets.symmetric(vertical: 32.0),
                       child: Center(
                         child: Text(
-                          'Belum ada kegiatan yang sesuai dengan filter.',
+                          'Belum ada event yang sesuai dengan filter.',
                           style: TextStyle(color: Colors.grey),
                         ),
                       ),
@@ -367,7 +367,7 @@ class _LaporanViewState extends State<LaporanView> {
           ),
           const SizedBox(height: 16),
           const Text(
-            'JENIS KEGIATAN',
+            'JENIS EVENT',
             style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF1F2937), letterSpacing: 0.5),
           ),
           const SizedBox(height: 8),
@@ -414,7 +414,7 @@ class _LaporanViewState extends State<LaporanView> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           const Text(
-            'DETAIL PER KEGIATAN',
+            'DETAIL PER EVENT',
             style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF1F2937), letterSpacing: 0.5),
           ),
           Container(

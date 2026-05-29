@@ -11,7 +11,26 @@ class QrDisplayView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const WhiteStatusHeader(title: 'QR Code Saya', subtitle: 'Gunakan saat absensi'),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.black87),
+        centerTitle: false,
+        title: const Row(
+          children: [
+            Icon(Icons.qr_code, color: Color(0xFF2563EB), size: 24),
+            SizedBox(width: 12),
+            Text(
+              'QR Code Saya',
+              style: TextStyle(
+                color: Color(0xFF1F2937),
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(24.0),

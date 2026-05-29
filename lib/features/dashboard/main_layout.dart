@@ -31,7 +31,7 @@ class _MainLayoutState extends State<MainLayout> {
       // 0: Home / Dashboard
       const DashboardView(),
       
-      // 1: Kegiatan
+      // 1: Event
       const EventListView(showBottomNav: false),
       
       // 2: Anggota

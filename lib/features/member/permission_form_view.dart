@@ -108,9 +108,25 @@ class _PermissionFormViewState extends State<PermissionFormView> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: const WhiteStatusHeader(
-        title: 'Pengajuan Izin',
-        subtitle: 'Isi formulir di bawah ini',
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.black87),
+        centerTitle: false,
+        title: const Row(
+          children: [
+            Icon(Icons.edit_document, color: Color(0xFF2563EB), size: 24),
+            SizedBox(width: 12),
+            Text(
+              'Pengajuan Izin',
+              style: TextStyle(
+                color: Color(0xFF1F2937),
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -120,7 +136,7 @@ class _PermissionFormViewState extends State<PermissionFormView> {
             children: [
               // Event Tujuan
               const Text(
-                'PILIH EVENT/KEGIATAN',
+                'PILIH EVENT',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
@@ -315,4 +331,4 @@ class _PermissionFormViewState extends State<PermissionFormView> {
       ),
     );
   }
-}
+}

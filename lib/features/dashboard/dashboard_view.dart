@@ -171,7 +171,7 @@ class _DashboardViewState extends State<DashboardView> {
 
                   const SizedBox(height: 24),
 
-                  // Kegiatan Hari Ini (ongoing events)
+                  // Event Hari Ini (ongoing events)
                   ValueListenableBuilder<List<EventModel>>(
                     valueListenable: _eventController.events,
                     builder: (context, events, _) {
@@ -186,7 +186,7 @@ class _DashboardViewState extends State<DashboardView> {
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
                               Text(
-                                'Kegiatan Hari Ini',
+                                'Event Hari Ini',
                                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey.shade800),
                               ),
                               GestureDetector(
@@ -204,7 +204,7 @@ class _DashboardViewState extends State<DashboardView> {
                               width: double.infinity,
                               padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey.shade100)),
-                              child: const Center(child: Text('Belum ada kegiatan hari ini', style: TextStyle(color: Colors.grey))),
+                              child: const Center(child: Text('Belum ada event hari ini', style: TextStyle(color: Colors.grey))),
                             ),
                           ] else ...[
                             Column(

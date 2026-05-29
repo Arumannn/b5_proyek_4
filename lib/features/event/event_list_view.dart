@@ -122,8 +122,8 @@ class _EventListViewState extends State<EventListView> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: WhiteStatusHeader(
-        title: 'Katalog Event',
-        subtitle: 'Daftar semua kegiatan HIMAKOM',
+        title: 'Daftar Event',
+        subtitle: 'Daftar semua event',
         statusBadge: ValueListenableBuilder<bool>(
           valueListenable: NetworkStatusController.instance.isOnline,
           builder: (context, isOnline, _) {

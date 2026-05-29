@@ -26,7 +26,7 @@ class MemberTodayEventsSection extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            const Text('Kegiatan Hari Ini', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1F2937))),
+            const Text('Event Hari Ini', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1F2937))),
             GestureDetector(
               onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EventView())),
               child: const Text('Lihat Semua', style: TextStyle(color: Color(0xFF2563EB), fontSize: 13, fontWeight: FontWeight.w600)),
@@ -40,7 +40,7 @@ class MemberTodayEventsSection extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(color: const Color(0xFFF9FAFB), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade200)),
-            child: const Text('Belum ada kegiatan yang berlangsung hari ini.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey, fontSize: 13)),
+            child: const Text('Belum ada event yang berlangsung hari ini.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey, fontSize: 13)),
           )
         else
           Column(

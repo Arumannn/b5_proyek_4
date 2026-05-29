@@ -175,9 +175,25 @@ class _ScanScreenState extends State<ScanScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: WhiteStatusHeader(
-        title: 'Scan Absensi',
-        subtitle: 'Arahkan kamera ke QR anggota',
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.black87),
+        centerTitle: false,
+        title: const Row(
+          children: [
+            Icon(Icons.qr_code_scanner, color: Color(0xFF2563EB), size: 24),
+            SizedBox(width: 12),
+            Text(
+              'Scan Absensi',
+              style: TextStyle(
+                color: Color(0xFF1F2937),
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.flashlight_on, color: Color(0xFF111827)),

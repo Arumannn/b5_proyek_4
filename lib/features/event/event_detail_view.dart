@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import '../../core/services/hive_service.dart';
 import '../../models/attendance_record.dart';
 import '../../models/event_invitation.dart';
@@ -175,11 +176,13 @@ class _EventDetailViewState extends State<EventDetailView> {
     }
 
     final participantNims = <String>{};
-    if (event.requiresInvitation) {
-      participantNims.addAll(invitationByNim.keys.where((nim) => nim.trim().isNotEmpty));
-    } else {
-      participantNims.addAll(event.targetPeserta.where((nim) => nim.trim().isNotEmpty));
-    }
+    // Selalu masukkan targetPeserta sebagai baseline
+    participantNims.addAll(event.targetPeserta.where((nim) => nim.trim().isNotEmpty));
+    
+    // Tambahkan dari invitation, attendance, dan permission agar tidak ada data yang hilang
+    participantNims.addAll(invitationByNim.keys.where((nim) => nim.trim().isNotEmpty));
+    participantNims.addAll(attendanceByNim.keys.where((nim) => nim.trim().isNotEmpty));
+    participantNims.addAll(permissionByNim.keys.where((nim) => nim.trim().isNotEmpty));
 
     final items = participantNims.map((nim) {
       final member = memberByNim[nim];
@@ -193,18 +196,6 @@ class _EventDetailViewState extends State<EventDetailView> {
       if (attendance != null) {
         status = attendance.status;
         time = attendance.timestamp;
-      } else if (event.requiresInvitation && invitation != null) {
-        final response = invitation.responseStatus.toLowerCase();
-        if (response == 'approved' || response == 'auto-approved') {
-          status = 'Disetujui';
-        } else if (response == 'rejected') {
-          status = 'Ditolak';
-        } else if (response == 'permission_requested') {
-          status = 'Izin Diajukan';
-        } else {
-          status = 'Menunggu';
-        }
-        time = invitation.respondedAt ?? invitation.invitedAt;
       } else if (permission != null) {
         final izinStatus = permission.status.toLowerCase();
         if (izinStatus == 'approved') {
@@ -215,6 +206,18 @@ class _EventDetailViewState extends State<EventDetailView> {
           status = 'Izin Pending';
         }
         time = permission.updatedAt;
+      } else if (event.requiresInvitation && invitation != null) {
+        final response = invitation.responseStatus.toLowerCase();
+        if (response == 'approved' || response == 'auto-approved') {
+          status = 'Akan Hadir';
+        } else if (response == 'rejected') {
+          status = 'Menolak Hadir';
+        } else if (response == 'permission_requested') {
+          status = 'Izin Diajukan';
+        } else {
+          status = 'Menunggu Konfirmasi';
+        }
+        time = invitation.respondedAt ?? invitation.invitedAt;
       } else {
         status = 'Belum Absen';
         time = null;
@@ -334,29 +337,24 @@ class _EventDetailViewState extends State<EventDetailView> {
       }
       CustomSnackbar.showSuccess(
         context,
-        isEdit ? 'Kegiatan berhasil diperbarui.' : 'Sub-event berhasil ditambahkan.',
+        isEdit ? 'Event berhasil diperbarui.' : 'Sub-event berhasil ditambahkan.',
       );
     } else {
       CustomSnackbar.showError(
         context,
-        _controller.errorMessage.value ?? 'Gagal menyimpan kegiatan.',
+        _controller.errorMessage.value ?? 'Gagal menyimpan event.',
       );
     }
   }
 
-  int _countStatus(List<AttendanceRecord> records, List<String> tokens) {
-    return records.where((r) {
-      final value = r.status.toLowerCase();
-      return tokens.any((t) => value.contains(t));
-    }).length;
-  }
+
 
   Future<void> _deleteEvent() async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Hapus Kegiatan'),
+          title: const Text('Hapus Event'),
           content: Text('Yakin ingin menghapus "${_currentEvent.nama}"?'),
           actions: [
             TextButton(
@@ -379,10 +377,10 @@ class _EventDetailViewState extends State<EventDetailView> {
     if (!mounted) return;
 
     if (ok) {
-      CustomSnackbar.showSuccess(context, 'Kegiatan berhasil dihapus.');
+      CustomSnackbar.showSuccess(context, 'Event berhasil dihapus.');
       Navigator.of(context).pop();
     } else {
-      CustomSnackbar.showError(context, _controller.errorMessage.value ?? 'Gagal menghapus kegiatan.');
+      CustomSnackbar.showError(context, _controller.errorMessage.value ?? 'Gagal menghapus event.');
     }
   }
 
@@ -391,51 +389,123 @@ class _EventDetailViewState extends State<EventDetailView> {
     final currentEvent = _resolvedEvent();
     final subEvents = _subEventsOf(currentEvent.eventId);
     final parentEvent = _parentEventOf(currentEvent);
-    final records = _attendanceRecords();
     final memberByNim = _memberByNim();
     final attendanceList = _attendanceParticipants(currentEvent, memberByNim);
     
-    final hadirCount = _countStatus(records, ['hadir', 'terlambat']);
-    final izinCount = _countStatus(records, ['izin', 'sakit']);
-    final alphaCount = _countStatus(records, ['alpha']);
-    
-    final targetCount = currentEvent.targetPeserta.isEmpty ? memberByNim.length : currentEvent.targetPeserta.length;
-    final recordedCount = hadirCount + izinCount + alphaCount;
-    final belumAbsenCount = (targetCount - recordedCount).clamp(0, targetCount);
+    int hadirCount = 0;
+    int izinCount = 0;
+    int alphaCount = 0;
+    int belumAbsenCount = 0;
+
+    for (final item in attendanceList) {
+      final s = item.status.toLowerCase();
+      if (s == 'hadir' || s == 'terlambat') {
+        hadirCount++;
+      } else if (s == 'alpha') {
+        alphaCount++;
+      } else if (s.contains('izin') || s.contains('sakit')) {
+        izinCount++;
+      } else if (s == 'belum absen' || s == 'akan hadir') {
+        belumAbsenCount++;
+      }
+      // "menolak hadir" dan "menunggu konfirmasi" diabaikan dari statistik utama
+    }
 
     final isSubEvent = currentEvent.parentEventId != null;
     final eventType = isSubEvent ? 'Sub-Event' : 'Event Utama';
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB), // bg-gray-50
+      backgroundColor: const Color(0xFFF9FAFB),
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black87),
         centerTitle: true,
         title: const Text(
-          'Detail Kegiatan',
+          'Detail Event',
           style: TextStyle(
             color: Colors.black87,
             fontSize: 16,
             fontWeight: FontWeight.bold,
           ),
         ),
+        actions: [
+          if (_canUpdate || _canAddSubEvent || _canDelete)
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert, color: Colors.black87),
+              color: Colors.white,
+              onSelected: (value) {
+                if (value == 'edit') {
+                  _openEventForm(
+                    title: 'Edit Event',
+                    initialValue: _toFormValue(currentEvent),
+                    isEdit: true,
+                  );
+                } else if (value == 'add_sub') {
+                  _openEventForm(
+                    title: 'Buat Sub-Event',
+                    initialValue: _toFormValue(
+                      currentEvent,
+                      forceSubEvent: true,
+                      forcedParentId: currentEvent.eventId,
+                    ),
+                    isEdit: false,
+                  );
+                } else if (value == 'delete') {
+                  _deleteEvent();
+                }
+              },
+              itemBuilder: (context) => [
+                if (_canAddSubEvent)
+                  const PopupMenuItem(
+                    value: 'add_sub',
+                    child: Row(
+                      children: [
+                        Icon(Icons.add_circle_outline, size: 20, color: Color(0xFF1F2937)),
+                        SizedBox(width: 12),
+                        Text('Tambah Sub-Event', style: TextStyle(color: Color(0xFF1F2937))),
+                      ],
+                    ),
+                  ),
+                if (_canUpdate)
+                  const PopupMenuItem(
+                    value: 'edit',
+                    child: Row(
+                      children: [
+                        Icon(Icons.edit_outlined, size: 20, color: Color(0xFF1F2937)),
+                        SizedBox(width: 12),
+                        Text('Edit', style: TextStyle(color: Color(0xFF1F2937))),
+                      ],
+                    ),
+                  ),
+                if (_canDelete)
+                  const PopupMenuItem(
+                    value: 'delete',
+                    child: Row(
+                      children: [
+                        Icon(Icons.delete_outline, size: 20, color: Color(0xFFDC2626)),
+                        SizedBox(width: 12),
+                        Text('Hapus', style: TextStyle(color: Color(0xFFDC2626))),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+        ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.only(bottom: 80), // pb-20
+        padding: const EdgeInsets.only(bottom: 80),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Top Block: Detail Informasi Event
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(24), // p-6
-              margin: const EdgeInsets.only(bottom: 16), // mb-4
+              padding: const EdgeInsets.all(24),
+              margin: const EdgeInsets.only(bottom: 16),
               decoration: BoxDecoration(
                 color: Colors.white,
                 border: Border(
-                  bottom: BorderSide(color: Colors.grey.shade100), // border-b border-gray-100
+                  bottom: BorderSide(color: Colors.grey.shade100),
                 ),
                 boxShadow: [
                   BoxShadow(
@@ -443,28 +513,27 @@ class _EventDetailViewState extends State<EventDetailView> {
                     blurRadius: 4,
                     offset: const Offset(0, 1),
                   )
-                ], // shadow-sm
+                ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Type badge & Status
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), // px-3 py-1.5
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFEFF6FF), // bg-blue-50
-                          borderRadius: BorderRadius.circular(6), // rounded-md
+                          color: const Color(0xFFEFF6FF),
+                          borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
                           eventType.toUpperCase(),
                           style: const TextStyle(
-                            fontSize: 10, // text-[10px]
+                            fontSize: 10,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF2563EB), // text-blue-600
-                            letterSpacing: 0.5, // tracking-wider
+                            color: Color(0xFF2563EB),
+                            letterSpacing: 0.5,
                           ),
                         ),
                       ),
@@ -519,85 +588,102 @@ class _EventDetailViewState extends State<EventDetailView> {
                     ),
                   ],
                   
-                  const SizedBox(height: 16), // mt-4
+                  const SizedBox(height: 16),
                   
-                  // Title
                   Text(
                     currentEvent.nama,
                     style: const TextStyle(
-                      fontSize: 24, // text-2xl
+                      fontSize: 24,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF1F2937), // text-gray-800
-                      height: 1.2, // leading-tight
+                      color: Color(0xFF1F2937),
+                      height: 1.2,
                     ),
                   ),
 
-                  // Description (if available)
                   if (currentEvent.deskripsi != null && currentEvent.deskripsi!.isNotEmpty) ...[
                     const SizedBox(height: 12),
                     Text(
                       currentEvent.deskripsi!,
                       style: const TextStyle(
                         fontSize: 14,
-                        color: Color(0xFF4B5563), // text-gray-600
+                        color: Color(0xFF4B5563),
                         height: 1.5,
                       ),
                     ),
                   ],
                   
-                  const SizedBox(height: 20), // mb-4
+                  const SizedBox(height: 20),
                   
-                  // Ringkasan Kehadiran Event (Stats Grid 4 columns)
                   Row(
                     children: [
                       _buildStatBox(
                         label: 'Hadir',
                         count: hadirCount,
-                        bgColor: const Color(0xFFF0FDF4), // bg-green-50
-                        borderColor: const Color(0xFFDCFCE7), // border-green-100
-                        labelColor: const Color(0xFF16A34A), // text-green-600
-                        countColor: const Color(0xFF15803D), // text-green-700
+                        bgColor: const Color(0xFFF0FDF4),
+                        borderColor: const Color(0xFFDCFCE7),
+                        labelColor: const Color(0xFF16A34A),
+                        countColor: const Color(0xFF15803D),
                       ),
-                      const SizedBox(width: 8), // gap-2
+                      const SizedBox(width: 8),
                       _buildStatBox(
                         label: 'Izin',
                         count: izinCount,
-                        bgColor: const Color(0xFFFFF7ED), // bg-orange-50
-                        borderColor: const Color(0xFFFFEDD5), // border-orange-100
-                        labelColor: const Color(0xFFEA580C), // text-orange-600
-                        countColor: const Color(0xFFC2410C), // text-orange-700
+                        bgColor: const Color(0xFFFFF7ED),
+                        borderColor: const Color(0xFFFFEDD5),
+                        labelColor: const Color(0xFFEA580C),
+                        countColor: const Color(0xFFC2410C),
                       ),
                       const SizedBox(width: 8),
                       _buildStatBox(
                         label: 'Alpha',
                         count: alphaCount,
-                        bgColor: const Color(0xFFFEF2F2), // bg-red-50
-                        borderColor: const Color(0xFFFEE2E2), // border-red-100
-                        labelColor: const Color(0xFFDC2626), // text-red-600
-                        countColor: const Color(0xFFB91C1C), // text-red-700
+                        bgColor: const Color(0xFFFEF2F2),
+                        borderColor: const Color(0xFFFEE2E2),
+                        labelColor: const Color(0xFFDC2626),
+                        countColor: const Color(0xFFB91C1C),
                       ),
                       const SizedBox(width: 8),
                       _buildStatBox(
                         label: 'Belum',
                         count: belumAbsenCount,
-                        bgColor: const Color(0xFFF3F4F6), // bg-gray-100
-                        borderColor: const Color(0xFFE5E7EB), // border-gray-200
-                        labelColor: const Color(0xFF6B7280), // text-gray-500
-                        countColor: const Color(0xFF374151), // text-gray-700
+                        bgColor: const Color(0xFFF3F4F6),
+                        borderColor: const Color(0xFFE5E7EB),
+                        labelColor: const Color(0xFF6B7280),
+                        countColor: const Color(0xFF374151),
                       ),
                     ],
                   ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      if (_canUpdate)
+                        _buildActionButton(
+                          icon: Icons.qr_code_scanner,
+                          label: 'Scan QR',
+                          bgColor: const Color(0xFF2563EB),
+                          textColor: Colors.white,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute<void>(
+                                builder: (_) => ScanScreen(eventId: _currentEvent.eventId),
+                              ),
+                            );
+                          },
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
                   
-                  const SizedBox(height: 24), // mb-6
-                  
-                  // Info Block
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(16), // p-4
+                    padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF9FAFB), // bg-gray-50
-                      borderRadius: BorderRadius.circular(12), // rounded-xl
-                      border: Border.all(color: const Color(0xFFF3F4F6)), // border-gray-100
+                      color: const Color(0xFFF9FAFB),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFF3F4F6)),
                     ),
                     child: Column(
                       children: [
@@ -606,7 +692,7 @@ class _EventDetailViewState extends State<EventDetailView> {
                           label: 'Tanggal',
                           value: _formatDateRange(currentEvent),
                         ),
-                        const SizedBox(height: 12), // space-y-3
+                        const SizedBox(height: 12),
                         _buildInfoRow(
                           icon: Icons.access_time_outlined,
                           label: 'Waktu',
@@ -895,10 +981,8 @@ class _EventDetailViewState extends State<EventDetailView> {
                     ),
                   ),
 
-                  // Actions for Executive/Manager
                   if (_canUpdate || _canDelete || _canAddSubEvent) ...[
                     const SizedBox(height: 24),
-                    // Notulensi Section Header
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 4),
                       child: Row(
@@ -906,11 +990,11 @@ class _EventDetailViewState extends State<EventDetailView> {
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           const Text(
-                            'NOTULENSI KEGIATAN',
+                            'NOTULENSI EVENT',
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFF1F2937), // gray-800
+                              color: Color(0xFF1F2937),
                               letterSpacing: 0.5,
                             ),
                           ),
@@ -918,20 +1002,19 @@ class _EventDetailViewState extends State<EventDetailView> {
                             GestureDetector(
                               onTap: () async {
                                 if (_isEditingNotulensi) {
-                                  // Save logic
                                   final newNotulensi = _notulensiController.text.trim();
                                   
                                   if (newNotulensi.isEmpty) {
-                                    await HiveService.notulensi.delete(_currentEvent.eventId);
+                                    await HiveService.notulensi.delete(currentEvent.eventId);
                                   } else {
                                     final record = NotulensiModel(
-                                      eventId: _currentEvent.eventId,
+                                      eventId: currentEvent.eventId,
                                       content: newNotulensi,
                                       updatedAt: DateTime.now(),
-                                      updatedBy: widget.userRole, // Store the role or user info
+                                      updatedBy: widget.userRole,
                                       isSynced: false,
                                     );
-                                    await HiveService.notulensi.put(_currentEvent.eventId, record);
+                                    await HiveService.notulensi.put(currentEvent.eventId, record);
                                   }
 
                                   setState(() {
@@ -940,15 +1023,16 @@ class _EventDetailViewState extends State<EventDetailView> {
                                 } else {
                                   setState(() {
                                     _isEditingNotulensi = true;
+                                    _notulensiController.text = HiveService.notulensi.get(currentEvent.eventId)?.content ?? '';
                                   });
                                 }
                               },
                               child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFEFF6FF), // bg-blue-50
-                                  borderRadius: BorderRadius.circular(6), // rounded-md
-                                  border: Border.all(color: const Color(0xFFDBEAFE)), // border-blue-100
+                                  color: const Color(0xFFEFF6FF),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: const Color(0xFFDBEAFE)),
                                 ),
                                 child: Row(
                                   children: [
@@ -956,8 +1040,8 @@ class _EventDetailViewState extends State<EventDetailView> {
                                       _isEditingNotulensi ? Icons.save_outlined : Icons.edit_note_outlined, 
                                       size: 12, 
                                       color: const Color(0xFF2563EB)
-                                    ), // text-blue-600
-                                    const SizedBox(width: 4), // mr-1
+                                    ),
+                                    const SizedBox(width: 4),
                                     Text(
                                       _isEditingNotulensi ? 'Simpan Teks' : 'Edit (MD)',
                                       style: const TextStyle(
@@ -989,7 +1073,7 @@ class _EventDetailViewState extends State<EventDetailView> {
                           minLines: 5,
                           style: const TextStyle(fontSize: 13, color: Color(0xFF1F2937)),
                           decoration: const InputDecoration(
-                            hintText: 'Tulis notulensi kegiatan di sini...',
+                            hintText: 'Tulis notulensi event di sini (Markdown)...',
                             hintStyle: TextStyle(color: Color(0xFF9CA3AF)),
                             border: InputBorder.none,
                             contentPadding: EdgeInsets.zero,
@@ -1013,90 +1097,36 @@ class _EventDetailViewState extends State<EventDetailView> {
                           ],
                         ),
                         child: ValueListenableBuilder(
-                          valueListenable: HiveService.notulensi.listenable(keys: [_currentEvent.eventId]),
+                          valueListenable: HiveService.notulensi.listenable(keys: [currentEvent.eventId]),
                           builder: (context, box, child) {
-                            final notulensi = box.get(_currentEvent.eventId)?.content.trim();
+                            final notulensi = box.get(currentEvent.eventId)?.content.trim();
                             final hasNotulensi = notulensi != null && notulensi.isNotEmpty;
-                            return Text(
-                              hasNotulensi ? notulensi : 'Belum ada notulensi.',
-                              style: TextStyle(
-                                fontSize: 13, 
-                                color: hasNotulensi ? const Color(0xFF1F2937) : const Color(0xFF6B7280),
+                            
+                            if (!hasNotulensi) {
+                              return const Center(
+                                child: Text(
+                                  'Belum ada notulensi.',
+                                  style: TextStyle(
+                                    fontSize: 13, 
+                                    color: Color(0xFF6B7280),
+                                  ),
+                                ),
+                              );
+                            }
+
+                            return MarkdownBody(
+                              data: notulensi,
+                              styleSheet: MarkdownStyleSheet(
+                                p: const TextStyle(fontSize: 13, color: Color(0xFF1F2937)),
+                                h1: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF111827)),
+                                h2: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF111827)),
+                                h3: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF111827)),
+                                listBullet: const TextStyle(fontSize: 13, color: Color(0xFF1F2937)),
                               ),
-                              textAlign: hasNotulensi ? TextAlign.left : TextAlign.center,
                             );
                           },
                         ),
                       ),
-                    
-                    const SizedBox(height: 24),
-                    const Text(
-                      'KONTROL EKSEKUTIF',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF9CA3AF),
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        if (_canUpdate)
-                          _buildActionButton(
-                            icon: Icons.qr_code_scanner,
-                            label: 'Scan QR',
-                            bgColor: const Color(0xFF2563EB),
-                            textColor: Colors.white,
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute<void>(
-                                  builder: (_) => ScanScreen(eventId: _currentEvent.eventId),
-                                ),
-                              );
-                            },
-                          ),
-                        if (_canUpdate)
-                          _buildActionButton(
-                            icon: Icons.edit_outlined,
-                            label: 'Edit',
-                            bgColor: const Color(0xFFF3F4F6),
-                            textColor: const Color(0xFF1F2937),
-                            onTap: () => _openEventForm(
-                              title: 'Edit Event',
-                              initialValue: _toFormValue(_currentEvent),
-                              isEdit: true,
-                            ),
-                          ),
-                        if (_canAddSubEvent)
-                          _buildActionButton(
-                            icon: Icons.add_circle_outline,
-                            label: 'Tambah Sub-Event',
-                            bgColor: const Color(0xFFF3F4F6),
-                            textColor: const Color(0xFF1F2937),
-                            onTap: () => _openEventForm(
-                              title: 'Buat Sub-Event',
-                              initialValue: _toFormValue(
-                                _currentEvent,
-                                forceSubEvent: true,
-                                forcedParentId: _currentEvent.eventId,
-                              ),
-                              isEdit: false,
-                            ),
-                          ),
-                        if (_canDelete)
-                          _buildActionButton(
-                            icon: Icons.delete_outline,
-                            label: 'Hapus',
-                            bgColor: const Color(0xFFFEF2F2),
-                            textColor: const Color(0xFFDC2626),
-                            onTap: _deleteEvent,
-                          ),
-                      ],
-                    ),
                   ],
                 ],
               ),

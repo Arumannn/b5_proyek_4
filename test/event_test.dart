@@ -180,7 +180,7 @@ void main() {
       final model = EventModel(
         eventId: 'e1',
         nama: 'Event',
-        jenis: AppConstants.eventTypes.first,
+        jenis: 'Rapat',
         tanggalMulai: DateTime.now().subtract(const Duration(days: 1)),
         tanggalSelesai: DateTime.now().subtract(const Duration(days: 1)),
         createdBy: 'Executive',
@@ -194,7 +194,7 @@ void main() {
       final model = EventModel(
         eventId: 'not-found',
         nama: 'Event',
-        jenis: AppConstants.eventTypes.first,
+        jenis: 'Rapat',
         tanggalMulai: DateTime.now().add(const Duration(days: 1)),
         tanggalSelesai: DateTime.now().add(const Duration(days: 1)),
         createdBy: 'Executive',

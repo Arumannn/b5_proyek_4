@@ -93,7 +93,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               NavigationDestination(
                 icon: Icon(Icons.event_outlined),
                 selectedIcon: Icon(Icons.event),
-                label: 'Kegiatan',
+                label: 'Event',
               ),
               NavigationDestination(
                 icon: Icon(Icons.groups_outlined),

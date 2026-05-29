@@ -1035,10 +1035,10 @@ class _EventViewState extends State<EventView> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: WhiteStatusHeader(
-        title: 'Kegiatan',
+        title: 'Event',
         subtitle: _hasAnyCrudAccess
-            ? 'Cari dan kelola kegiatan yang tersedia'
-            : 'Cari dan buka detail kegiatan',
+            ? 'Cari dan kelola event yang tersedia'
+            : 'Cari dan buka detail event',
         actions: [
           IconButton(
             tooltip: 'Refresh',
@@ -1151,7 +1151,7 @@ class _EventViewState extends State<EventView> {
                           border: Border.all(color: Colors.grey.shade100),
                         ),
                         child: const Text(
-                          'Tidak ada kegiatan yang sesuai dengan pencarian Anda.',
+                          'Tidak ada event yang sesuai dengan pencarian Anda.',
                           textAlign: TextAlign.center,
                           style: TextStyle(color: Color(0xFF6B7280), fontSize: 13),
                         ),

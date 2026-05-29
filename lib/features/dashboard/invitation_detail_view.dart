@@ -93,7 +93,7 @@ class _InvitationDetailViewState extends State<InvitationDetailView> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Pengurus mengundang Anda untuk hadir pada kegiatan ini.',
+                'Pengurus mengundang Anda untuk hadir pada event ini.',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
               ),

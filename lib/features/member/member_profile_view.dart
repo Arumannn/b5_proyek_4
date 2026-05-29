@@ -43,7 +43,7 @@ class MemberProfileView extends StatelessWidget {
                     icon: Icons.event_available_outlined,
                     color: Color(0xFF1E56E5),
                     value: '42',
-                    label: 'Kegiatan',
+                    label: 'Event',
                   ),
                 ),
                 SizedBox(width: 12),
