@@ -1,79 +1,69 @@
 import 'package:flutter/foundation.dart';
 
-import '../constants/app_constants.dart';
+import '../../models/organization_config.dart';
+import '../services/hive_service.dart';
+import '../../features/auth/auth_controller.dart';
 
 /// Controller konfigurasi yang bertindak sebagai "jembatan" antara UI dan Backend.
-/// Saat ini menggunakan nilai bawaan (dummy), sementara anggota tim lain
-/// akan mengembangkan logika sinkronisasi MongoDB/Hive di dalamnya.
+/// Sekarang mendukung Dynamic RBAC & Multi-Tenancy.
 class ConfigController extends ChangeNotifier {
   static final ConfigController instance = ConfigController._internal();
   ConfigController._internal();
 
-  // ─── Nilai Bawaan (Dummy) ──────────────────────────────────
-  // Nantinya, nilai-nilai ini akan digantikan dengan data yang diambil dari
-  // OrganizationModel (MongoDB -> Hive).
+  OrganizationConfig? _activeConfig;
 
-  List<String> get eventTypes => [
-    'Rapat',
-    'Acara',
-    'Kegiatan',
-    'Lainnya',
-  ];
+  /// Memuat konfigurasi aktif berdasarkan organizationId dari user yang login.
+  void loadActiveConfig() {
+    final user = AuthController.instance.currentUser.value;
+    final orgId = user?.organizationId;
 
-  List<String> get penyelenggaraOptions => [
-    'Biro Administrasi dan Kesekretariatan',
-    'Biro Kewirausahaan dan Keuangan',
-    'Departemen Komunikasi dan Informasi',
-    'Departemen Luar Himpunan',
-    'Departemen Pengembangan Sumber Daya Himpunan',
-    'Departemen Seni dan Olahraga',
-    'Departemen Keilmuan dan Keprofesian',
-    'Unit Teknologi',
-    'Badan Khusus Manajemen Sumber Daya Himpunan',
-    'Himpunan',
-  ];
-
-  List<String> dbuOptionsForRole(String role) {
-    final normalized = role.trim().toLowerCase();
-    if (normalized == AppConstants.roleExecutive) {
-      return [
-        'Ketua Himpunan',
-        'Wakil Ketua Himpunan',
-        'Sekretaris Jenderal',
-        'Sekretaris Umum',
-        'Bendahara Umum',
-        'Ketua Manajemen Sumber Daya Himpunan',
-      ];
+    if (orgId == null || orgId.isEmpty) {
+      _activeConfig = OrganizationConfig.defaultFallback;
+    } else {
+      final configFromHive = HiveService.organizationConfigs.get(orgId);
+      _activeConfig = configFromHive ?? OrganizationConfig.defaultFallback;
     }
-    if (normalized == AppConstants.roleManager) {
-      return [
-        'Ketua Departemen',
-        'Wakil Ketua Departemen',
-        'Ketua Biro',
-        'Wakil Ketua Biro',
-        'Ketua Unit',
-        'Wakil Ketua Unit',
-      ];
-    }
-    return [
-      'Departemen Komunikasi dan Informasi',
-      'Departemen Luar Himpunan',
-      'Departemen Pengembangan Sumber Daya Himpunan',
-      'Departemen Seni dan Olahraga',
-      'Departemen Keilmuan dan Keprofesian',
-      'Biro Kewirausahaan dan Keuangan',
-      'Biro Administrasi dan Kesekretariatan',
-      'Unit Teknologi',
-    ];
+    notifyListeners();
   }
 
-  String defaultDbuForRole(String role) => dbuOptionsForRole(role).first;
+  OrganizationConfig get activeConfig {
+    if (_activeConfig == null) {
+      loadActiveConfig();
+    }
+    return _activeConfig!;
+  }
+
+  List<String> get eventTypes => activeConfig.eventTypes;
+
+  /// Mendapatkan daftar Jabatan/Departemen (DBU) yang diizinkan untuk peran/role tertentu
+  List<String> dbuOptionsForRole(String systemRole) {
+    final normalized = systemRole.trim().toLowerCase();
+    
+    // Cari role di config
+    for (final roleConfig in activeConfig.rolesConfig) {
+      if (roleConfig.roleName.toLowerCase() == normalized) {
+        return roleConfig.allowedDivisions;
+      }
+    }
+    
+    // Fallback DBU
+    return ['Belum Ditentukan'];
+  }
+
+  String defaultDbuForRole(String systemRole) {
+    final options = dbuOptionsForRole(systemRole);
+    if (options.isNotEmpty) return options.first;
+    return 'Belum Ditentukan';
+  }
 
   List<String> get allDbuOptions {
     final set = <String>{};
-    for (final role in AppConstants.allowedRoles) {
-      set.addAll(dbuOptionsForRole(role));
+    for (final roleConfig in activeConfig.rolesConfig) {
+      set.addAll(roleConfig.allowedDivisions);
     }
     return set.toList();
   }
+
+  /// Alias for backward compatibility on some UIs if needed
+  List<String> get penyelenggaraOptions => allDbuOptions;
 }

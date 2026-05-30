@@ -255,7 +255,14 @@ class _InvitationMonitoringSectionState extends State<InvitationMonitoringSectio
                                   invitation.responseStatus.toLowerCase() == 'permission_requested'
                                       ? ElevatedButton(
                                           onPressed: () => _showPermissionApprovalDialog(context, invitation),
-                                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFF59E0B), padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), elevation: 0),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: const Color(0xFFF59E0B),
+                                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                            elevation: 0,
+                                            minimumSize: Size.zero, // Mencegah bentrok dengan global theme (double.infinity)
+                                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                          ),
                                           child: const Text('Cek Izin', style: TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w700)),
                                         )
                                       : Icon(Icons.chevron_right, color: statusColor),

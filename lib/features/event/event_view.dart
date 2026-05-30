@@ -6,6 +6,8 @@ import '../../core/constants/app_constants.dart';
 import '../../core/controllers/config_controller.dart';
 import '../../models/event_model.dart';
 import '../../models/attendance_record.dart';
+import '../../models/member_model.dart';
+import '../../core/services/hive_service.dart';
 import '../../widgets/custom_snackbar.dart';
 import '../../widgets/white_status_header.dart';
 import '../../widgets/sectioned_list_body.dart';
@@ -393,6 +395,7 @@ class _EventViewState extends State<EventView> {
             lokasi: form.lokasi,
             deskripsi: form.deskripsi,
             targetPeserta: form.targetPeserta,
+            requiresInvitation: form.requiresInvitation,
             penyelenggara: form.penyelenggara,
             penanggungJawab: form.penanggungJawab,
           )
@@ -405,6 +408,7 @@ class _EventViewState extends State<EventView> {
               lokasi: form.lokasi,
               deskripsi: form.deskripsi,
               targetPeserta: form.targetPeserta,
+              requiresInvitation: form.requiresInvitation,
               penyelenggara: form.penyelenggara,
               penanggungJawab: form.penanggungJawab,
             ),
@@ -499,10 +503,26 @@ class _EventViewState extends State<EventView> {
     String selectedJenis = initial?.jenis ?? ConfigController.instance.eventTypes.first;
     bool isSubEvent = forcedParentId != null || initial?.parentEventId != null;
     String? parentId = forcedParentId ?? initial?.parentEventId;
-    Set<String> targetDivisi = Set<String>.from(
-      initial?.targetPeserta ?? const [],
-    );
+    final List<String> targetDivisi = [];
+    if (initial != null) {
+      final allMembers = HiveService.members.values.toList();
+      for (final nim in initial.targetPeserta) {
+        final m = allMembers.firstWhere(
+          (element) => element.nim == nim, 
+          orElse: () => MemberModel(nim: '', nama: '', divisi: '', role: '', password: '', qrCodeValue: '')
+        );
+        if (m.nim.isNotEmpty) {
+          if (m.divisi.isNotEmpty) targetDivisi.add(m.divisi);
+          if (m.jobTitle != null && m.jobTitle!.isNotEmpty) targetDivisi.add(m.jobTitle!);
+        }
+      }
+    }
+    final Set<String> targetDivisiSet = targetDivisi.toSet();
+    targetDivisi.clear();
+    targetDivisi.addAll(targetDivisiSet);
+    
     String? selectedPenyelenggara = initial?.penyelenggara;
+    bool requiresInvitation = initial?.requiresInvitation ?? false;
 
     final allDbu = ConfigController.instance.allDbuOptions;
 
@@ -717,6 +737,17 @@ class _EventViewState extends State<EventView> {
                               style: TextStyle(fontSize: 12, color: Colors.red),
                             ),
                           ),
+                        const SizedBox(height: 12),
+                        SwitchListTile(
+                          title: const Text('Aktifkan Undangan', style: TextStyle(fontSize: 14)),
+                          contentPadding: EdgeInsets.zero,
+                          value: requiresInvitation,
+                          onChanged: (value) {
+                            setDialogState(() {
+                              requiresInvitation = value;
+                            });
+                          },
+                        ),
                       ],
                     ),
                   ),
@@ -736,6 +767,21 @@ class _EventViewState extends State<EventView> {
                       );
                       return;
                     }
+                    // Expand targetDivisi into member NIMs
+                    final Set<String> targetNims = {};
+                    final allMembers = HiveService.members.values.toList();
+                    for (final div in targetDivisi) {
+                      final normalizedDiv = div.trim().toLowerCase();
+                      final membersInDiv = allMembers.where((m) {
+                        final matchDivisi = m.divisi.trim().toLowerCase() == normalizedDiv;
+                        final matchJobTitle = (m.jobTitle?.trim().toLowerCase() ?? '') == normalizedDiv;
+                        return matchDivisi || matchJobTitle;
+                      });
+                      for (final m in membersInDiv) {
+                        targetNims.add(m.nim);
+                      }
+                    }
+
                     Navigator.of(dialogContext).pop(
                       _EventFormData(
                         name: nameController.text.trim(),
@@ -748,7 +794,8 @@ class _EventViewState extends State<EventView> {
                         deskripsi: descController.text.trim().isEmpty
                             ? null
                             : descController.text.trim(),
-                        targetPeserta: targetDivisi.toList(growable: false),
+                        targetPeserta: targetNims.toList(growable: false),
+                        requiresInvitation: requiresInvitation,
                         penyelenggara: selectedPenyelenggara,
                           penanggungJawab: penanggungJawabController.text.trim().isEmpty
                               ? null
@@ -1212,6 +1259,7 @@ class _EventFormData {
     this.lokasi,
     this.deskripsi,
     this.targetPeserta = const <String>[],
+    this.requiresInvitation = false,
     this.penyelenggara,
     this.penanggungJawab,
   });
@@ -1223,6 +1271,7 @@ class _EventFormData {
   final String? lokasi;
   final String? deskripsi;
   final List<String> targetPeserta;
+  final bool requiresInvitation;
   final String? penyelenggara;
   final String? penanggungJawab;
 }

@@ -11,6 +11,8 @@ import 'hive_service.dart';
 import 'mongo_service.dart';
 import '../../models/event_model.dart';
 import '../../models/event_invitation.dart';
+import '../../models/organization_config.dart';
+import '../../features/auth/auth_controller.dart';
 
 /// SyncManager — Versi lengkap Week 11.
 ///
@@ -145,6 +147,7 @@ class SyncManager {
       await pullAttendanceFromCloud();
       await pullPermissionsFromCloud();
       await pullInvitationsFromCloud();
+      await pullOrganizationConfigFromCloud();
 
       await _pullLatestFromCloud();
       _updatePendingCount();
@@ -773,6 +776,36 @@ class SyncManager {
       );
     } catch (e) {
       debugPrint('[SyncManager] pullInvitations ❌ error: $e');
+    }
+  }
+
+  // ─── PULL ORGANIZATION CONFIG FROM CLOUD ───────────────────────────
+
+  /// Pull OrganizationConfig dari MongoDB berdasarkan organizationId user aktif.
+  Future<void> pullOrganizationConfigFromCloud() async {
+    try {
+      final orgId = AuthController.instance.currentUser.value?.organizationId;
+      if (orgId == null || orgId.isEmpty) {
+        debugPrint('[SyncManager] pullOrganizationConfig: tidak ada organizationId aktif.');
+        return;
+      }
+
+      final doc = await MongoService.instance.findOne(
+        collectionName: AppConstants.organizationConfigsCollection,
+        filter: {'organizationId': orgId},
+      );
+
+      if (doc == null) {
+        debugPrint('[SyncManager] pullOrganizationConfig: config untuk $orgId tidak ditemukan di cloud.');
+        return;
+      }
+
+      final config = OrganizationConfig.fromMap(doc);
+      await HiveService.organizationConfigs.put(config.organizationId, config);
+
+      debugPrint('[SyncManager] pullOrganizationConfig ✅ config untuk $orgId tersimpan ke Hive.');
+    } catch (e) {
+      debugPrint('[SyncManager] pullOrganizationConfig ❌ error: $e');
     }
   }
 

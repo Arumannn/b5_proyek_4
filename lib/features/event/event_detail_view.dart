@@ -60,8 +60,11 @@ class _EventDetailViewState extends State<EventDetailView> {
   bool get _canAddSubEvent => widget.event.parentEventId == null && EventPermission.canCreateSubEvent(widget.userRole);
 
   bool get _canManageInvitationResponses {
-    final role = widget.userRole.trim().toLowerCase();
-    return role == 'executive' || role == 'manager';
+    if (widget.event.parentEventId == null) {
+      return EventPermission.canUpdateMainEvent(widget.userRole);
+    } else {
+      return EventPermission.canUpdateSubEvent(widget.userRole);
+    }
   }
 
   List<EventParentOption> get _parentOptions {
@@ -143,13 +146,6 @@ class _EventDetailViewState extends State<EventDetailView> {
       ..sort((a, b) => a.tanggalMulai.compareTo(b.tanggalMulai));
   }
 
-  List<AttendanceRecord> _attendanceRecords() {
-    return HiveService.attendance.values
-        .where((r) => r.eventId == _currentEvent.eventId)
-        .toList(growable: false)
-      ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
-  }
-
   List<EventInvitation> _invitationsByEvent(String eventId) {
     return HiveService.invitations.values
         .where((inv) => inv.eventId == eventId)
@@ -176,18 +172,30 @@ class _EventDetailViewState extends State<EventDetailView> {
     }
 
     final participantNims = <String>{};
-    // Selalu masukkan targetPeserta sebagai baseline
-    participantNims.addAll(event.targetPeserta.where((nim) => nim.trim().isNotEmpty));
     
-    // Tambahkan dari invitation, attendance, dan permission agar tidak ada data yang hilang
-    participantNims.addAll(invitationByNim.keys.where((nim) => nim.trim().isNotEmpty));
-    participantNims.addAll(attendanceByNim.keys.where((nim) => nim.trim().isNotEmpty));
-    participantNims.addAll(permissionByNim.keys.where((nim) => nim.trim().isNotEmpty));
+    if (event.requiresInvitation) {
+      // JIKA UNDANGAN AKTIF:
+      // Hanya peserta yang sudah "approved" (setuju hadir) yang masuk ke daftar absensi.
+      // Jika mereka menolak atau masih pending, mereka hanya muncul di Tanggapan Undangan.
+      for (final inv in invitations) {
+        final response = inv.responseStatus.toLowerCase();
+        if (response == 'approved' || response == 'auto-approved') {
+          participantNims.add(inv.nim);
+        }
+      }
+      // Tetap tampilkan yang memaksa absen (scan QR meski tidak diundang)
+      participantNims.addAll(attendanceByNim.keys.where((nim) => nim.trim().isNotEmpty));
+    } else {
+      // JIKA TANPA UNDANGAN:
+      // Semua target peserta adalah daftar absensi.
+      participantNims.addAll(event.targetPeserta.where((nim) => nim.trim().isNotEmpty));
+      participantNims.addAll(attendanceByNim.keys.where((nim) => nim.trim().isNotEmpty));
+      participantNims.addAll(permissionByNim.keys.where((nim) => nim.trim().isNotEmpty));
+    }
 
     final items = participantNims.map((nim) {
       final member = memberByNim[nim];
       final attendance = attendanceByNim[nim];
-      final invitation = invitationByNim[nim];
       final permission = permissionByNim[nim];
 
       String status;
@@ -206,18 +214,6 @@ class _EventDetailViewState extends State<EventDetailView> {
           status = 'Izin Pending';
         }
         time = permission.updatedAt;
-      } else if (event.requiresInvitation && invitation != null) {
-        final response = invitation.responseStatus.toLowerCase();
-        if (response == 'approved' || response == 'auto-approved') {
-          status = 'Akan Hadir';
-        } else if (response == 'rejected') {
-          status = 'Menolak Hadir';
-        } else if (response == 'permission_requested') {
-          status = 'Izin Diajukan';
-        } else {
-          status = 'Menunggu Konfirmasi';
-        }
-        time = invitation.respondedAt ?? invitation.invitedAt;
       } else {
         status = 'Belum Absen';
         time = null;

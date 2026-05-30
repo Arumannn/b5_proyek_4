@@ -129,6 +129,16 @@ class MemberCard extends StatelessWidget {
                           color: Color(0xFF6B7280), // text-gray-500
                         ),
                       ),
+                      const SizedBox(height: 2),
+                      Text(
+                        member.divisi,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF9CA3AF),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ],
                   ),
                 ),

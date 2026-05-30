@@ -114,8 +114,32 @@ class _ExecutiveDashboardSectionState extends State<ExecutiveDashboardSection> {
               crossAxisSpacing: 12,
               childAspectRatio: 0.9,
               children: [
-                _menuAction(context, 'Buat Event', Icons.calendar_today, const Color(0xFF2563EB), const Color(0xFFDBEAFE), () {
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => const EventFormView()));
+                _menuAction(context, 'Buat Event', Icons.calendar_today, const Color(0xFF2563EB), const Color(0xFFDBEAFE), () async {
+                  final result = await Navigator.push<EventFormValue>(
+                    context, 
+                    MaterialPageRoute(builder: (_) => const EventFormView(title: 'Buat Event Baru'))
+                  );
+                  if (result == null) return;
+                  final success = await _eventController.createEvent(
+                    nama: result.name,
+                    tanggalMulai: result.date,
+                    tanggalSelesai: result.endDate,
+                    jamSelesai: result.jamSelesai,
+                    parentEventId: result.isSubEvent ? result.parentId : null,
+                    jenis: result.jenis,
+                    lokasi: result.lokasi,
+                    deskripsi: result.deskripsi,
+                    targetPeserta: result.targetPeserta,
+                    requiresInvitation: result.requiresInvitation,
+                    penyelenggara: result.penyelenggara,
+                    penanggungJawab: result.penanggungJawab,
+                  );
+                  if (!mounted) return;
+                  if (success) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Event berhasil ditambahkan.')));
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_eventController.errorMessage.value ?? 'Gagal menambah event.')));
+                  }
                 }),
                 _menuAction(context, 'Undangan', Icons.mail, const Color(0xFFF59E0B), const Color(0xFFFFF7ED), () {
                   Navigator.push(context, MaterialPageRoute(builder: (_) => const ManageInvitationsView()));

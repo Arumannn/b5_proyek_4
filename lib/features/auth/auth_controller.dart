@@ -169,6 +169,7 @@ class AuthController {
     required String divisi,
     required String role,
     required String password,
+    String? jobTitle,
   }) async {
     isLoading.value = true;
     errorMessage.value = null;
@@ -211,6 +212,7 @@ class AuthController {
         'isSynced': false,
         'createdAt': nowIso,
         'updatedAt': nowIso,
+        if (jobTitle != null && jobTitle.trim().isNotEmpty) 'jobTitle': jobTitle.trim(),
       };
 
       await HiveService.members.put(normalizedNim, _memberFromMap(localDoc));
@@ -247,6 +249,7 @@ class AuthController {
     String? divisi,
     String? role,
     required String password,
+    String? jobTitle,
   }) async {
     isLoading.value = true;
     errorMessage.value = null;
@@ -282,6 +285,9 @@ class AuthController {
         return false;
       }
       updatedDoc['password'] = _hashPassword(password);
+      if (jobTitle != null && jobTitle.trim().isNotEmpty) {
+        updatedDoc['jobTitle'] = jobTitle.trim();
+      }
 
       updatedDoc['isSynced'] = false;
       updatedDoc['updatedAt'] = DateTime.now().toIso8601String();

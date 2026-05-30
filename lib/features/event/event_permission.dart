@@ -1,42 +1,43 @@
-import '../../core/constants/app_constants.dart';
+import '../../core/controllers/config_controller.dart';
 
 class EventPermission {
   EventPermission._();
 
-  // RBAC: Executive memiliki hak akses penuh pada main-event.
-  static String _normalizeRole(String role) => role.trim().toLowerCase();
+  static bool _hasPermission(String roleOrJobTitle, String permissionKey) {
+    final normalizedJob = roleOrJobTitle.trim().toLowerCase();
+    final config = ConfigController.instance.activeConfig;
 
-  static String get _executiveRole => AppConstants.roleExecutive.toLowerCase();
-  static String get _managerRole => AppConstants.roleManager.toLowerCase();
-  static String get _organizerRole => AppConstants.roleOrganizer.toLowerCase();
-  static String get _memberRole => AppConstants.roleMember.toLowerCase();
-
-  static bool _isKnownRole(String role) {
-    final normalized = _normalizeRole(role);
-    return normalized == _executiveRole ||
-        normalized == _managerRole ||
-        normalized == _organizerRole ||
-        normalized == _memberRole;
+    for (final roleConfig in config.rolesConfig) {
+      if (roleConfig.roleName.toLowerCase() == normalizedJob) {
+        return roleConfig.permissions.contains(permissionKey);
+      }
+    }
+    return false;
   }
 
-  static bool canReadMainEvent(String role) => _isKnownRole(role);
-  static bool canCreateMainEvent(String role) => _normalizeRole(role) == _executiveRole;
-  static bool canUpdateMainEvent(String role) => _normalizeRole(role) == _executiveRole;
-  static bool canDeleteMainEvent(String role) => _normalizeRole(role) == _executiveRole;
+  // ─── Permission Keys (Standar yang disepakati dengan Web Admin) ───
+  static const String keyReadMainEvent = 'read_main_event';
+  static const String keyCreateMainEvent = 'create_main_event';
+  static const String keyUpdateMainEvent = 'update_main_event';
+  static const String keyDeleteMainEvent = 'delete_main_event';
 
-  static bool canReadSubEvent(String role) => _isKnownRole(role);
-  static bool canCreateSubEvent(String role) {
-    final normalized = _normalizeRole(role);
-    return normalized == _executiveRole || normalized == _managerRole;
-  }
+  static const String keyReadSubEvent = 'read_sub_event';
+  static const String keyCreateSubEvent = 'create_sub_event';
+  static const String keyUpdateSubEvent = 'update_sub_event';
+  static const String keyDeleteSubEvent = 'delete_sub_event';
 
-  static bool canUpdateSubEvent(String role) {
-    final normalized = _normalizeRole(role);
-    return normalized == _executiveRole || normalized == _managerRole;
-  }
+  // ─── Pengecekan Izin (Dynamic) ────────────────────────────────────
+  
+  // Asumsi: Semua pengguna yang terdaftar berhak melihat event secara default
+  static bool canReadMainEvent(String role) => true; 
+  
+  static bool canCreateMainEvent(String role) => _hasPermission(role, keyCreateMainEvent);
+  static bool canUpdateMainEvent(String role) => _hasPermission(role, keyUpdateMainEvent);
+  static bool canDeleteMainEvent(String role) => _hasPermission(role, keyDeleteMainEvent);
 
-  static bool canDeleteSubEvent(String role) {
-    final normalized = _normalizeRole(role);
-    return normalized == _executiveRole || normalized == _managerRole;
-  }
+  static bool canReadSubEvent(String role) => true;
+  
+  static bool canCreateSubEvent(String role) => _hasPermission(role, keyCreateSubEvent);
+  static bool canUpdateSubEvent(String role) => _hasPermission(role, keyUpdateSubEvent);
+  static bool canDeleteSubEvent(String role) => _hasPermission(role, keyDeleteSubEvent);
 }

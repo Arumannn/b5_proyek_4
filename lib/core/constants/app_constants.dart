@@ -18,6 +18,7 @@ class AppConstants {
   static const String pendingUserUpsertBox = 'pending_user_upsert_box';
   static const String pendingUserDeleteBox = 'pending_user_delete_box';
   static const String notulensiBox = 'notulensi_box';
+  static const String organizationConfigBox = 'organization_config_box';
 
   // ─── Hive TypeId Registry ────────────────────────
   // Setiap model Hive harus punya typeId unik. Jangan ubah nilai ini!
@@ -26,6 +27,8 @@ class AppConstants {
   static const int attendanceTypeId = 2;
   static const int permissionTypeId = 3;
   static const int notulensiTypeId = 8;
+  static const int roleConfigTypeId = 9;
+  static const int organizationConfigTypeId = 10;
 
   // ─── MongoDB Collections ─────────────────────────
   static const String usersCollection = 'users';
@@ -33,6 +36,7 @@ class AppConstants {
   static const String attendanceCollection = 'attendance';
   static const String permissionsCollection = 'permissions';
   static const String invitationsCollection = 'invitations';
+  static const String organizationConfigsCollection = 'organization_configs';
 
   // ─── QR Code Format ──────────────────────────────
   // Format QR: "PRASASTI:{nim}"

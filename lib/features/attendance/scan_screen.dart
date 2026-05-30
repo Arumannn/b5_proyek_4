@@ -4,8 +4,6 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../core/utils/qr_service.dart';
 import '../../widgets/white_status_header.dart';
 import 'attendance_controller.dart';
-// import 'package:b5_proyek_4/features/attendance/attendance_controller.dart';
-// import 'package:b5_proyek_4/widgets/custom_snackbar.dart';
 
 class ScanScreen extends StatefulWidget {
   final String eventId;

@@ -415,6 +415,28 @@ class EventController {
       _allEvents[index] = saved;
       _applyFilters();
 
+      // Step 1b: Sinkronkan undangan jika requiresInvitation aktif
+      if (saved.requiresInvitation && saved.targetPeserta.isNotEmpty) {
+        final now = DateTime.now();
+        for (final targetNim in saved.targetPeserta) {
+          // Cek apakah undangan untuk target ini sudah ada
+          final exists = HiveService.invitations.values.any((inv) => inv.eventId == saved.eventId && inv.nim == targetNim);
+          if (!exists) {
+            final invitationId = 'INV-${saved.eventId}-${now.microsecondsSinceEpoch}-$targetNim';
+            final invitation = EventInvitation(
+              invitationId: invitationId,
+              eventId: saved.eventId,
+              nim: targetNim,
+              attendanceTime: now,
+              invitedBy: _currentRole, // or some actor context
+              invitedAt: now,
+              isSynced: false,
+            );
+            await HiveService.invitations.put(invitationId, invitation);
+          }
+        }
+      }
+
       debugPrint('[EventCtrl] update: saved to Hive — id=${saved.eventId}');
 
       // Sync ke MongoDB di background

@@ -41,6 +41,7 @@ class _MemberFormViewState extends State<MemberFormView> {
       (role) => role.trim().toLowerCase() == existingRole,
       orElse: () => AppConstants.roleMember,
     );
+    
     final dbuOptions = ConfigController.instance.dbuOptionsForRole(_selectedRole);
     _selectedDbu = widget.existing?.divisi ?? dbuOptions.first;
     if (!dbuOptions.contains(_selectedDbu)) {
@@ -81,7 +82,7 @@ class _MemberFormViewState extends State<MemberFormView> {
             nama: _namaController.text,
             divisi: _selectedDbu,
             role: _selectedRole,
-        password: _passwordController.text,
+            password: _passwordController.text,
           )
         : await AuthController.instance.createUserByExecutive(
             nama: _namaController.text,
@@ -228,10 +229,10 @@ class _MemberFormViewState extends State<MemberFormView> {
               const SizedBox(height: 16),
 
               InlineExpandingDropdownField(
-                label: 'Departemen/Biro/Unit (DBU)',
+                label: 'Jabatan / Departemen (DBU)',
                 value: _selectedDbu,
                 options: ConfigController.instance.dbuOptionsForRole(_selectedRole),
-                placeholder: 'Pilih DBU',
+                placeholder: 'Pilih Jabatan/Departemen',
                 onChanged: (value) {
                   setState(() {
                     _selectedDbu = value;
@@ -240,7 +241,7 @@ class _MemberFormViewState extends State<MemberFormView> {
                 validator: (value) {
                   final validOptions = ConfigController.instance.dbuOptionsForRole(_selectedRole);
                   if (value == null || !validOptions.contains(value)) {
-                    return 'DBU wajib dipilih.';
+                    return 'Jabatan/Departemen wajib dipilih.';
                   }
                   return null;
                 },

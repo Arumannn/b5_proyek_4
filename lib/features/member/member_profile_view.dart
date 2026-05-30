@@ -32,7 +32,7 @@ class MemberProfileView extends StatelessWidget {
       body: ListView(
         padding: EdgeInsets.zero,
         children: [
-          _buildHeader(),
+          _buildProfileHeader(context, nama, nim, divisi),
           const SizedBox(height: 18),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),

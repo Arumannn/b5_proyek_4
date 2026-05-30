@@ -5,6 +5,7 @@ import '../../core/controllers/config_controller.dart';
 import '../../widgets/gradient_header.dart';
 import '../auth/auth_controller.dart';
 import 'event_form_models.dart';
+import 'event_permission.dart';
 import 'widgets/event_form_content.dart';
 
 export 'event_form_models.dart';
@@ -49,9 +50,13 @@ class _EventFormViewState extends State<EventFormView> {
   String get _currentRole =>
       (AuthController.instance.currentUser.value?.role ?? '').trim().toLowerCase();
 
-  bool get _hasAccess =>
-      _currentRole == AppConstants.roleExecutive.toLowerCase() ||
-      _currentRole == AppConstants.roleManager.toLowerCase();
+  bool get _hasAccess {
+    if (_isSubEvent) {
+      return EventPermission.canCreateSubEvent(_currentRole);
+    } else {
+      return EventPermission.canCreateMainEvent(_currentRole);
+    }
+  }
 
   @override
   void initState() {

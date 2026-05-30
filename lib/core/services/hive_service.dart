@@ -7,13 +7,14 @@ import '../../models/attendance_record.dart';
 import '../../models/permission_record.dart';
 import '../../models/event_invitation.dart';
 import '../../models/notulensi_model.dart';
+import '../../models/organization_config.dart';
 
 class HiveService {
   HiveService._();
 
   static bool _initialized = false;
   static const String invitationBoxName = 'invitations';
-  static const int _schemaVersion = 3;
+  static const int _schemaVersion = 4;
   static const String _schemaVersionKey = '__hive_schema_version__';
 
 
@@ -33,6 +34,8 @@ class HiveService {
     Hive.registerAdapter(PermissionRecordAdapter()); // typeId: 3
     Hive.registerAdapter(EventInvitationAdapter());
     Hive.registerAdapter(NotulensiModelAdapter());
+    Hive.registerAdapter(RoleConfigAdapter());
+    Hive.registerAdapter(OrganizationConfigAdapter());
 
     await _clearBoxesIfSchemaChanged();
 
@@ -45,6 +48,7 @@ class HiveService {
     await _openBoxSafely<String>(AppConstants.pendingUserUpsertBox);
     await _openBoxSafely<String>(AppConstants.pendingUserDeleteBox);
     await _openBoxSafely<NotulensiModel>(AppConstants.notulensiBox);
+    await _openBoxSafely<OrganizationConfig>(AppConstants.organizationConfigBox);
 
     _initialized = true;
     debugPrint('✅ HiveService initialized — 4 boxes open');
@@ -72,6 +76,7 @@ class HiveService {
         AppConstants.pendingUserUpsertBox,
         AppConstants.pendingUserDeleteBox,
         AppConstants.notulensiBox,
+        AppConstants.organizationConfigBox,
       ]) {
         await Hive.deleteBoxFromDisk(boxName);
         debugPrint('  - box "$boxName" dihapus');
@@ -137,6 +142,11 @@ class HiveService {
   static Box<NotulensiModel> get notulensi {
     _assertInitialized();
     return Hive.box<NotulensiModel>(AppConstants.notulensiBox);
+  }
+
+  static Box<OrganizationConfig> get organizationConfigs {
+    _assertInitialized();
+    return Hive.box<OrganizationConfig>(AppConstants.organizationConfigBox);
   }
 
   static void _assertInitialized() {

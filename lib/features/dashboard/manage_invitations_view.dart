@@ -6,6 +6,7 @@ import '../../models/event_invitation.dart';
 import '../../models/member_model.dart';
 import '../auth/auth_controller.dart';
 import '../../widgets/custom_snackbar.dart';
+import '../event/event_permission.dart';
 
 class ManageInvitationsView extends StatefulWidget {
   const ManageInvitationsView({super.key});
@@ -593,12 +594,14 @@ class _ManageInvitationsViewState extends State<ManageInvitationsView> {
   Widget build(BuildContext context) {
     final currentUser = AuthController.instance.currentUser.value;
     final role = (currentUser?.role ?? '').trim().toLowerCase();
-    final allowed = [
-      AppConstants.roleExecutive.toLowerCase(),
-      AppConstants.roleManager.toLowerCase()
-    ];
+    
+    // We check if the user has permission to manage events. 
+    // In dynamic RBAC, those who can create/update events should be able to manage their invitations.
+    final canManage = EventPermission.canCreateMainEvent(role) || 
+                      EventPermission.canCreateSubEvent(role) ||
+                      role == 'organizer'; // Fallback for backward compatibility
 
-    if (!allowed.contains(role)) {
+    if (!canManage) {
       return Scaffold(
         appBar: AppBar(
           backgroundColor: const Color(0xFF2563EB),
@@ -614,7 +617,7 @@ class _ManageInvitationsViewState extends State<ManageInvitationsView> {
                 const SizedBox(height: 16),
                 const Text('Akses Ditolak', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
-                const Text('Halaman ini hanya dapat diakses oleh Executive atau Manager.', textAlign: TextAlign.center),
+                const Text('Halaman ini hanya dapat diakses oleh pembuat event atau panitia.', textAlign: TextAlign.center),
                 const SizedBox(height: 20),
                 ElevatedButton(
                   onPressed: () => Navigator.pop(context),

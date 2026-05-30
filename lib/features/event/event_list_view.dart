@@ -89,6 +89,7 @@ class _EventListViewState extends State<EventListView> {
       lokasi: result.lokasi,
       deskripsi: result.deskripsi,
       targetPeserta: result.targetPeserta,
+      requiresInvitation: result.requiresInvitation,
       penyelenggara: result.penyelenggara,
       penanggungJawab: result.penanggungJawab,
     );
