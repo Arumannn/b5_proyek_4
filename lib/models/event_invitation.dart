@@ -1,4 +1,5 @@
 import 'package:hive/hive.dart';
+import '../core/enums/status_enums.dart';
 part 'event_invitation.g.dart';
 
 @HiveType(typeId: 4)
@@ -15,6 +16,9 @@ class EventInvitation {
     @HiveField(3)
     String responseStatus;
 
+    InvitationStatus get responseStatusEnum => InvitationStatus.fromString(responseStatus);
+    set responseStatusEnum(InvitationStatus val) => responseStatus = val.value;
+
     @HiveField(4)
     String? responseMessage;
 
@@ -23,6 +27,9 @@ class EventInvitation {
 
     @HiveField(6)
     String attendanceStatus;
+
+    AttendanceStatus get attendanceStatusEnum => AttendanceStatus.fromString(attendanceStatus);
+    set attendanceStatusEnum(AttendanceStatus val) => attendanceStatus = val.value;
 
     @HiveField(7)
     DateTime attendanceTime;

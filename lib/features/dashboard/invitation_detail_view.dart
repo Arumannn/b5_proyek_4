@@ -4,6 +4,7 @@ import '../../../core/services/hive_service.dart';
 import '../../../models/event_invitation.dart';
 import '../member/permission_form_view.dart';
 import '../../widgets/custom_snackbar.dart';
+import '../../../core/enums/status_enums.dart';
 
 class InvitationDetailView extends StatefulWidget {
   final EventInvitation invitation;
@@ -21,15 +22,15 @@ class InvitationDetailView extends StatefulWidget {
 
 class _InvitationDetailViewState extends State<InvitationDetailView> {
   
-  Future<void> _handleInvitationResponse(String newStatus) async {
+  Future<void> _handleInvitationResponse(InvitationStatus newStatus) async {
     try {
-      widget.invitation.responseStatus = newStatus;
+      widget.invitation.responseStatusEnum = newStatus;
       widget.invitation.respondedAt = DateTime.now();
       widget.invitation.isSynced = false;
       await HiveService.invitations.put(widget.invitation.invitationId, widget.invitation);
       if (!mounted) return;
       CustomSnackbar.showSuccess(context, 'Respon berhasil diperbarui');
-      if (newStatus != 'permission_requested') {
+      if (newStatus != InvitationStatus.permissionRequested) {
         Navigator.pop(context);
       }
     } catch (e) {
@@ -132,7 +133,7 @@ class _InvitationDetailViewState extends State<InvitationDetailView> {
               
               // Buttons
               ElevatedButton(
-                onPressed: () => _handleInvitationResponse('approved'),
+                onPressed: () => _handleInvitationResponse(InvitationStatus.approved),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF16A34A), // green-600
                   foregroundColor: Colors.white,
@@ -159,7 +160,7 @@ class _InvitationDetailViewState extends State<InvitationDetailView> {
                     eventTitle: widget.eventTitle,
                     onSuccessSubmit: () {
                       // Ini dijalankan jika permission form view disubmit
-                      widget.invitation.responseStatus = 'permission_requested';
+                      widget.invitation.responseStatusEnum = InvitationStatus.permissionRequested;
                       widget.invitation.respondedAt = DateTime.now();
                       widget.invitation.isSynced = false;
                       HiveService.invitations.put(widget.invitation.invitationId, widget.invitation);

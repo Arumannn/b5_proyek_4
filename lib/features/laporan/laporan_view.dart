@@ -5,6 +5,7 @@ import '../../core/services/hive_service.dart';
 import '../../models/event_model.dart';
 import '../../models/attendance_record.dart';
 import '../../widgets/white_status_header.dart';
+import '../../core/enums/status_enums.dart';
 
 class LaporanView extends StatefulWidget {
   final bool showBottomNav;
@@ -82,8 +83,8 @@ class _LaporanViewState extends State<LaporanView> {
   List<Map<String, dynamic>> get reportData {
     return _filteredEvents.map((e) {
       final records = _allRecords.where((r) => r.eventId == e.eventId).toList();
-      final hadir = records.where((r) => r.status.toLowerCase() == 'hadir').length;
-      final izin = records.where((r) => r.status.toLowerCase() == 'izin').length;
+      final hadir = records.where((r) => r.statusEnum == AttendanceStatus.hadir || r.statusEnum == AttendanceStatus.terlambat).length;
+      final izin = records.where((r) => r.statusEnum == AttendanceStatus.izin || r.statusEnum == AttendanceStatus.sakit).length;
       final alpha = _totalMembers - (hadir + izin);
 
       return {

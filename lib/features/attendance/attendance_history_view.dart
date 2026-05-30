@@ -9,6 +9,9 @@ import '../../widgets/white_status_header.dart';
 import '../../features/event/event_controller.dart';
 import '../../models/attendance_record.dart';
 import '../../models/event_model.dart';
+import '../../widgets/empty_state_box.dart';
+import '../../widgets/alert_banner.dart';
+import '../../core/enums/status_enums.dart';
 
 class AttendanceHistoryView extends StatefulWidget {
   final String nim;
@@ -82,15 +85,21 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
   List<AttendanceRecord> get _filteredRecords {
     final monthRecords = _recordsForSelectedMonth;
     if (_selectedFilter.value == 'Semua') return monthRecords;
-    return monthRecords.where((r) => r.status.toLowerCase() == _selectedFilter.value.toLowerCase()).toList();
+    return monthRecords.where((r) {
+      final s = r.statusEnum;
+      if (_selectedFilter.value == 'Hadir') return s == AttendanceStatus.hadir || s == AttendanceStatus.terlambat;
+      if (_selectedFilter.value == 'Izin') return s == AttendanceStatus.izin || s == AttendanceStatus.sakit;
+      if (_selectedFilter.value == 'Alpha') return s == AttendanceStatus.alpha;
+      return false;
+    }).toList();
   }
 
   // --- LOGIKA STATISTIK ---
   Map<String, int> _getStats(List<AttendanceRecord> monthRecords) {
     int total = monthRecords.length;
-    int hadir = monthRecords.where((r) => r.status.toLowerCase() == 'hadir' || r.status.toLowerCase() == 'terlambat').length;
-    int izin = monthRecords.where((r) => r.status.toLowerCase() == 'izin' || r.status.toLowerCase() == 'sakit').length;
-    int alpha = monthRecords.where((r) => r.status.toLowerCase() == 'alpha').length;
+    int hadir = monthRecords.where((r) => r.statusEnum == AttendanceStatus.hadir || r.statusEnum == AttendanceStatus.terlambat).length;
+    int izin = monthRecords.where((r) => r.statusEnum == AttendanceStatus.izin || r.statusEnum == AttendanceStatus.sakit).length;
+    int alpha = monthRecords.where((r) => r.statusEnum == AttendanceStatus.alpha).length;
     
     return {'total': total, 'hadir': hadir, 'izin': izin, 'alpha': alpha};
   }
@@ -422,10 +431,11 @@ class _AttendanceHistoryViewState extends State<AttendanceHistoryView> {
                 padding: EdgeInsets.only(
                   top: MediaQuery.of(context).size.height * 0.15,
                 ),
-                child: const Center(
-                  child: Text(
-                    'Tidak ada riwayat untuk filter ini.',
-                    style: TextStyle(color: Colors.grey),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16.0),
+                  child: EmptyStateBox(
+                    message: 'Tidak ada riwayat untuk filter ini.',
+                    icon: Icons.history,
                   ),
                 ),
               ),
@@ -493,12 +503,18 @@ class _RecordCard extends StatelessWidget {
       badgeColor = const Color(0xFFFEE2E2);
       badgeTextColor = const Color(0xFFDC2626);
       badgeIcon = Icons.cancel_outlined;
-      alertBox = _buildAlertBox(badgeColor, badgeTextColor, badgeIcon, 'Tidak hadir tanpa keterangan');
+      alertBox = const AlertBanner(
+        message: 'Tidak hadir tanpa keterangan',
+        type: AlertType.error,
+      );
     } else if (lowerStatus == 'izin' || lowerStatus == 'sakit') {
       badgeColor = const Color(0xFFFFEDD5);
       badgeTextColor = const Color(0xFFEA580C);
       badgeIcon = Icons.info_outline;
-      alertBox = _buildAlertBox(badgeColor, badgeTextColor, badgeIcon, 'Alasan:\n${status.toUpperCase()} (Berdasarkan Surat)');
+      alertBox = AlertBanner(
+        message: 'Alasan:\n${status.toUpperCase()} (Berdasarkan Surat)',
+        type: AlertType.warning,
+      );
     } else if (lowerStatus == 'terlambat') {
       badgeColor = const Color(0xFFFEF3C7);
       badgeTextColor = const Color(0xFFD97706);
@@ -588,27 +604,5 @@ class _RecordCard extends StatelessWidget {
     );
   }
 
-  Widget _buildAlertBox(Color bgColor, Color textColor, IconData icon, String message) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 18, color: textColor),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              message,
-              style: TextStyle(color: textColor, fontSize: 13, height: 1.4),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  // _buildAlertBox removed, using AlertBanner instead
 }

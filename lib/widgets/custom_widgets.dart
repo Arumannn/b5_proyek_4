@@ -2,6 +2,7 @@
 /// Mengikuti design system dan referensi UI
 import 'package:flutter/material.dart';
 import '../core/constants/design_system.dart';
+import '../core/enums/status_enums.dart';
 
 /// Card dengan header berwarna (seperti di referensi UI)
 class HeaderCard extends StatelessWidget {
@@ -228,19 +229,19 @@ class AttendanceStatusBadge extends StatelessWidget {
 
   Color _getStatusColor() {
     final normalized = status.toLowerCase().trim();
-    if (normalized == 'hadir') return AppColors.hadir;
-    if (normalized == 'izin') return AppColors.izin;
-    if (normalized == 'alpha') return AppColors.alpha;
-    if (normalized == 'terlambat') return AppColors.terlambat;
+    if (normalized == AttendanceStatus.hadir.value.toLowerCase()) return AppColors.hadir;
+    if (normalized == AttendanceStatus.izin.value.toLowerCase()) return AppColors.izin;
+    if (normalized == AttendanceStatus.alpha.value.toLowerCase()) return AppColors.alpha;
+    if (normalized == AttendanceStatus.terlambat.value.toLowerCase()) return AppColors.terlambat;
     return AppColors.textSecondary;
   }
 
   IconData _getStatusIcon() {
     final normalized = status.toLowerCase().trim();
-    if (normalized == 'hadir') return Icons.check_circle;
-    if (normalized == 'izin') return Icons.help_outline;
-    if (normalized == 'alpha') return Icons.cancel;
-    if (normalized == 'terlambat') return Icons.schedule;
+    if (normalized == AttendanceStatus.hadir.value.toLowerCase()) return Icons.check_circle;
+    if (normalized == AttendanceStatus.izin.value.toLowerCase()) return Icons.help_outline;
+    if (normalized == AttendanceStatus.alpha.value.toLowerCase()) return Icons.cancel;
+    if (normalized == AttendanceStatus.terlambat.value.toLowerCase()) return Icons.schedule;
     return Icons.help_outline;
   }
 

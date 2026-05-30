@@ -1,5 +1,6 @@
 import 'package:hive/hive.dart';
 import '../core/constants/app_constants.dart';
+import '../core/enums/status_enums.dart';
 
 part 'attendance_record.g.dart';
 
@@ -19,6 +20,9 @@ class AttendanceRecord extends HiveObject {
 
   @HiveField(4)
   String status; // 'Hadir', 'Terlambat', 'Izin', 'Sakit', 'Alpha'
+
+  AttendanceStatus get statusEnum => AttendanceStatus.fromString(status);
+  set statusEnum(AttendanceStatus val) => status = val.value;
 
   @HiveField(5)
   bool isManualOverride; // true jika diubah paksa Executive/Manager

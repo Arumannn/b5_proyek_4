@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../models/event_model.dart';
+import '../../../core/enums/status_enums.dart';
 import '../../auth/auth_controller.dart';
 import '../event_controller.dart';
 import '../event_detail_view.dart';
@@ -51,7 +52,7 @@ class _EventViewCardState extends State<EventViewCard> {
     final subEvents = widget.controller.getSubEvents(widget.event.eventId);
     final isExpanded = widget.expandedState[widget.event.eventId] ?? false;
     final attendance = EventUtilities.attendanceForEvent(widget.event.eventId);
-    final presentCount = attendance.where((r) => r.status.toLowerCase().contains('hadir')).length;
+    final presentCount = attendance.where((r) => r.statusEnum == AttendanceStatus.hadir || r.statusEnum == AttendanceStatus.terlambat).length;
     final targetCount = EventUtilities.targetCount(widget.event, presentCount);
     final attendancePercent = targetCount == 0 ? 0.0 : (presentCount / targetCount).clamp(0.0, 1.0);
     final attendanceText = '$presentCount/$targetCount hadir';

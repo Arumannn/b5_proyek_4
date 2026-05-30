@@ -3,7 +3,13 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 import '../../core/services/hive_service.dart';
 import '../../models/event_invitation.dart';
+import '../../core/enums/status_enums.dart';
 import '../../widgets/custom_snackbar.dart';
+import '../../widgets/status_badge.dart';
+import '../../widgets/empty_state_box.dart';
+import '../../widgets/user_avatar.dart';
+import '../../widgets/stat_card.dart';
+import '../../widgets/alert_banner.dart';
 
 class InvitationMonitoringSection extends StatefulWidget {
   final String eventId;
@@ -49,11 +55,14 @@ class _InvitationMonitoringSectionState extends State<InvitationMonitoringSectio
 
         final total = all.length;
         final hadir = all.where((inv) {
-          final s = inv.responseStatus.toLowerCase();
-          return s == 'approved' || s == 'auto-approved';
+          final s = inv.responseStatusEnum;
+          return s == InvitationStatus.approved || s == InvitationStatus.autoApproved;
         }).length;
-        final izin = all.where((inv) => inv.responseStatus.toLowerCase() == 'permission_requested').length;
-        final menunggu = all.where((inv) => !(inv.responseStatus.toLowerCase() == 'approved' || inv.responseStatus.toLowerCase() == 'auto-approved' || inv.responseStatus.toLowerCase() == 'permission_requested')).length;
+        final izin = all.where((inv) => inv.responseStatusEnum == InvitationStatus.permissionRequested).length;
+        final menunggu = all.where((inv) {
+          final s = inv.responseStatusEnum;
+          return !(s == InvitationStatus.approved || s == InvitationStatus.autoApproved || s == InvitationStatus.permissionRequested);
+        }).length;
 
         // Apply search & filter
         final filtered = all.where((inv) {
@@ -64,9 +73,10 @@ class _InvitationMonitoringSectionState extends State<InvitationMonitoringSectio
           if (!matchesSearch) return false;
 
           if (_filter == 'Semua') return true;
-          if (_filter == 'Hadir') return (inv.responseStatus.toLowerCase() == 'approved' || inv.responseStatus.toLowerCase() == 'auto-approved');
-          if (_filter == 'Izin') return inv.responseStatus.toLowerCase() == 'permission_requested';
-          if (_filter == 'Menunggu') return !(inv.responseStatus.toLowerCase() == 'approved' || inv.responseStatus.toLowerCase() == 'auto-approved' || inv.responseStatus.toLowerCase() == 'permission_requested');
+          final s = inv.responseStatusEnum;
+          if (_filter == 'Hadir') return (s == InvitationStatus.approved || s == InvitationStatus.autoApproved);
+          if (_filter == 'Izin') return s == InvitationStatus.permissionRequested;
+          if (_filter == 'Menunggu') return !(s == InvitationStatus.approved || s == InvitationStatus.autoApproved || s == InvitationStatus.permissionRequested);
           return true;
         }).toList(growable: false);
 
@@ -105,13 +115,13 @@ class _InvitationMonitoringSectionState extends State<InvitationMonitoringSectio
                   const SizedBox(height: 12),
                   Row(
                     children: [
-                      Expanded(child: _statBox('Total', total, const Color(0xFF2563EB), const Color(0xFFEFF6FF))),
+                      Expanded(child: StatCard(label: 'Total', value: total, color: const Color(0xFF2563EB))),
                       const SizedBox(width: 8),
-                      Expanded(child: _statBox('Hadir', hadir, const Color(0xFF16A34A), const Color(0xFFF0FDF4))),
+                      Expanded(child: StatCard(label: 'Hadir', value: hadir, color: const Color(0xFF16A34A))),
                       const SizedBox(width: 8),
-                      Expanded(child: _statBox('Izin', izin, const Color(0xFFEA580C), const Color(0xFFFFF7ED))),
+                      Expanded(child: StatCard(label: 'Izin', value: izin, color: const Color(0xFFEA580C))),
                       const SizedBox(width: 8),
-                      Expanded(child: _statBox('Menunggu', menunggu, const Color(0xFF6B7280), const Color(0xFFF3F4F6))),
+                      Expanded(child: StatCard(label: 'Menunggu', value: menunggu, color: const Color(0xFF6B7280))),
                     ],
                   ),
                 ],
@@ -192,12 +202,7 @@ class _InvitationMonitoringSectionState extends State<InvitationMonitoringSectio
                   ),
                   const SizedBox(height: 12),
                   if (filtered.isEmpty)
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(color: const Color(0xFFF9FAFB), borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFFE5E7EB))),
-                      child: const Text('Tidak ada respons sesuai filter/pencarian.', style: TextStyle(color: Color(0xFF6B7280))),
-                    )
+                    const EmptyStateBox(message: 'Tidak ada respons sesuai filter/pencarian.')
                   else
                     ListView.builder(
                       shrinkWrap: true,
@@ -206,10 +211,6 @@ class _InvitationMonitoringSectionState extends State<InvitationMonitoringSectio
                       itemBuilder: (context, index) {
                         final invitation = filtered[index];
                         final member = HiveService.members.get(invitation.nim);
-                        final statusLabel = _statusLabel(invitation.responseStatus);
-                        final statusColor = _getStatusColor(invitation.responseStatus);
-                        final statusBg = statusColor.withValues(alpha: 0.12);
-
                         return Container(
                           margin: const EdgeInsets.only(bottom: 10),
                           padding: const EdgeInsets.all(12),
@@ -224,11 +225,7 @@ class _InvitationMonitoringSectionState extends State<InvitationMonitoringSectio
                             children: [
                               Row(
                                 children: [
-                                  CircleAvatar(
-                                    radius: 20,
-                                    backgroundColor: statusBg,
-                                    child: Text(_initials(member?.nama ?? invitation.nim), style: TextStyle(color: statusColor, fontWeight: FontWeight.bold)),
-                                  ),
+                                  UserAvatar(name: member?.nama ?? invitation.nim, radius: 20),
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: Column(
@@ -239,11 +236,7 @@ class _InvitationMonitoringSectionState extends State<InvitationMonitoringSectio
                                             Expanded(
                                               child: Text(member?.nama ?? 'Unknown', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: Color(0xFF111827))),
                                             ),
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                              decoration: BoxDecoration(color: statusBg, borderRadius: BorderRadius.circular(999)),
-                                              child: Text(statusLabel, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: statusColor)),
-                                            ),
+                                            StatusBadge(status: invitation.responseStatus),
                                           ],
                                         ),
                                         const SizedBox(height: 4),
@@ -265,16 +258,14 @@ class _InvitationMonitoringSectionState extends State<InvitationMonitoringSectio
                                           ),
                                           child: const Text('Cek Izin', style: TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w700)),
                                         )
-                                      : Icon(Icons.chevron_right, color: statusColor),
+                                      : const Icon(Icons.chevron_right, color: Colors.grey),
                                 ],
                               ),
                               if (invitation.responseStatus.toLowerCase() == 'permission_requested') ...[
                                 const SizedBox(height: 10),
-                                Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(color: const Color(0xFFFFF7ED), borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFFFFEDD5))),
-                                  child: Text(_permissionSummary(invitation), style: const TextStyle(fontSize: 12, color: Color(0xFF92400E))),
+                                AlertBanner(
+                                  message: _getPermissionSummaryStr(invitation),
+                                  type: AlertType.warning,
                                 ),
                               ],
                             ],
@@ -291,38 +282,7 @@ class _InvitationMonitoringSectionState extends State<InvitationMonitoringSectio
     );
   }
 
-  Widget _statBox(String label, int value, Color color, Color background) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
-      decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(12), border: Border.all(color: color.withValues(alpha: 0.12))),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('$value', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color)),
-          const SizedBox(height: 6),
-          Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280), fontWeight: FontWeight.w700)),
-        ],
-      ),
-    );
-  }
-
-  String _statusLabel(String status) {
-    switch (status.toLowerCase()) {
-      case 'approved':
-      case 'auto-approved':
-        return 'Hadir';
-      case 'rejected':
-        return 'Ditolak';
-      case 'permission_requested':
-        return 'Izin';
-      default:
-        return 'Menunggu';
-    }
-  }
-
-
-
-  String _permissionSummary(EventInvitation invitation) {
+  String _getPermissionSummaryStr(EventInvitation invitation) {
     final permissionRecords = HiveService.permissions.values
         .where((record) => record.eventId == invitation.eventId && record.nim == invitation.nim)
         .toList(growable: false);
@@ -335,30 +295,8 @@ class _InvitationMonitoringSectionState extends State<InvitationMonitoringSectio
     return '${latest.jenisIzin} • ${latest.alasan}';
   }
 
-  String _initials(String value) {
-    final trimmed = value.trim();
-    if (trimmed.isEmpty) return '?';
-    final parts = trimmed.split(RegExp(r'\s+'));
-    if (parts.length == 1) {
-      return trimmed.substring(0, 1).toUpperCase();
-    }
-    return '${parts.first.substring(0, 1)}${parts[1].substring(0, 1)}'.toUpperCase();
-  }
-
-  Color _getStatusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'approved':
-      case 'auto-approved':
-        return Colors.green;
-      case 'rejected':
-        return Colors.red;
-      case 'permission_requested':
-        return Colors.orange;
-      default:
-        return Colors.grey;
-    }
-  }
-
+  // Removed _statBox, _statusLabel, _permissionSummary, _initials, and _getStatusColor as they are now reusable widgets.
+  
   Future<void> _showPermissionApprovalDialog(
     BuildContext context,
     EventInvitation invitation,
@@ -406,17 +344,17 @@ class _InvitationMonitoringSectionState extends State<InvitationMonitoringSectio
     await _updateInvitationStatus(
       context,
       invitation,
-      approved ? 'approved' : 'rejected',
+      approved ? InvitationStatus.approved : InvitationStatus.rejected,
     );
   }
 
   Future<void> _updateInvitationStatus(
     BuildContext context,
     EventInvitation invitation,
-    String status,
+    InvitationStatus status,
   ) async {
     try {
-      invitation.responseStatus = status;
+      invitation.responseStatusEnum = status;
       invitation.respondedAt = DateTime.now();
       invitation.isSynced = false;
       await HiveService.invitations.put(invitation.invitationId, invitation);

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../core/utils/qr_service.dart';
+import '../../widgets/user_avatar.dart';
 
 class MemberProfileView extends StatelessWidget {
   final String nama;
@@ -32,7 +33,7 @@ class MemberProfileView extends StatelessWidget {
       body: ListView(
         padding: EdgeInsets.zero,
         children: [
-          _buildProfileHeader(context, nama, nim, divisi),
+          _buildHeader(),
           const SizedBox(height: 18),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -156,22 +157,12 @@ class MemberProfileView extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Container(
-            width: 96,
-            height: 96,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.22),
-              borderRadius: BorderRadius.circular(18),
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              nama.isNotEmpty ? nama[0].toUpperCase() : 'A',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 34,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+          UserAvatar(
+            name: nama,
+            radius: 48, // 96 / 2
+            backgroundColor: Colors.white.withValues(alpha: 0.22),
+            foregroundColor: Colors.white,
+            borderRadius: BorderRadius.circular(18),
           ),
           const SizedBox(width: 16),
           Expanded(

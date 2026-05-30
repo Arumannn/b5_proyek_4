@@ -1,5 +1,6 @@
 import 'package:hive/hive.dart';
 import '../core/constants/app_constants.dart';
+import '../core/enums/status_enums.dart';
 
 part 'permission_record.g.dart';
 
@@ -28,6 +29,9 @@ class PermissionRecord extends HiveObject {
 
   @HiveField(7)
   String status;
+
+  PermissionStatus get statusEnum => PermissionStatus.fromString(status);
+  set statusEnum(PermissionStatus val) => status = val.value;
 
   @HiveField(8)
   String? validatedBy;

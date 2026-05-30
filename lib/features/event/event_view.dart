@@ -7,6 +7,7 @@ import '../../core/controllers/config_controller.dart';
 import '../../models/event_model.dart';
 import '../../models/attendance_record.dart';
 import '../../models/member_model.dart';
+import '../../core/enums/status_enums.dart';
 import '../../core/services/hive_service.dart';
 import '../../widgets/custom_snackbar.dart';
 import '../../widgets/white_status_header.dart';
@@ -871,7 +872,7 @@ class _EventViewState extends State<EventView> {
     final subEvents = _controller.getSubEvents(event.eventId);
     final isExpanded = _expandedState[event.eventId] ?? false;
     final attendance = _attendanceForEvent(event.eventId);
-    final presentCount = attendance.where((r) => r.status.toLowerCase().contains('hadir')).length;
+    final presentCount = attendance.where((r) => r.statusEnum == AttendanceStatus.hadir || r.statusEnum == AttendanceStatus.terlambat).length;
     final targetCount = _targetCount(event, presentCount);
     final attendancePercent = targetCount == 0 ? 0.0 : (presentCount / targetCount).clamp(0.0, 1.0);
     final attendanceText = '$presentCount/$targetCount hadir';

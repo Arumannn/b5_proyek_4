@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/event_invitation.dart';
+import '../core/enums/status_enums.dart';
 
 class InvitationCard extends StatelessWidget {
     final EventInvitation invitation;
@@ -21,7 +22,7 @@ class InvitationCard extends StatelessWidget {
 
     @override
     Widget build(BuildContext context) {
-        bool isPending = invitation.responseStatus == 'pending';
+        bool isPending = invitation.responseStatusEnum == InvitationStatus.pending;
 
         return Card(
             margin: const EdgeInsets.only(bottom: 16.0),
@@ -50,7 +51,7 @@ class InvitationCard extends StatelessWidget {
                                         color: Colors.white,
                                     ),
                                 ),
-                                backgroundColor: _getStatusColor(invitation.responseStatus),
+                                backgroundColor: _getStatusColor(invitation.responseStatusEnum),
                             ),
                         ],
                     ),
@@ -107,13 +108,14 @@ class InvitationCard extends StatelessWidget {
         );
     }
 
-    Color _getStatusColor(String status) {
+    Color _getStatusColor(InvitationStatus status) {
         switch (status) {
-            case 'approved':
+            case InvitationStatus.approved:
+            case InvitationStatus.autoApproved:
                 return Colors.green;
-            case 'rejected':
+            case InvitationStatus.rejected:
                 return Colors.red;
-            case 'permission_requested':
+            case InvitationStatus.permissionRequested:
                 return Colors.orange;
             default:
                 return Colors.grey;
