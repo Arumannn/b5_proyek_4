@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_constants.dart';
+import '../../widgets/custom_confirm_dialog.dart';
 import '../../widgets/gradient_header.dart';
 import '../../core/auth/attendance_role_policy.dart';
 import '../../core/services/hive_service.dart';
@@ -179,19 +180,11 @@ class _AttendanceRecapSharedViewState extends State<AttendanceRecapSharedView> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Hapus Kehadiran'),
-          content: const Text('Yakin ingin menghapus record kehadiran ini?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Batal'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Hapus'),
-            ),
-          ],
+        return const CustomConfirmDialog(
+          title: 'Hapus Kehadiran',
+          content: 'Yakin ingin menghapus record kehadiran ini?',
+          isDestructive: true,
+          confirmText: 'Hapus',
         );
       },
     );

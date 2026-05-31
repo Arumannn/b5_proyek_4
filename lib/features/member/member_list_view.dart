@@ -11,6 +11,7 @@ import 'member_form_view.dart';
 import 'member_controller.dart';
 import '../../models/member_model.dart';
 import 'widgets/member_card.dart';
+import '../../widgets/custom_confirm_dialog.dart';
 
 class MemberListView extends StatefulWidget {
   final bool showBottomNav;
@@ -77,20 +78,11 @@ class _MemberListViewState extends State<MemberListView> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Konfirmasi Hapus'),
-          content: Text('Hapus anggota ${member.nama} (${member.nim})?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Batal'),
-            ),
-            FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: Colors.red),
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Hapus'),
-            ),
-          ],
+        return CustomConfirmDialog(
+          title: 'Konfirmasi Hapus',
+          content: 'Hapus anggota ${member.nama} (${member.nim})?',
+          confirmText: 'Hapus',
+          isDestructive: true,
         );
       },
     );

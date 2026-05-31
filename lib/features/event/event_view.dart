@@ -10,6 +10,7 @@ import '../../models/member_model.dart';
 import '../../core/enums/status_enums.dart';
 import '../../core/services/hive_service.dart';
 import '../../widgets/custom_snackbar.dart';
+import '../../widgets/custom_confirm_dialog.dart';
 import '../../widgets/white_status_header.dart';
 import '../../widgets/sectioned_list_body.dart';
 import '../auth/auth_controller.dart';
@@ -17,6 +18,7 @@ import 'event_controller.dart';
 import 'event_permission.dart';
 import 'widgets/event_utilities.dart';
 import 'widgets/event_view_card.dart';
+import 'widgets/event_form_dialog.dart';
 import 'event_detail_view.dart';
 import '../attendance/scan_screen.dart';
 
@@ -453,19 +455,11 @@ class _EventViewState extends State<EventView> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Hapus Event'),
-          content: Text('Yakin ingin menghapus "${target.nama}"?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Batal'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Hapus'),
-            ),
-          ],
+        return CustomConfirmDialog(
+          title: 'Hapus Event',
+          content: 'Yakin ingin menghapus "${target.nama}"?',
+          confirmText: 'Hapus',
+          isDestructive: true,
         );
       },
     );
@@ -485,339 +479,23 @@ class _EventViewState extends State<EventView> {
     }
   }
 
-  Future<_EventFormData?> _showEventFormDialog({
+  Future<EventFormData?> _showEventFormDialog({
     required String title,
     EventModel? initial,
     String? forcedParentId,
   }) async {
-    final formKey = GlobalKey<FormState>();
-    final nameController = TextEditingController(text: initial?.nama ?? '');
-    final lokasiController = TextEditingController(text: initial?.lokasi ?? '');
-    final descController = TextEditingController(
-      text: initial?.deskripsi ?? '',
-    );
-    final penanggungJawabController = TextEditingController(
-      text: initial?.penanggungJawab ?? '',
-    );
-
-    DateTime selectedDate = initial?.tanggalMulai ?? DateTime.now();
-    String selectedJenis = initial?.jenis ?? ConfigController.instance.eventTypes.first;
-    bool isSubEvent = forcedParentId != null || initial?.parentEventId != null;
-    String? parentId = forcedParentId ?? initial?.parentEventId;
-    final List<String> targetDivisi = [];
-    if (initial != null) {
-      final allMembers = HiveService.members.values.toList();
-      for (final nim in initial.targetPeserta) {
-        final m = allMembers.firstWhere(
-          (element) => element.nim == nim, 
-          orElse: () => MemberModel(nim: '', nama: '', divisi: '', role: '', password: '', qrCodeValue: '')
-        );
-        if (m.nim.isNotEmpty) {
-          if (m.divisi.isNotEmpty) targetDivisi.add(m.divisi);
-          if (m.jobTitle != null && m.jobTitle!.isNotEmpty) targetDivisi.add(m.jobTitle!);
-        }
-      }
-    }
-    final Set<String> targetDivisiSet = targetDivisi.toSet();
-    targetDivisi.clear();
-    targetDivisi.addAll(targetDivisiSet);
-    
-    String? selectedPenyelenggara = initial?.penyelenggara;
-    bool requiresInvitation = initial?.requiresInvitation ?? false;
-
-    final allDbu = ConfigController.instance.allDbuOptions;
-
-    final result = await showDialog<_EventFormData>(
+    return await showDialog<EventFormData>(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            Future<void> pickDate() async {
-              final picked = await showDatePicker(
-                context: context,
-                initialDate: selectedDate,
-                firstDate: DateTime.now().subtract(const Duration(days: 1)),
-                lastDate: DateTime(2100),
-              );
-              if (picked == null) return;
-              setDialogState(() {
-                selectedDate = picked;
-              });
-            }
-
-            return AlertDialog(
-              title: Text(title),
-              content: SizedBox(
-                width: 560,
-                child: Form(
-                  key: formKey,
-                  child: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        TextFormField(
-                          controller: nameController,
-                          decoration: const InputDecoration(
-                            labelText: 'Nama Event',
-                            prefixIcon: Icon(Icons.event_note_outlined),
-                          ),
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Nama event wajib diisi.';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 12),
-                        DropdownButtonFormField<String>(
-                          initialValue: selectedJenis,
-                          decoration: const InputDecoration(
-                            labelText: 'Jenis Event',
-                            prefixIcon: Icon(Icons.category_outlined),
-                          ),
-                          items: ConfigController.instance.eventTypes
-                              .map(
-                                (jenis) => DropdownMenuItem<String>(
-                                  value: jenis,
-                                  child: Text(jenis),
-                                ),
-                              )
-                              .toList(growable: false),
-                          onChanged: (value) {
-                            if (value == null) return;
-                            setDialogState(() {
-                              selectedJenis = value;
-                            });
-                          },
-                        ),
-                        const SizedBox(height: 12),
-                        DropdownButtonFormField<String>(
-                          initialValue: selectedPenyelenggara,
-                          decoration: const InputDecoration(
-                            labelText: 'Penyelenggara',
-                            prefixIcon: Icon(Icons.group_outlined),
-                          ),
-                          isExpanded: true,
-                          items: ConfigController.instance.penyelenggaraOptions
-                              .map(
-                                (p) => DropdownMenuItem<String>(
-                                  value: p,
-                                  child: Text(p),
-                                ),
-                              )
-                              .toList(growable: false),
-                          onChanged: (value) {
-                            setDialogState(() {
-                              selectedPenyelenggara = value;
-                            });
-                          },
-                        ),
-                        const SizedBox(height: 12),
-                        TextFormField(
-                          controller: penanggungJawabController,
-                          decoration: const InputDecoration(
-                            labelText: 'Penanggung Jawab',
-                            prefixIcon: Icon(Icons.badge_outlined),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          leading: const Icon(Icons.calendar_today_outlined),
-                          title: const Text('Tanggal'),
-                          subtitle: Text(_formatDate(selectedDate)),
-                          trailing: const Icon(Icons.edit_calendar_outlined),
-                          onTap: pickDate,
-                        ),
-                        const SizedBox(height: 12),
-                        TextFormField(
-                          controller: lokasiController,
-                          decoration: const InputDecoration(
-                            labelText: 'Lokasi',
-                            prefixIcon: Icon(Icons.place_outlined),
-                          ),
-                        ),
-                        if (forcedParentId == null) ...[
-                          const SizedBox(height: 8),
-                          SwitchListTile(
-                            contentPadding: EdgeInsets.zero,
-                            value: isSubEvent,
-                            title: const Text('Jadikan Sub-Event'),
-                            onChanged: (value) {
-                              setDialogState(() {
-                                isSubEvent = value;
-                                if (!value) parentId = null;
-                              });
-                            },
-                          ),
-                        ],
-                        if (isSubEvent) ...[
-                          const SizedBox(height: 8),
-                          DropdownButtonFormField<String>(
-                            initialValue: parentId,
-                            decoration: const InputDecoration(
-                              labelText: 'Main Event (Parent)',
-                              prefixIcon: Icon(Icons.account_tree_outlined),
-                            ),
-                            items: _parentOptions
-                                .where(
-                                  (e) =>
-                                      initial == null ||
-                                      e.eventId != initial.eventId,
-                                )
-                                .map(
-                                  (e) => DropdownMenuItem<String>(
-                                    value: e.eventId,
-                                    child: Text(e.nama),
-                                  ),
-                                )
-                                .toList(growable: false),
-                            onChanged: forcedParentId != null
-                                ? null
-                                : (value) {
-                                    setDialogState(() {
-                                      parentId = value;
-                                    });
-                                  },
-                            validator: (value) {
-                              if (!isSubEvent) return null;
-                              if (value == null || value.isEmpty) {
-                                return 'Pilih parent event.';
-                              }
-                              return null;
-                            },
-                          ),
-                        ],
-                        const SizedBox(height: 12),
-                        TextFormField(
-                          controller: descController,
-                          maxLines: 3,
-                          decoration: const InputDecoration(
-                            labelText: 'Deskripsi (Opsional)',
-                            prefixIcon: Icon(Icons.description_outlined),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            'Target Divisi *',
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: allDbu
-                              .map((divisi) {
-                                final selected = targetDivisi.contains(divisi);
-                                return FilterChip(
-                                  label: Text(divisi),
-                                  selected: selected,
-                                  onSelected: (value) {
-                                    setDialogState(() {
-                                      if (value) {
-                                        targetDivisi.add(divisi);
-                                      } else {
-                                        targetDivisi.remove(divisi);
-                                      }
-                                    });
-                                  },
-                                );
-                              })
-                              .toList(growable: false),
-                        ),
-                        const SizedBox(height: 8),
-                        if (targetDivisi.isEmpty)
-                          const Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              'Wajib pilih minimal 1 target divisi.',
-                              style: TextStyle(fontSize: 12, color: Colors.red),
-                            ),
-                          ),
-                        const SizedBox(height: 12),
-                        SwitchListTile(
-                          title: const Text('Aktifkan Undangan', style: TextStyle(fontSize: 14)),
-                          contentPadding: EdgeInsets.zero,
-                          value: requiresInvitation,
-                          onChanged: (value) {
-                            setDialogState(() {
-                              requiresInvitation = value;
-                            });
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Batal'),
-                ),
-                FilledButton(
-                  onPressed: () {
-                    if (!(formKey.currentState?.validate() ?? false)) return;
-                    if (targetDivisi.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Target divisi wajib dipilih (minimal 1).')),
-                      );
-                      return;
-                    }
-                    // Expand targetDivisi into member NIMs
-                    final Set<String> targetNims = {};
-                    final allMembers = HiveService.members.values.toList();
-                    for (final div in targetDivisi) {
-                      final normalizedDiv = div.trim().toLowerCase();
-                      final membersInDiv = allMembers.where((m) {
-                        final matchDivisi = m.divisi.trim().toLowerCase() == normalizedDiv;
-                        final matchJobTitle = (m.jobTitle?.trim().toLowerCase() ?? '') == normalizedDiv;
-                        return matchDivisi || matchJobTitle;
-                      });
-                      for (final m in membersInDiv) {
-                        targetNims.add(m.nim);
-                      }
-                    }
-
-                    Navigator.of(dialogContext).pop(
-                      _EventFormData(
-                        name: nameController.text.trim(),
-                        date: selectedDate,
-                        jenis: selectedJenis,
-                        parentEventId: isSubEvent ? parentId : null,
-                                lokasi: lokasiController.text.trim().isEmpty
-                                    ? null
-                                    : lokasiController.text.trim(),
-                        deskripsi: descController.text.trim().isEmpty
-                            ? null
-                            : descController.text.trim(),
-                        targetPeserta: targetNims.toList(growable: false),
-                        requiresInvitation: requiresInvitation,
-                        penyelenggara: selectedPenyelenggara,
-                          penanggungJawab: penanggungJawabController.text.trim().isEmpty
-                              ? null
-                              : penanggungJawabController.text.trim(),
-                      ),
-                    );
-                  },
-                  child: const Text('Simpan'),
-                ),
-              ],
-            );
-          },
+        return EventFormDialog(
+          title: title,
+          initial: initial,
+          forcedParentId: forcedParentId,
+          parentOptions: _parentOptions,
         );
       },
     );
-
-    nameController.dispose();
-    lokasiController.dispose();
-    descController.dispose();
-    penanggungJawabController.dispose();
-    return result;
   }
 
   Widget _buildActionButtons(EventModel event, {String? forcedParentId}) {
@@ -1251,28 +929,3 @@ class _EventViewState extends State<EventView> {
   List<AttendanceRecord> _attendanceForEvent(String eventId) => EventUtilities.attendanceForEvent(eventId);
 }
 
-class _EventFormData {
-  const _EventFormData({
-    required this.name,
-    required this.date,
-    required this.jenis,
-    this.parentEventId,
-    this.lokasi,
-    this.deskripsi,
-    this.targetPeserta = const <String>[],
-    this.requiresInvitation = false,
-    this.penyelenggara,
-    this.penanggungJawab,
-  });
-
-  final String name;
-  final DateTime date;
-  final String jenis;
-  final String? parentEventId;
-  final String? lokasi;
-  final String? deskripsi;
-  final List<String> targetPeserta;
-  final bool requiresInvitation;
-  final String? penyelenggara;
-  final String? penanggungJawab;
-}

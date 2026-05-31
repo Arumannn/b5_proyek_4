@@ -7,6 +7,8 @@ import '../../models/permission_record.dart';
 import '../../core/services/hive_service.dart';
 import '../../core/enums/status_enums.dart';
 import '../../widgets/custom_snackbar.dart';
+import '../../widgets/custom_confirm_dialog.dart';
+import '../attendance/attendance_recap_view.dart';
 import 'event_permission.dart';
 import 'event_controller.dart';
 import 'event_form_view.dart';
@@ -215,20 +217,11 @@ class _EventDetailViewState extends State<EventDetailView> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Hapus Event'),
-          content: Text('Yakin ingin menghapus "${_currentEvent.nama}"?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Batal'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              style: FilledButton.styleFrom(backgroundColor: Colors.red),
-              child: const Text('Hapus'),
-            ),
-          ],
+        return CustomConfirmDialog(
+          title: 'Hapus Event',
+          content: 'Yakin ingin menghapus "${_currentEvent.nama}"?',
+          confirmText: 'Hapus',
+          isDestructive: true,
         );
       },
     );

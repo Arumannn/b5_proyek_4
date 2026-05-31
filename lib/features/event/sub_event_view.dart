@@ -4,6 +4,7 @@ import '../../core/constants/app_constants.dart';
 import '../../models/event_model.dart';
 import '../../widgets/custom_snackbar.dart';
 import '../../widgets/gradient_header.dart';
+import '../../widgets/custom_confirm_dialog.dart';
 import '../../widgets/sectioned_list_body.dart';
 import '../auth/auth_controller.dart';
 import 'event_controller.dart';
@@ -48,6 +49,20 @@ class _SubEventViewState extends State<SubEventView> {
           context, 'Anda tidak memiliki izin menghapus sub-event.');
       return;
     }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return CustomConfirmDialog(
+          title: 'Hapus Sub-Event',
+          content: 'Yakin ingin menghapus "${subEvent.nama}"?',
+          confirmText: 'Hapus',
+          isDestructive: true,
+        );
+      },
+    );
+
+    if (confirmed != true) return;
 
     final ok = await _controller.deleteEvent(subEvent.eventId);
     if (!mounted) return;

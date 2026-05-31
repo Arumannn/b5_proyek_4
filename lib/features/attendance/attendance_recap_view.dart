@@ -9,6 +9,7 @@ import '../../models/event_model.dart';
 import '../../models/member_model.dart';
 import '../../widgets/gradient_header.dart';
 import '../../widgets/custom_snackbar.dart';
+import '../../widgets/custom_confirm_dialog.dart';
 import '../../widgets/table_page_body.dart';
 import '../auth/auth_controller.dart';
 import 'attendance_controller.dart';
@@ -440,19 +441,11 @@ class _AttendanceRecapViewState extends State<AttendanceRecapView> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Hapus Kehadiran'),
-          content: const Text('Yakin ingin menghapus record kehadiran ini?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Batal'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Hapus'),
-            ),
-          ],
+        return const CustomConfirmDialog(
+          title: 'Hapus Kehadiran',
+          content: 'Yakin ingin menghapus record kehadiran ini?',
+          confirmText: 'Hapus',
+          isDestructive: true,
         );
       },
     );

@@ -11,6 +11,7 @@ import 'widgets/executive_dashboard_section.dart';
 import '../../widgets/white_status_header.dart';
 import '../../models/event_model.dart';
 import '../member/qr_display_view.dart';
+import '../../widgets/custom_confirm_dialog.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../core/utils/qr_service.dart';
 
@@ -28,13 +29,11 @@ class _DashboardViewState extends State<DashboardView> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Logout'),
-          content: const Text('Yakin ingin keluar dari akun ini?'),
-          actions: [
-            TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: const Text('Batal')),
-            FilledButton(onPressed: () => Navigator.of(dialogContext).pop(true), child: const Text('Logout')),
-          ],
+        return const CustomConfirmDialog(
+          title: 'Logout',
+          content: 'Yakin ingin keluar dari akun ini?',
+          confirmText: 'Logout',
+          isDestructive: true,
         );
       },
     );

@@ -3,26 +3,6 @@ import '../../../core/services/hive_service.dart';
 import '../../../models/event_model.dart';
 import '../../../models/attendance_record.dart';
 
-/// Data class for event form submission
-class EventFormData {
-  const EventFormData({
-    required this.name,
-    required this.date,
-    required this.jenis,
-    this.parentEventId,
-    this.lokasi,
-    this.deskripsi,
-    this.targetPeserta = const <String>[],
-  });
-
-  final String name;
-  final DateTime date;
-  final String jenis;
-  final String? parentEventId;
-  final String? lokasi;
-  final String? deskripsi;
-  final List<String> targetPeserta;
-}
 
 /// Utility class for event-related helper methods
 class EventUtilities {
