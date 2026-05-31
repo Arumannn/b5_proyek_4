@@ -370,7 +370,7 @@ Widget _buildTable() {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: roles.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        separatorBuilder: (_, _) => const SizedBox(width: 10),
         itemBuilder: (context, index) {
           final role = roles[index];
           final selected = _selectedRoleFilter == role;
@@ -478,4 +478,4 @@ Widget _buildTable() {
     );
   }
 }
-
+

@@ -374,9 +374,6 @@ class AuthController {
     errorMessage.value = null;
 
     try {
-      // Pastikan akun default selalu tersedia dan data login lokal ter-repair.
-      await seedDefaultAccount();
-
       final normalizedNim = nim.trim();
       debugPrint('[Auth][login] start nim=$normalizedNim');
 
@@ -881,6 +878,7 @@ class AuthController {
       'nim': nim,
       'divisi': doc['divisi'],
       'role': _normalizeRole((doc['role'] ?? '').toString()),
+      'password': doc['password'],
       'qrCodeValue': doc['qrCodeValue'] ?? doc['qrData'],
       'createdAt': doc['createdAt'],
       'updatedAt': doc['updatedAt'],

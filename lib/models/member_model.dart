@@ -53,6 +53,7 @@ class MemberModel extends HiveObject {
       'nim': nim,
       'divisi': divisi,
       'role': role,
+      'password': password,
       'qrCodeValue': qrCodeValue,
       'fcmToken': fcmToken,
       'organizationId': organizationId,
