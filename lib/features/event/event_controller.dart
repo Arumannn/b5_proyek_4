@@ -1,107 +1,57 @@
 import 'dart:async';
-
-import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_constants.dart';
-import '../../core/controllers/config_controller.dart';
-import '../../core/services/hive_service.dart';
-import '../../core/services/mongo_service.dart';
 import '../../models/event_model.dart';
-import '../../models/event_invitation.dart';
 import '../auth/auth_controller.dart';
-import 'event_permission.dart';
 
-/// Controller untuk CRUD Event — Offline-First dengan cross-device sync.
-///
-/// ALUR DATA:
-/// 1. createEvent/updateEvent/deleteEvent → simpan ke Hive dulu (offline-first)
-/// 2. Jika online → langsung upsert ke MongoDB di background (fire-and-forget)
-/// 3. Jika offline → isSynced=false, SyncManager akan handle saat online
-///
-/// CROSS-DEVICE SYNC:
-/// - loadEvents() selalu pull dari MongoDB di background setelah load Hive
-/// - Data dari MongoDB di-merge ke Hive (upsert berdasarkan eventId)
-/// - Hasilnya: semua device selalu mendapat data terbaru
+import 'data/event_local_data_source.dart';
+import 'data/event_remote_data_source.dart';
+import 'repositories/event_repository.dart';
+
 class EventController {
   static final EventController instance = EventController._internal();
-  EventController._internal();
 
-  final ValueNotifier<List<EventModel>> events =
-      ValueNotifier<List<EventModel>>([]);
+  late final EventRepository _repository;
+  
+  EventController._internal() {
+    _repository = EventRepository(
+      EventLocalDataSource(),
+      EventRemoteDataSource(),
+    );
+  }
+
+  final ValueNotifier<List<EventModel>> events = ValueNotifier<List<EventModel>>([]);
   final ValueNotifier<bool> isLoading = ValueNotifier(false);
   final ValueNotifier<String?> errorMessage = ValueNotifier(null);
 
-  // ── Filter & Search State ──────────────────────────────────────
   final ValueNotifier<String?> selectedJenisFilter = ValueNotifier(null);
   final ValueNotifier<String?> selectedPenyelenggaraFilter = ValueNotifier(null);
-  final ValueNotifier<DateTimeRange?> selectedDateRangeFilter = ValueNotifier(
-    null,
-  );
+  final ValueNotifier<DateTimeRange?> selectedDateRangeFilter = ValueNotifier(null);
   final ValueNotifier<String> searchQuery = ValueNotifier('');
 
   bool _hasLoaded = false;
-  List<EventModel> _allEvents = [];
   Timer? _statusRefreshTimer;
 
-  // RBAC: Ambil role user login saat ini untuk evaluasi izin di layer logic.
   String get _currentRole =>
       AuthController.instance.currentUser.value?.role ?? AppConstants.roleExecutive;
-
-  // ══════════════════════════════════════════════════════════════
-  // LOAD EVENTS — Hive + MongoDB merge
-  // ══════════════════════════════════════════════════════════════
-
-  /// Me-refresh status seluruh event berdasarkan waktu saat ini.
-  /// Jika ada perubahan (misal dari Berlangsung ke Selesai), akan disimpan ke DB.
-  void _refreshAllStatuses() {
-    bool hasUpdates = false;
-    for (final event in _allEvents) {
-      final oldStatus = event.statusEvent;
-      event.refreshStatus();
-      if (oldStatus != event.statusEvent) {
-        try {
-          event.save();
-          // Jika status berubah otomatis, tandai belum tersinkron agar di-push ke cloud.
-          event.isSynced = false;
-          event.save();
-          hasUpdates = true;
-        } catch (e) {
-          debugPrint('[EventCtrl] gagal menyimpan status update: $e');
-        }
-      }
-    }
-    if (hasUpdates) {
-      // Panggil cloud sync di background untuk push perubahan status otomatis
-      unawaited(_pushPendingUpdatesToCloudInBackground());
-    }
-  }
+      
+  String get _loginNim =>
+      AuthController.instance.currentUser.value?.nim ?? '';
 
   void _startStatusRefreshTimer() {
-    if (_statusRefreshTimer?.isActive == true) {
-      return;
-    }
+    if (_statusRefreshTimer?.isActive == true) return;
 
     _statusRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
-      if (_allEvents.isEmpty) return;
-      _refreshAllStatuses();
-      _applyFilters();
+      final allEvents = _repository.getAllEvents();
+      if (allEvents.isEmpty) return;
+      
+      if (_repository.refreshAllStatuses(allEvents)) {
+        _applyFilters();
+      }
     });
   }
 
-  /// Mem-push data yang isSynced=false ke cloud secara background.
-  Future<void> _pushPendingUpdatesToCloudInBackground() async {
-    if (!await _isOnline()) return;
-    final pending = _allEvents.where((e) => !e.isSynced).toList();
-    for (final event in pending) {
-      unawaited(_upsertEventToCloudInBackground(event));
-    }
-  }
-
-  /// Load event dari Hive (instan) lalu sync dari MongoDB di background.
-  ///
-  /// [force] — paksa reload meski sudah pernah load sebelumnya.
-  /// [cloudSync] — jika true, akan pull dari MongoDB setelah load Hive.
   Future<void> loadEvents({bool force = false, bool cloudSync = true}) async {
     if (_hasLoaded && !force) return;
 
@@ -109,32 +59,23 @@ class EventController {
     errorMessage.value = null;
 
     try {
-      // Step 1: Load dari Hive dulu (instan, offline-first)
-      _allEvents = HiveService.events.values.toList();
-      _allEvents.sort((a, b) => a.tanggalMulai.compareTo(b.tanggalMulai));
-      
-      // Auto-update status event berdasarkan waktu sebelum apply filter
-      _refreshAllStatuses();
+      final allEvents = _repository.getAllEvents();
+      _repository.refreshAllStatuses(allEvents);
       
       _applyFilters();
       _hasLoaded = true;
       _startStatusRefreshTimer();
-
-      debugPrint('[EventCtrl] load Hive: ${_allEvents.length} event dimuat.');
     } catch (e) {
       errorMessage.value = 'Gagal memuat event: $e';
-      debugPrint('[EventCtrl] load Hive error: $e');
     } finally {
       isLoading.value = false;
     }
 
-    // Step 2: Pull dari MongoDB di background untuk cross-device sync
     if (cloudSync) {
-      _pullFromCloudInBackground();
+      unawaited(_pullFromCloud());
     }
   }
 
-  /// Reload event dan tunggu sinkronisasi cloud selesai.
   Future<void> refreshEvents({bool cloudSync = true}) async {
     await loadEvents(force: true, cloudSync: false);
 
@@ -143,97 +84,14 @@ class EventController {
     }
   }
 
-  /// Pull semua event dari MongoDB dan merge ke Hive + state.
-  ///
-  /// Dipanggil fire-and-forget setelah load Hive selesai,
-  /// sehingga UI tidak menunggu koneksi cloud.
-  Future<void> _pullFromCloudInBackground() async {
-    unawaited(_pullFromCloud());
-  }
-
   Future<void> _pullFromCloud() async {
     try {
-      if (!await _isOnline()) {
-        debugPrint('[EventCtrl] pull cloud: offline, skip.');
-        return;
-      }
-
-      if (!MongoService.instance.isConnected) {
-        final connected = await MongoService.instance.ensureConnected();
-        if (!connected) {
-          debugPrint('[EventCtrl] pull cloud: MongoDB tidak terhubung.');
-          return;
-        }
-      }
-
-      debugPrint('[EventCtrl] pull cloud: mengambil semua event...');
-
-      final cloudDocs = await MongoService.instance.findMany(
-        collectionName: AppConstants.eventsCollection,
-      );
-
-      if (cloudDocs.isEmpty) {
-        debugPrint('[EventCtrl] pull cloud: tidak ada event di cloud.');
-        return;
-      }
-
-      debugPrint(
-        '[EventCtrl] pull cloud: ${cloudDocs.length} event ditemukan.',
-      );
-
-      var newCount = 0;
-      var updatedCount = 0;
-
-      for (final doc in cloudDocs) {
-        final cleanDoc = _sanitizeMongoDoc(doc);
-        final eventId = cleanDoc['eventId']?.toString();
-        if (eventId == null || eventId.isEmpty) continue;
-
-        final cloudEvent = EventModel.fromMap(cleanDoc);
-        final existingLocal = HiveService.events.get(eventId);
-
-        if (existingLocal == null) {
-          // Event baru dari cloud (termasuk yang sudah di-softdelete)
-          final synced = cloudEvent.copyWith(isSynced: true);
-          await HiveService.events.put(synced.eventId, synced);
-          newCount++;
-        } else if (!existingLocal.isSynced) {
-          // Event lokal belum sync — skip, biarkan SyncManager yang push
-          continue;
-        } else {
-          // Event sudah synced — timpa dengan data cloud (termasuk info deletedAt)
-          final synced = cloudEvent.copyWith(isSynced: true);
-          await HiveService.events.put(synced.eventId, synced);
-          updatedCount++;
-        }
-      }
-
-      if (newCount > 0 || updatedCount > 0) {
-        // Reload dari Hive setelah merge untuk refresh UI
-        _allEvents = HiveService.events.values.toList();
-        _allEvents.sort((a, b) => a.tanggalMulai.compareTo(b.tanggalMulai));
-        
-        _refreshAllStatuses();
-        
-        _applyFilters();
-
-        debugPrint(
-          '[EventCtrl] pull cloud selesai: '
-          '$newCount baru, $updatedCount diperbarui.',
-        );
-      } else {
-        debugPrint('[EventCtrl] pull cloud: data sudah up-to-date.');
-      }
-    } catch (e, st) {
-      // Error cloud tidak boleh crash app — cukup log
+      await _repository.pullFromCloud();
+      _applyFilters();
+    } catch (e) {
       debugPrint('[EventCtrl] pull cloud error: $e');
-      debugPrint(st.toString());
     }
   }
-
-  // ══════════════════════════════════════════════════════════════
-  // CREATE EVENT
-  // ══════════════════════════════════════════════════════════════
 
   Future<bool> createEvent({
     required String nama,
@@ -250,363 +108,73 @@ class EventController {
     String? penyelenggara,
     String? penanggungJawab,
   }) async {
-    // ── Validasi ──────────────────────────────────────────────────
-    final trimmed = nama.trim();
-    if (trimmed.isEmpty) {
-      errorMessage.value = 'Nama event wajib diisi.';
-      return false;
-    }
-    if (!ConfigController.instance.eventTypes.contains(jenis)) {
-      errorMessage.value = 'Jenis event tidak valid.';
-      return false;
-    }
-    if (_isPastDay(tanggalMulai)) {
-      errorMessage.value = 'Tanggal event tidak boleh masa lalu.';
-      return false;
-    }
-    if (parentEventId != null && parentEventId.isNotEmpty) {
-      final parentExists = _allEvents.any((e) => e.eventId == parentEventId);
-      if (!parentExists) {
-        errorMessage.value = 'Parent event tidak ditemukan.';
-        return false;
-      }
-    }
-
-    // RBAC: Tentukan scope izin berdasarkan apakah data adalah sub-event atau main event.
-    final isSubEvent = parentEventId != null && parentEventId.isNotEmpty;
-    // RBAC: Tolak CREATE jika role tidak punya izin pada scope event terkait.
-    if (isSubEvent && !EventPermission.canCreateSubEvent(_currentRole)) {
-      errorMessage.value = 'Anda tidak memiliki izin membuat sub-event.';
-      return false;
-    }
-    // RBAC: Main event hanya boleh dibuat oleh Executive.
-    if (!isSubEvent && !EventPermission.canCreateMainEvent(_currentRole)) {
-      errorMessage.value = 'Anda tidak memiliki izin membuat main event.';
-      return false;
-    }
-
-    // RBAC: createdBy harus otomatis berasal dari nim user login.
-    final explicitCreatedBy = createdBy.trim();
-    final loginNim = AuthController.instance.currentUser.value?.nim.trim();
-    final actorNim = explicitCreatedBy.isNotEmpty
-      ? explicitCreatedBy
-      : (loginNim != null && loginNim.isNotEmpty ? loginNim : null);
-    if (actorNim == null) {
-      errorMessage.value = 'User login tidak valid untuk membuat event.';
-      return false;
-    }
-
     isLoading.value = true;
     errorMessage.value = null;
 
     try {
-      final created = EventModel(
-        eventId: DateTime.now().microsecondsSinceEpoch.toString(),
-        nama: trimmed,
-        jenis: jenis,
+      await _repository.createEvent(
+        currentRole: _currentRole,
+        loginNim: _loginNim,
+        nama: nama,
         tanggalMulai: tanggalMulai,
         tanggalSelesai: tanggalSelesai,
         jamSelesai: jamSelesai,
-        createdBy: actorNim,
         parentEventId: parentEventId,
+        createdBy: createdBy,
+        jenis: jenis,
         lokasi: lokasi,
         deskripsi: deskripsi,
         targetPeserta: targetPeserta,
         requiresInvitation: requiresInvitation,
         penyelenggara: penyelenggara,
         penanggungJawab: penanggungJawab,
-        isSynced: false, // akan di-update setelah cloud sync berhasil
       );
-
-      // Step 1: Simpan ke Hive (offline-first)
-      await HiveService.events.put(created.eventId, created);
-      _allEvents.add(created);
+      
       _applyFilters();
-
-      // Step 1b: Buat undangan lokal untuk peserta terpilih (jika ada)
-      if (targetPeserta != null && targetPeserta.isNotEmpty) {
-        final now = DateTime.now();
-        for (final targetNim in targetPeserta) {
-          final invitationId =
-              'INV-${created.eventId}-${now.microsecondsSinceEpoch}-$targetNim';
-          final invitation = EventInvitation(
-            invitationId: invitationId,
-            eventId: created.eventId,
-            nim: targetNim,
-            attendanceTime: now,
-            invitedBy: actorNim,
-            invitedAt: now,
-            isSynced: false,
-          );
-          await HiveService.invitations.put(invitationId, invitation);
-        }
-      }
-
-      debugPrint('[EventCtrl] create: saved to Hive — id=${created.eventId}');
-
-      // Step 2: Sync ke MongoDB di background
-      unawaited(_upsertEventToCloudInBackground(created));
-
       return true;
-    } catch (e, st) {
-      errorMessage.value = 'Gagal menambah event: $e';
-      debugPrint('[EventCtrl] createEvent error: $e\n$st');
+    } catch (e) {
+      errorMessage.value = e.toString().replaceAll('Exception: ', '');
       return false;
     } finally {
       isLoading.value = false;
     }
   }
-
-  // ══════════════════════════════════════════════════════════════
-  // UPDATE EVENT
-  // ══════════════════════════════════════════════════════════════
 
   Future<bool> updateEvent(EventModel event) async {
-    final trimmed = event.nama.trim();
-    if (trimmed.isEmpty) {
-      errorMessage.value = 'Nama event wajib diisi.';
-      return false;
-    }
-    if (!ConfigController.instance.eventTypes.contains(event.jenis)) {
-      errorMessage.value = 'Jenis event tidak valid.';
-      return false;
-    }
-    if (_isPastDay(event.tanggalMulai)) {
-      errorMessage.value = 'Tanggal event tidak boleh masa lalu.';
-      return false;
-    }
-
-    // RBAC: Main event dan sub-event memiliki aturan UPDATE yang berbeda.
-    final isSubEvent = event.parentEventId != null && event.parentEventId!.isNotEmpty;
-    // RBAC: Tolak UPDATE sub-event untuk role tanpa hak tulis sub-event.
-    if (isSubEvent && !EventPermission.canUpdateSubEvent(_currentRole)) {
-      errorMessage.value = 'Anda tidak memiliki izin mengubah sub-event.';
-      return false;
-    }
-    // RBAC: Tolak UPDATE main event untuk role non-executive.
-    if (!isSubEvent && !EventPermission.canUpdateMainEvent(_currentRole)) {
-      errorMessage.value = 'Anda tidak memiliki izin mengubah main event.';
-      return false;
-    }
-
     isLoading.value = true;
     errorMessage.value = null;
 
     try {
-      final index = _allEvents.indexWhere((e) => e.eventId == event.eventId);
-      if (index < 0) {
-        errorMessage.value = 'Event tidak ditemukan.';
-        return false;
-      }
-
-      final saved = event.copyWith(
-        nama: trimmed,
-        isSynced: false,
-        version: event.version + 1, // increment versi setiap ada perubahan
-      );
-      saved.refreshStatus(); // Recalculate status in case dates were modified
-      await HiveService.events.put(saved.eventId, saved);
-      _allEvents[index] = saved;
+      await _repository.updateEvent(event: event, currentRole: _currentRole);
       _applyFilters();
-
-      // Step 1b: Sinkronkan undangan jika requiresInvitation aktif
-      if (saved.requiresInvitation && saved.targetPeserta.isNotEmpty) {
-        final now = DateTime.now();
-        for (final targetNim in saved.targetPeserta) {
-          // Cek apakah undangan untuk target ini sudah ada
-          final exists = HiveService.invitations.values.any((inv) => inv.eventId == saved.eventId && inv.nim == targetNim);
-          if (!exists) {
-            final invitationId = 'INV-${saved.eventId}-${now.microsecondsSinceEpoch}-$targetNim';
-            final invitation = EventInvitation(
-              invitationId: invitationId,
-              eventId: saved.eventId,
-              nim: targetNim,
-              attendanceTime: now,
-              invitedBy: _currentRole, // or some actor context
-              invitedAt: now,
-              isSynced: false,
-            );
-            await HiveService.invitations.put(invitationId, invitation);
-          }
-        }
-      }
-
-      debugPrint('[EventCtrl] update: saved to Hive — id=${saved.eventId}');
-
-      // Sync ke MongoDB di background
-      unawaited(_upsertEventToCloudInBackground(saved));
-
       return true;
-    } catch (e, st) {
-      errorMessage.value = 'Gagal mengubah event: $e';
-      debugPrint('[EventCtrl] updateEvent error: $e\n$st');
+    } catch (e) {
+      errorMessage.value = e.toString().replaceAll('Exception: ', '');
       return false;
     } finally {
       isLoading.value = false;
     }
   }
-
-  // ══════════════════════════════════════════════════════════════
-  // DELETE EVENT
-  // ══════════════════════════════════════════════════════════════
 
   Future<bool> deleteEvent(String eventId) async {
-    final target = _allEvents.cast<EventModel?>().firstWhere(
-      (e) => e?.eventId == eventId,
-      orElse: () => null,
-    );
-    if (target == null) {
-      errorMessage.value = 'Event tidak ditemukan.';
-      return false;
-    }
-
-    final isSubEvent = target.parentEventId != null && target.parentEventId!.isNotEmpty;
-    if (isSubEvent && !EventPermission.canDeleteSubEvent(_currentRole)) {
-      errorMessage.value = 'Anda tidak memiliki izin menghapus sub-event.';
-      return false;
-    }
-    if (!isSubEvent && !EventPermission.canDeleteMainEvent(_currentRole)) {
-      errorMessage.value = 'Anda tidak memiliki izin menghapus main event.';
-      return false;
-    }
-
     isLoading.value = true;
     errorMessage.value = null;
 
     try {
-      // Kumpulkan semua ID yang perlu di-softdelete (termasuk sub-event)
-      final toDelete = _allEvents
-          .where((e) => e.eventId == eventId || e.parentEventId == eventId)
-          .toList();
-
-      final now = DateTime.now();
-
-      for (final event in toDelete) {
-        // SOFT DELETE: tandai deletedAt, jangan hapus dari Hive
-        final softDeleted = event.copyWith(
-          deletedAt: now,
-          isSynced: false,
-        );
-        await HiveService.events.put(softDeleted.eventId, softDeleted);
-        debugPrint('[EventCtrl] soft delete: ${event.eventId}');
-      }
-
-      // Update cache internal — filter event yang sudah dihapus
-      _allEvents = _allEvents.map((e) {
-        if (e.eventId == eventId || e.parentEventId == eventId) {
-          return e.copyWith(deletedAt: now, isSynced: false);
-        }
-        return e;
-      }).toList();
-
+      await _repository.deleteEvent(eventId: eventId, currentRole: _currentRole);
       _applyFilters();
-
-      debugPrint('[EventCtrl] soft delete selesai: ${toDelete.length} event ditandai.');
-
-      // Sync ke MongoDB di background
-      for (final event in toDelete) {
-        final softDeleted = event.copyWith(deletedAt: now, isSynced: false);
-        unawaited(_upsertEventToCloudInBackground(softDeleted));
-      }
-
       return true;
-    } catch (e, st) {
-      errorMessage.value = 'Gagal menghapus event: $e';
-      debugPrint('[EventCtrl] deleteEvent error: $e\n$st');
+    } catch (e) {
+      errorMessage.value = e.toString().replaceAll('Exception: ', '');
       return false;
     } finally {
       isLoading.value = false;
     }
   }
 
-  // ══════════════════════════════════════════════════════════════
-  // CLOUD SYNC HELPERS (fire-and-forget)
-  // ══════════════════════════════════════════════════════════════
-
-  /// Upsert satu event ke MongoDB.
-  /// Jika online → langsung kirim.
-  /// Jika offline → biarkan isSynced=false, SyncManager handle nanti.
-  Future<void> _upsertEventToCloudInBackground(EventModel event) async {
-    try {
-      if (!await _isOnline()) {
-        debugPrint(
-          '[EventCtrl] cloud upsert: offline, ${event.eventId} tetap pending.',
-        );
-        return;
-      }
-
-      if (!MongoService.instance.isConnected) {
-        final connected = await MongoService.instance.ensureConnected();
-        if (!connected) {
-          debugPrint(
-            '[EventCtrl] cloud upsert: MongoDB tidak terhubung, skip.',
-          );
-          return;
-        }
-      }
-
-      final payload = event.toMap()
-        ..remove('isSynced'); // jangan simpan flag lokal ke cloud
-
-      // Cek apakah dokumen sudah ada
-      final existing = await MongoService.instance.findOne(
-        collectionName: AppConstants.eventsCollection,
-        filter: {'eventId': event.eventId},
-      );
-
-      if (existing == null) {
-        // Insert baru
-        await MongoService.instance.insertOne(
-          collectionName: AppConstants.eventsCollection,
-          document: payload,
-        );
-        debugPrint(
-          '[EventCtrl] cloud upsert: ✅ INSERT ${event.eventId} ke MongoDB',
-        );
-      } else {
-        // Update yang sudah ada
-        await MongoService.instance.updateOne(
-          collectionName: AppConstants.eventsCollection,
-          filter: {'eventId': event.eventId},
-          updateFields: payload,
-        );
-        debugPrint(
-          '[EventCtrl] cloud upsert: ✅ UPDATE ${event.eventId} di MongoDB',
-        );
-      }
-
-      // Tandai synced di Hive
-      final updatedEvent = event.copyWith(isSynced: true);
-      await HiveService.events.put(updatedEvent.eventId, updatedEvent);
-
-      // Update cache internal juga
-      final idx = _allEvents.indexWhere((e) => e.eventId == event.eventId);
-      if (idx >= 0) {
-        _allEvents[idx] = updatedEvent;
-      }
-    } catch (e) {
-      if (MongoService.isDuplicateKeyError(e)) {
-        // Duplicate key — data sudah ada di cloud, tandai synced
-        debugPrint(
-          '[EventCtrl] cloud upsert: duplicate ${event.eventId} — ditandai synced.',
-        );
-        final updatedEvent = event.copyWith(isSynced: true);
-        await HiveService.events.put(updatedEvent.eventId, updatedEvent);
-      } else {
-        // Error lain — biarkan isSynced=false, SyncManager retry nanti
-        debugPrint('[EventCtrl] cloud upsert error: $e');
-      }
-    }
-  }
-
-
-
-  // ══════════════════════════════════════════════════════════════
-  // FILTER & SEARCH
-  // ══════════════════════════════════════════════════════════════
-
   void _applyFilters() {
-    var filtered = _allEvents.where((e) => e.deletedAt == null).toList();
+    final allEvents = _repository.getAllEvents();
+    var filtered = allEvents.where((e) => e.deletedAt == null).toList();
 
     if (selectedJenisFilter.value != null) {
       filtered = filtered
@@ -691,45 +259,12 @@ class EventController {
       selectedDateRangeFilter.value != null ||
       searchQuery.value.isNotEmpty;
 
-  // ══════════════════════════════════════════════════════════════
-  // GETTERS
-  // ══════════════════════════════════════════════════════════════
-
   List<EventModel> getRootEvents() =>
       events.value.where((e) => e.parentEventId == null).toList();
 
   List<EventModel> getSubEvents(String parentId) =>
       events.value.where((e) => e.parentEventId == parentId).toList()
         ..sort((a, b) => a.tanggalMulai.compareTo(b.tanggalMulai));
-
-  // ══════════════════════════════════════════════════════════════
-  // HELPERS
-  // ══════════════════════════════════════════════════════════════
-  bool _isPastDay(DateTime date) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final inputDay = DateTime(date.year, date.month, date.day);
-    return inputDay.isBefore(today);
-  }
-
-  Future<bool> _isOnline() async {
-    try {
-      final result = await Connectivity().checkConnectivity();
-      return result.any((r) => r != ConnectivityResult.none);
-    } catch (e) {
-      // In test environments the connectivity plugin may not be available;
-      // treat as offline instead of throwing.
-      return false;
-    }
-  }
-
-  /// Bersihkan dokumen MongoDB dari field internal (_id, dll)
-  /// agar bisa diparse oleh EventModel.fromMap().
-  Map<String, dynamic> _sanitizeMongoDoc(Map<String, dynamic> doc) {
-    final clean = Map<String, dynamic>.from(doc);
-    clean.remove('_id'); // ObjectId tidak bisa diparse Dart langsung
-    return clean;
-  }
 
   void dispose() {
     events.dispose();

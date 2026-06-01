@@ -10,11 +10,12 @@ import '../../models/member_model.dart';
 import '../../widgets/gradient_header.dart';
 import '../../widgets/custom_snackbar.dart';
 import '../../widgets/custom_confirm_dialog.dart';
-import '../../widgets/table_page_body.dart';
 import '../auth/auth_controller.dart';
 import 'attendance_controller.dart';
 import 'attendance_permission.dart';
 import 'scan_screen.dart';
+import 'widgets/read_only_recap_body.dart';
+import 'widgets/crud_recap_body.dart';
 
 enum RecapMode { byMainEvent, bySubEvent, aggregateByMainEvent, global }
 
@@ -468,251 +469,56 @@ class _AttendanceRecapViewState extends State<AttendanceRecapView> {
   }
 
   Widget _buildReadOnlyOrganizerBody() {
-    return TablePageBody(
-      header: const SizedBox.shrink(),
-      summaryArea: const Text(
-        'Pilih event atau sub-event untuk melihat rekap kehadiran terbaru.',
-      ),
-      filterArea: DropdownButtonFormField<String>(
-        initialValue: _selectedReadOnlyEventId,
-        isExpanded: true,
-        decoration: const InputDecoration(
-          labelText: 'Pilih Event / Sub-Event',
-          border: OutlineInputBorder(),
-        ),
-        items: _events
-            .map(
-              (event) => DropdownMenuItem<String>(
-                value: event.eventId,
-                child: Text(
-                  _eventLabel(event.eventId),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            )
-            .toList(growable: false),
-        onChanged: (value) {
-          setState(() {
-            _selectedReadOnlyEventId = value;
-          });
-        },
-      ),
-      tableBuilder: (context) => _readOnlyRecords.isEmpty
-          ? const Padding(
-              padding: EdgeInsets.symmetric(vertical: 24),
-              child: Center(
-                child: Text('Belum ada data kehadiran pada event ini.'),
-              ),
-            )
-          : SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
-                columns: const [
-                  DataColumn(label: Text('NIM')),
-                  DataColumn(label: Text('Nama')),
-                  DataColumn(label: Text('Status')),
-                  DataColumn(label: Text('Timestamp')),
-                ],
-                rows: _readOnlyRecords
-                    .map((r) {
-                      final member = _memberById[r.nim];
-                      return DataRow(
-                        cells: [
-                          DataCell(Text(member?.nim ?? r.nim)),
-                          DataCell(Text(member?.nama ?? '-')),
-                          DataCell(Text(r.status)),
-                          DataCell(Text(_formatDate(r.timestamp))),
-                        ],
-                      );
-                    })
-                    .toList(growable: false),
-              ),
-            ),
-      emptyState: const SizedBox.shrink(),
+    return ReadOnlyRecapBody(
+      selectedReadOnlyEventId: _selectedReadOnlyEventId,
+      events: _events,
+      eventLabel: _eventLabel,
+      onEventSelected: (value) {
+        setState(() {
+          _selectedReadOnlyEventId = value;
+        });
+      },
+      readOnlyRecords: _readOnlyRecords,
+      memberById: _memberById,
+      formatDate: _formatDate,
       onRefresh: _refresh,
     );
   }
 
   Widget _buildCrudBody() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        DropdownButtonFormField<RecapMode>(
-          initialValue: _recapMode,
-          decoration: const InputDecoration(
-            labelText: 'Mode Rekap',
-            border: OutlineInputBorder(),
-          ),
-          items: RecapMode.values
-              .map(
-                (mode) => DropdownMenuItem<RecapMode>(
-                  value: mode,
-                  child: Text(_modeLabel(mode)),
-                ),
-              )
-              .toList(growable: false),
-          onChanged: (value) {
-            if (value == null) return;
-            setState(() {
-              _recapMode = value;
-            });
-          },
-        ),
-        const SizedBox(height: 12),
-        if (_recapMode == RecapMode.byMainEvent ||
-            _recapMode == RecapMode.aggregateByMainEvent)
-          DropdownButtonFormField<String>(
-            initialValue: _selectedMainEventId,
-            decoration: const InputDecoration(
-              labelText: 'Pilih Main Event',
-              border: OutlineInputBorder(),
-            ),
-            items: _mainEvents
-                .map(
-                  (e) => DropdownMenuItem<String>(
-                    value: e.eventId,
-                    child: Text(e.nama),
-                  ),
-                )
-                .toList(growable: false),
-            onChanged: (value) {
-              if (value == null) return;
-              final subIds = _subEventIdsByMain[value] ?? const <String>[];
-              setState(() {
-                _selectedMainEventId = value;
-                _selectedSubEventId = subIds.isEmpty ? null : subIds.first;
-              });
-            },
-          ),
-        if (_recapMode == RecapMode.bySubEvent) ...[
-          DropdownButtonFormField<String>(
-            initialValue: _selectedMainEventId,
-            decoration: const InputDecoration(
-              labelText: 'Pilih Main Event',
-              border: OutlineInputBorder(),
-            ),
-            items: _mainEvents
-                .map(
-                  (e) => DropdownMenuItem<String>(
-                    value: e.eventId,
-                    child: Text(e.nama),
-                  ),
-                )
-                .toList(growable: false),
-            onChanged: (value) {
-              if (value == null) return;
-              final subIds = _subEventIdsByMain[value] ?? const <String>[];
-              setState(() {
-                _selectedMainEventId = value;
-                _selectedSubEventId = subIds.isEmpty ? null : subIds.first;
-              });
-            },
-          ),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<String>(
-            initialValue: _selectedSubEventId,
-            decoration: const InputDecoration(
-              labelText: 'Pilih Sub-Event',
-              border: OutlineInputBorder(),
-            ),
-            items: _subEventsForSelectedMain
-                .map(
-                  (e) => DropdownMenuItem<String>(
-                    value: e.eventId,
-                    child: Text(e.nama),
-                  ),
-                )
-                .toList(growable: false),
-            onChanged: (value) {
-              setState(() {
-                _selectedSubEventId = value;
-              });
-            },
-          ),
-        ],
-        const SizedBox(height: 12),
-        if (_isMainEventCrudBlocked)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            margin: const EdgeInsets.only(bottom: 12),
-            decoration: BoxDecoration(
-              color: Colors.orange.shade50,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.orange.shade200),
-            ),
-            child: const Text(
-              'Main event ini memiliki sub-event, sehingga absensi hanya boleh dicatat pada sub-event.',
-            ),
-          ),
-        const SizedBox(height: 12),
-        Text('Total record terfilter: ${_filteredCrudRecords.length}'),
-        const SizedBox(height: 8),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: _filteredCrudRecords.isEmpty
-                ? const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 24),
-                    child: Center(
-                      child: Text('Belum ada data kehadiran pada event ini.'),
-                    ),
-                  )
-                : SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: DataTable(
-                      columns: const [
-                        DataColumn(label: Text('NIM')),
-                        DataColumn(label: Text('Nama')),
-                        DataColumn(label: Text('Event/Sub-event')),
-                        DataColumn(label: Text('Status')),
-                        DataColumn(label: Text('Timestamp')),
-                        DataColumn(label: Text('Action')),
-                      ],
-                      rows: _filteredCrudRecords
-                          .map((r) {
-                            final member = _memberById[r.nim];
-                            return DataRow(
-                              cells: [
-                                DataCell(Text(member?.nim ?? r.nim)),
-                                DataCell(Text(member?.nama ?? '-')),
-                                DataCell(
-                                  SizedBox(
-                                    width: 220,
-                                    child: Text(_eventLabel(r.eventId)),
-                                  ),
-                                ),
-                                DataCell(Text(r.status)),
-                                DataCell(Text(_formatDate(r.timestamp))),
-                                DataCell(
-                                  Row(
-                                    children: [
-                                      IconButton(
-                                        tooltip: 'Edit',
-                                        icon: const Icon(Icons.edit_outlined),
-                                        onPressed: () => _editStatus(r),
-                                      ),
-                                      IconButton(
-                                        tooltip: 'Hapus',
-                                        icon: const Icon(
-                                          Icons.delete_outline,
-                                          color: Colors.redAccent,
-                                        ),
-                                        onPressed: () => _deleteRecord(r),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            );
-                          })
-                          .toList(growable: false),
-                    ),
-                  ),
-          ),
-        ),
-      ],
+    return CrudRecapBody(
+      recapMode: _recapMode,
+      onModeChanged: (value) {
+        if (value == null) return;
+        setState(() {
+          _recapMode = value;
+        });
+      },
+      modeLabel: _modeLabel,
+      selectedMainEventId: _selectedMainEventId,
+      onMainEventChanged: (value) {
+        if (value == null) return;
+        final subIds = _subEventIdsByMain[value] ?? const <String>[];
+        setState(() {
+          _selectedMainEventId = value;
+          _selectedSubEventId = subIds.isEmpty ? null : subIds.first;
+        });
+      },
+      selectedSubEventId: _selectedSubEventId,
+      onSubEventChanged: (value) {
+        setState(() {
+          _selectedSubEventId = value;
+        });
+      },
+      mainEvents: _mainEvents,
+      subEventsForSelectedMain: _subEventsForSelectedMain,
+      isMainEventCrudBlocked: _isMainEventCrudBlocked,
+      filteredCrudRecords: _filteredCrudRecords,
+      memberById: _memberById,
+      eventLabel: _eventLabel,
+      formatDate: _formatDate,
+      onEditStatus: _editStatus,
+      onDeleteRecord: _deleteRecord,
     );
   }
 

@@ -2,12 +2,12 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 
-import 'data/event_local_data_source.dart';
-import 'data/event_remote_data_source.dart';
+import '../data/event_local_data_source.dart';
+import '../data/event_remote_data_source.dart';
 import '../../../models/event_model.dart';
 import '../../../models/event_invitation.dart';
 import '../../../core/controllers/config_controller.dart';
-import 'event_permission.dart';
+import '../event_permission.dart';
 
 class EventRepository {
   final EventLocalDataSource _local;

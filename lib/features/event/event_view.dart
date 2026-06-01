@@ -1,23 +1,18 @@
-// ignore_for_file: unused_element
-
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../models/event_model.dart';
-import '../../models/attendance_record.dart';
-import '../../core/enums/status_enums.dart';
 import '../../widgets/custom_snackbar.dart';
 import '../../widgets/custom_confirm_dialog.dart';
 import '../../widgets/white_status_header.dart';
-import '../../widgets/sectioned_list_body.dart';
 import '../auth/auth_controller.dart';
 import 'event_controller.dart'; 
 import 'event_permission.dart';
-import 'widgets/event_utilities.dart';
-import 'widgets/event_view_card.dart';
 import 'widgets/event_form_dialog.dart';
-import 'event_detail_view.dart';
-import '../attendance/scan_screen.dart';
+import 'widgets/event_view_card.dart';
+import 'widgets/reference_event_card.dart';
+import 'widgets/event_tab_pill.dart';
+import 'widgets/event_utilities.dart';
 
 class EventView extends StatefulWidget {
   const EventView({super.key});
@@ -38,13 +33,13 @@ class _EventViewState extends State<EventView> {
           .trim()
           .toLowerCase();
 
-  bool get _canCreateMainEvent => EventPermission.canCreateMainEvent(_role); // RBAC: Main event CREATE hanya Executive.
-  bool get _canUpdateMainEvent => EventPermission.canUpdateMainEvent(_role); // RBAC: Main event UPDATE hanya Executive.
-  bool get _canDeleteMainEvent => EventPermission.canDeleteMainEvent(_role); // RBAC: Main event DELETE hanya Executive.
-  bool get _canCreateSubEvent => EventPermission.canCreateSubEvent(_role); // RBAC: Sub-event CRUD untuk Executive/Manager.
-  bool get _canUpdateSubEvent => EventPermission.canUpdateSubEvent(_role); // RBAC: Sub-event CRUD untuk Executive/Manager.
-  bool get _canDeleteSubEvent => EventPermission.canDeleteSubEvent(_role); // RBAC: Sub-event DELETE untuk Executive/Manager.
-  bool get _hasAnyCrudAccess => _canCreateMainEvent || _canCreateSubEvent; // RBAC: Penanda UI jika ada hak tulis di salah satu scope.
+  bool get _canCreateMainEvent => EventPermission.canCreateMainEvent(_role); 
+  bool get _canUpdateMainEvent => EventPermission.canUpdateMainEvent(_role); 
+  bool get _canDeleteMainEvent => EventPermission.canDeleteMainEvent(_role); 
+  bool get _canCreateSubEvent => EventPermission.canCreateSubEvent(_role); 
+  bool get _canUpdateSubEvent => EventPermission.canUpdateSubEvent(_role); 
+  bool get _canDeleteSubEvent => EventPermission.canDeleteSubEvent(_role); 
+  bool get _hasAnyCrudAccess => _canCreateMainEvent || _canCreateSubEvent; 
 
   @override
   void initState() {
@@ -105,12 +100,8 @@ class _EventViewState extends State<EventView> {
     }
   }
 
-  String _normalizedStatus(String value) {
-    return value.trim().toLowerCase();
-  }
-
   bool _matchesSelectedTab(EventModel event) {
-    final status = _normalizedStatus(event.statusEvent);
+    final status = EventUtilities.normalizedStatus(event.statusEvent);
 
     switch (_selectedTab) {
       case 'berlangsung':
@@ -128,251 +119,28 @@ class _EventViewState extends State<EventView> {
     return _controller.getRootEvents().where(_matchesSelectedTab).toList(growable: false);
   }
 
-  Color _eventAccentColor(EventModel event) {
-    final status = _normalizedStatus(event.statusEvent);
-    if (status.contains('selesai')) return const Color(0xFF22C55E);
-    if (status.contains('berlangsung') || status.contains('berjalan')) return const Color(0xFF2563EB);
-    return const Color(0xFFF97316);
-  }
-
-  Color _eventTintColor(EventModel event) {
-    final accent = _eventAccentColor(event);
-    if (accent == const Color(0xFF2563EB)) return const Color(0xFFDBEAFE);
-    if (accent == const Color(0xFF22C55E)) return const Color(0xFFDCFCE7);
-    return const Color(0xFFFFF7ED);
-  }
-
-  String _eventStatusTitle(EventModel event) {
-    final status = _normalizedStatus(event.statusEvent);
-    if (status.contains('selesai')) return 'Selesai';
-    if (status.contains('berlangsung') || status.contains('berjalan')) return 'Berlangsung';
-    return 'Mendatang';
-  }
-
-  Widget _buildTabPill(String label) {
-    final selected = _selectedTab == label;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          setState(() {
-            _selectedTab = label;
-          });
-        },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(vertical: 11),
-          decoration: BoxDecoration(
-            color: selected ? const Color(0xFF2563EB) : const Color(0xFFF3F4F6),
-            borderRadius: BorderRadius.circular(999),
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            label,
-            style: TextStyle(
-              color: selected ? Colors.white : const Color(0xFF6B7280),
-              fontWeight: FontWeight.w700,
-              fontSize: 13,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildReferenceEventCard(EventModel event) {
-    final accent = _eventAccentColor(event);
-    final tint = _eventTintColor(event);
-    final status = _eventStatusTitle(event);
-    final dateText = _formatDate(event.tanggalMulai);
-    final startTime = event.jamMulai ?? event.tanggalMulai;
-    final timeText = '${startTime.hour.toString().padLeft(2, '0')}:${startTime.minute.toString().padLeft(2, '0')}';
-    final location = _eventLocation(event);
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.grey.shade100),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: () {
-          final role = AuthController.instance.currentUser.value?.role ?? AppConstants.roleMember;
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => EventDetailView(event: event, userRole: role)),
-          );
-        },
-        child: Stack(
-          children: [
-            Positioned(
-              left: 0,
-              top: 0,
-              bottom: 0,
-              child: Container(
-                width: 4,
-                decoration: BoxDecoration(
-                  color: accent,
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(18),
-                    bottomLeft: Radius.circular(18),
-                  ),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                              decoration: BoxDecoration(
-                                color: tint,
-                                borderRadius: BorderRadius.circular(999),
-                              ),
-                              child: Text(
-                                event.jenis,
-                                style: TextStyle(
-                                  color: accent,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: 0.7,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            Text(
-                              event.nama,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w800,
-                                color: Color(0xFF111827),
-                                height: 1.25,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        dateText,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF111827),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  _buildEventMetaRow(Icons.schedule_outlined, '$timeText WIB', const Color(0xFF6B7280)),
-                  const SizedBox(height: 8),
-                  _buildEventMetaRow(Icons.location_on_outlined, location, const Color(0xFF6B7280)),
-                  const SizedBox(height: 8),
-                  _buildEventMetaRow(Icons.groups_outlined, '${_targetCount(event, 0)} target peserta', const Color(0xFF6B7280)),
-                  const SizedBox(height: 14),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: accent.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          status,
-                          style: TextStyle(
-                            color: accent,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          final role = AuthController.instance.currentUser.value?.role ?? AppConstants.roleMember;
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => EventDetailView(event: event, userRole: role)),
-                          );
-                        },
-                        style: TextButton.styleFrom(
-                          foregroundColor: accent,
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          minimumSize: const Size(0, 36),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        child: const Text('Lihat Detail'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEventMetaRow(IconData icon, String text, Color color) {
-    return Row(
-      children: [
-        Icon(icon, size: 14, color: const Color(0xFF9CA3AF)),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            text,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontSize: 13, color: color),
-          ),
-        ),
-      ],
-    );
-  }
-
   Future<void> _addOrEditEvent({
     EventModel? existing,
     String? forcedParentId,
   }) async {
-    final isCreate = existing == null; // RBAC: Bedakan aksi CREATE vs UPDATE untuk validasi izin.
-    final isSubEvent = // RBAC: Sub-event jika forced parent ada atau target existing punya parent.
+    final isCreate = existing == null; 
+    final isSubEvent = 
         forcedParentId != null || (existing?.parentEventId != null);
 
     if (isCreate && !isSubEvent && !_canCreateMainEvent) {
-      CustomSnackbar.showError(context, 'Anda tidak memiliki izin membuat main event.'); // RBAC: Cegah CREATE main event tanpa izin.
+      CustomSnackbar.showError(context, 'Anda tidak memiliki izin membuat main event.');
       return;
     }
     if (isCreate && isSubEvent && !_canCreateSubEvent) {
-      CustomSnackbar.showError(context, 'Anda tidak memiliki izin membuat sub-event.'); // RBAC: Cegah CREATE sub-event tanpa izin.
+      CustomSnackbar.showError(context, 'Anda tidak memiliki izin membuat sub-event.'); 
       return;
     }
     if (!isCreate && !isSubEvent && !_canUpdateMainEvent) {
-      CustomSnackbar.showError(context, 'Anda tidak memiliki izin mengubah main event.'); // RBAC: Cegah UPDATE main event tanpa izin.
+      CustomSnackbar.showError(context, 'Anda tidak memiliki izin mengubah main event.'); 
       return;
     }
     if (!isCreate && isSubEvent && !_canUpdateSubEvent) {
-      CustomSnackbar.showError(context, 'Anda tidak memiliki izin mengubah sub-event.'); // RBAC: Cegah UPDATE sub-event tanpa izin.
+      CustomSnackbar.showError(context, 'Anda tidak memiliki izin mengubah sub-event.'); 
       return;
     }
 
@@ -439,13 +207,13 @@ class _EventViewState extends State<EventView> {
   }
 
   Future<void> _deleteEvent(EventModel target) async {
-    final isSubEvent = target.parentEventId != null; // RBAC: Izin DELETE ditentukan dari hirarki event.
+    final isSubEvent = target.parentEventId != null; 
     if (!isSubEvent && !_canDeleteMainEvent) {
-      CustomSnackbar.showError(context, 'Anda tidak memiliki izin menghapus main event.'); // RBAC: Cegah DELETE main event tanpa izin.
+      CustomSnackbar.showError(context, 'Anda tidak memiliki izin menghapus main event.'); 
       return;
     }
     if (isSubEvent && !_canDeleteSubEvent) {
-      CustomSnackbar.showError(context, 'Anda tidak memiliki izin menghapus sub-event.'); // RBAC: Cegah DELETE sub-event tanpa izin.
+      CustomSnackbar.showError(context, 'Anda tidak memiliki izin menghapus sub-event.'); 
       return;
     }
 
@@ -495,302 +263,6 @@ class _EventViewState extends State<EventView> {
     );
   }
 
-  Widget _buildActionButtons(EventModel event, {String? forcedParentId}) {
-    final isSubEvent = event.parentEventId != null; // RBAC: Tentukan paket izin per scope.
-    final hasSubEvents = !isSubEvent && _controller.getSubEvents(event.eventId).isNotEmpty;
-    final canEdit = isSubEvent ? _canUpdateSubEvent : _canUpdateMainEvent; // RBAC: UPDATE berbeda antara main/sub.
-    final canScan = canEdit && (isSubEvent || !hasSubEvents);
-    final canDelete = isSubEvent ? _canDeleteSubEvent : _canDeleteMainEvent; // RBAC: DELETE berbeda antara main/sub.
-    final canAddSubEvent = !isSubEvent && _canCreateSubEvent; // RBAC: CREATE sub-event boleh Executive/Manager pada parent main event.
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (canScan)
-          OutlinedButton.icon(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute<void>(
-                  builder: (_) => ScanScreen(eventId: event.eventId),
-                ),
-              );
-            },
-            icon: const Icon(Icons.qr_code_scanner, size: 18),
-            label: const Text('Scan'),
-          ),
-        if (canScan && (canEdit || canDelete || canAddSubEvent))
-          const SizedBox(width: 8),
-        if (canEdit || canDelete || canAddSubEvent)
-          Container(
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.shade300),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert, color: Color(0xFF4B5563), size: 20),
-              padding: EdgeInsets.zero,
-              onSelected: (value) {
-                if (value == 'add_sub') {
-                  _addOrEditEvent(forcedParentId: event.eventId);
-                } else if (value == 'edit') {
-                  _addOrEditEvent(existing: event);
-                } else if (value == 'delete') {
-                  _deleteEvent(event);
-                }
-              },
-              itemBuilder: (context) => [
-                if (canAddSubEvent)
-                  const PopupMenuItem(
-                    value: 'add_sub',
-                    child: Row(
-                      children: [
-                        Icon(Icons.add_circle_outline, size: 18, color: Color(0xFF4B5563)),
-                        SizedBox(width: 8),
-                        Text('Tambah Sub-Event', style: TextStyle(fontSize: 14)),
-                      ],
-                    ),
-                  ),
-                if (canEdit)
-                  const PopupMenuItem(
-                    value: 'edit',
-                    child: Row(
-                      children: [
-                        Icon(Icons.edit_outlined, size: 18, color: Color(0xFF4B5563)),
-                        SizedBox(width: 8),
-                        Text('Edit', style: TextStyle(fontSize: 14)),
-                      ],
-                    ),
-                  ),
-                if (canDelete)
-                  const PopupMenuItem(
-                    value: 'delete',
-                    child: Row(
-                      children: [
-                        Icon(Icons.delete_outline, size: 18, color: Colors.red),
-                        SizedBox(width: 8),
-                        Text('Hapus', style: TextStyle(color: Colors.red, fontSize: 14)),
-                      ],
-                    ),
-                  ),
-              ],
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildEventCard(EventModel event) {
-    final subEvents = _controller.getSubEvents(event.eventId);
-    final isExpanded = _expandedState[event.eventId] ?? false;
-    final attendance = _attendanceForEvent(event.eventId);
-    final presentCount = attendance.where((r) => r.statusEnum == AttendanceStatus.hadir || r.statusEnum == AttendanceStatus.terlambat).length;
-    final targetCount = _targetCount(event, presentCount);
-    final attendancePercent = targetCount == 0 ? 0.0 : (presentCount / targetCount).clamp(0.0, 1.0);
-    final attendanceText = '$presentCount/$targetCount hadir';
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () {
-                      final role = AuthController.instance.currentUser.value?.role ?? AppConstants.roleMember;
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => EventDetailView(event: event, userRole: role)),
-                      );
-                    },
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          event.nama,
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                fontSize: 22,
-                                fontWeight: FontWeight.w700,
-                                color: const Color(0xFF1F2937),
-                              ),
-                        ),
-                        const SizedBox(height: 10),
-                        Row(
-                          children: [
-                            Container(
-                              width: 28,
-                              height: 28,
-                              alignment: Alignment.center,
-                              child: const Icon(Icons.schedule_outlined, size: 20, color: Color(0xFF9CA3AF)),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                '${_formatDate(event.tanggalMulai)} • ${_formatTime(event.jamMulai ?? event.tanggalMulai)} WIB',
-                                style: const TextStyle(fontSize: 15, color: Color(0xFF4B5563)),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Container(
-                              width: 28,
-                              height: 28,
-                              alignment: Alignment.center,
-                              child: const Icon(Icons.location_on_outlined, size: 20, color: Color(0xFF9CA3AF)),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                _eventLocation(event),
-                                style: const TextStyle(fontSize: 15, color: Color(0xFF4B5563)),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Container(
-                              width: 28,
-                              height: 28,
-                              alignment: Alignment.center,
-                              child: const Icon(Icons.groups_outlined, size: 20, color: Color(0xFF9CA3AF)),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              attendanceText,
-                              style: const TextStyle(fontSize: 15, color: Color(0xFF4B5563)),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: _eventStatusBgColor(event),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.check_circle_outline, size: 16, color: _eventStatusColor(event)),
-                      const SizedBox(width: 6),
-                      Text(
-                        _eventStatusLabel(event),
-                        style: TextStyle(
-                          color: _eventStatusColor(event),
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                const Text(
-                  'Kehadiran',
-                  style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(999),
-                    child: LinearProgressIndicator(
-                      minHeight: 10,
-                      value: attendancePercent,
-                      backgroundColor: const Color(0xFFE5E7EB),
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        attendancePercent >= 0.9
-                            ? const Color(0xFF22C55E)
-                            : const Color(0xFF3B82F6),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  '${(attendancePercent * 100).round()}%',
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF1F2937),
-                  ),
-                ),
-              ],
-            ),
-            if (_hasAnyCrudAccess || subEvents.isNotEmpty) ...[
-              const SizedBox(height: 14),
-              const Divider(height: 1),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  if (subEvents.isNotEmpty)
-                    TextButton.icon(
-                      onPressed: () {
-                        setState(() {
-                          _expandedState[event.eventId] = !isExpanded;
-                        });
-                      },
-                      icon: Icon(isExpanded ? Icons.expand_less : Icons.expand_more),
-                      label: Text(isExpanded ? 'Tutup Sub-Event' : 'Lihat Sub-Event'),
-                    ),
-                  const Spacer(),
-                  if (_canUpdateMainEvent || _canDeleteMainEvent || _canCreateSubEvent)
-                    _buildActionButtons(event),
-                ],
-              ),
-            ],
-            if (subEvents.isNotEmpty && isExpanded) ...[
-              const SizedBox(height: 12),
-              ...subEvents.map((sub) {
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF9FAFB),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFE5E7EB)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        sub.nama,
-                        style: Theme.of(context).textTheme.titleSmall,
-                      ),
-                      const SizedBox(height: 4),
-                      Text('${sub.jenis} • ${_formatDate(sub.tanggalMulai)}'),
-                      const SizedBox(height: 8),
-                      _buildActionButtons(sub, forcedParentId: event.eventId),
-                    ],
-                  ),
-                );
-              }),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -798,168 +270,211 @@ class _EventViewState extends State<EventView> {
         title: 'Event',
         subtitle: _hasAnyCrudAccess
             ? 'Cari dan kelola event yang tersedia'
-            : 'Cari dan buka detail event',
-        actions: [
-          IconButton(
-            tooltip: 'Refresh',
-              onPressed: () => _controller.refreshEvents(cloudSync: true),
-            icon: const Icon(Icons.refresh, color: Color(0xFF111827)),
-          ),
-          if (_canCreateMainEvent)
-            IconButton(
-              tooltip: 'Tambah Event',
-              onPressed: () => _addOrEditEvent(),
-              icon: const Icon(Icons.add, color: Color(0xFF111827)),
-            ),
-        ],
+            : 'Jelajahi berbagai event dan kegiatan',
       ),
-      backgroundColor: const Color(0xFFF3F7FD),
-      body: ValueListenableBuilder<List<EventModel>>(
-        valueListenable: _controller.events,
-        builder: (context, events, child) {
-          final roots = _visibleRootEvents();
+      floatingActionButton: _canCreateMainEvent
+          ? FloatingActionButton(
+              onPressed: () => _addOrEditEvent(),
+              backgroundColor: const Color(0xFF2563EB),
+              child: const Icon(Icons.add, color: Colors.white),
+            )
+          : null,
+      body: ValueListenableBuilder<bool>(
+        valueListenable: _controller.isLoading,
+        builder: (context, isLoading, child) {
+          if (isLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-          return SafeArea(
-            child: SectionedListBody(
-              searchArea: Column(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.grey.shade100),
-                    ),
-                    child: TextField(
-                      controller: _searchController,
-                      decoration: InputDecoration(
-                        hintText: 'Cari nama event...',
-                        hintStyle: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 14),
-                        prefixIcon: const Icon(Icons.search, color: Color(0xFF9CA3AF)),
-                        filled: true,
-                        fillColor: const Color(0xFFF9FAFB),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: Colors.grey.shade200),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: Colors.grey.shade200),
-                        ),
-                        focusedBorder: const OutlineInputBorder(
-                          borderRadius: BorderRadius.all(Radius.circular(16)),
-                          borderSide: BorderSide(color: Color(0xFF2563EB), width: 1.5),
+          return ValueListenableBuilder<List<EventModel>>(
+            valueListenable: _controller.events,
+            builder: (context, events, child) {
+              if (events.isEmpty && !_controller.hasActiveFilters) {
+                return RefreshIndicator(
+                  onRefresh: () => _controller.refreshEvents(),
+                  child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: [
+                      SizedBox(height: MediaQuery.of(context).size.height * 0.3),
+                      const Center(
+                        child: Text(
+                          'Belum ada event tersedia.',
+                          style: TextStyle(color: Colors.grey),
                         ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      _buildTabPill('berlangsung'),
-                      const SizedBox(width: 8),
-                      _buildTabPill('mendatang'),
-                      const SizedBox(width: 8),
-                      _buildTabPill('selesai'),
                     ],
                   ),
-                ],
-              ),
-              filterArea: _controller.hasActiveFilters
-                  ? Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          ActionChip(
-                            label: Text(_controller.selectedJenisFilter.value ?? 'Semua Jenis'),
-                            onPressed: _showJenisFilter,
-                          ),
-                          ActionChip(
-                            label: const Text('Range Tanggal'),
-                            onPressed: _showDateRangeFilter,
-                          ),
-                          ActionChip(
-                            label: const Text('Reset'),
-                            onPressed: () {
-                              _searchController.clear();
-                              _controller.clearAllFilters();
-                            },
-                          ),
-                        ],
-                      ),
-                    )
-                  : null,
-              content: RefreshIndicator(
-                edgeOffset: 24,
-                displacement: 56,
-                strokeWidth: 3,
-                onRefresh: () async => _controller.refreshEvents(cloudSync: true),
-                child: ListView(
+                );
+              }
+
+              final visibleEvents = _controller.hasActiveFilters || _searchController.text.isNotEmpty
+                  ? events
+                  : _visibleRootEvents();
+
+              return RefreshIndicator(
+                onRefresh: () => _controller.refreshEvents(),
+                child: CustomScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  children: [
-                    if (roots.isEmpty)
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(color: Colors.grey.shade100),
-                        ),
-                        child: const Text(
-                          'Tidak ada event yang sesuai dengan pencarian Anda.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: Color(0xFF6B7280), fontSize: 13),
-                        ),
-                      )
-                    else
-                      ...roots.map(
-                        (event) => EventViewCard(
-                          event: event,
-                          controller: _controller,
-                          expandedState: _expandedState,
-                          canUpdateMainEvent: _canUpdateMainEvent,
-                          canUpdateSubEvent: _canUpdateSubEvent,
-                          canDeleteMainEvent: _canDeleteMainEvent,
-                          canDeleteSubEvent: _canDeleteSubEvent,
-                          canCreateSubEvent: _canCreateSubEvent,
-                          hasAnyCrudAccess: _hasAnyCrudAccess,
-                          onEdit: () => _addOrEditEvent(existing: event),
-                          onDelete: () => _deleteEvent(event),
-                          onAddSubEvent: () => _addOrEditEvent(forcedParentId: event.eventId),
-                          onExpandedChanged: () => setState(() {}),
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: Container(
+                        padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+                        child: Column(
+                          children: [
+                            Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: Colors.grey.shade200),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.02),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  )
+                                ],
+                              ),
+                              child: TextField(
+                                controller: _searchController,
+                                decoration: InputDecoration(
+                                  hintText: 'Cari event berdasarkan nama...',
+                                  hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
+                                  prefixIcon: const Icon(Icons.search, color: Color(0xFF9CA3AF)),
+                                  border: InputBorder.none,
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                                  suffixIcon: _searchController.text.isNotEmpty
+                                      ? IconButton(
+                                          icon: const Icon(Icons.clear, color: Color(0xFF9CA3AF)),
+                                          onPressed: () {
+                                            _searchController.clear();
+                                          },
+                                        )
+                                      : null,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(
+                                children: [
+                                  ActionChip(
+                                    label: Text(
+                                      _controller.selectedJenisFilter.value ?? 'Semua Jenis',
+                                      style: TextStyle(
+                                        color: _controller.selectedJenisFilter.value != null
+                                            ? Colors.white
+                                            : const Color(0xFF4B5563),
+                                      ),
+                                    ),
+                                    backgroundColor: _controller.selectedJenisFilter.value != null
+                                        ? const Color(0xFF2563EB)
+                                        : Colors.white,
+                                    onPressed: _showJenisFilter,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  ActionChip(
+                                    label: Text(
+                                      _controller.selectedDateRangeFilter.value != null
+                                          ? 'Tanggal Terpilih'
+                                          : 'Semua Tanggal',
+                                      style: TextStyle(
+                                        color: _controller.selectedDateRangeFilter.value != null
+                                            ? Colors.white
+                                            : const Color(0xFF4B5563),
+                                      ),
+                                    ),
+                                    backgroundColor: _controller.selectedDateRangeFilter.value != null
+                                        ? const Color(0xFF2563EB)
+                                        : Colors.white,
+                                    onPressed: _showDateRangeFilter,
+                                  ),
+                                  if (_controller.hasActiveFilters) ...[
+                                    const SizedBox(width: 8),
+                                    ActionChip(
+                                      label: const Text('Reset', style: TextStyle(color: Colors.red)),
+                                      backgroundColor: Colors.red.shade50,
+                                      onPressed: () {
+                                        _searchController.clear();
+                                        _controller.clearAllFilters();
+                                      },
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ),
+                    ),
+                    if (!_controller.hasActiveFilters && _searchController.text.isEmpty)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF3F4F6),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Row(
+                              children: [
+                                EventTabPill(
+                                  label: 'Mendatang',
+                                  isSelected: _selectedTab == 'mendatang',
+                                  onTap: () => setState(() => _selectedTab = 'mendatang'),
+                                ),
+                                EventTabPill(
+                                  label: 'Berlangsung',
+                                  isSelected: _selectedTab == 'berlangsung',
+                                  onTap: () => setState(() => _selectedTab = 'berlangsung'),
+                                ),
+                                EventTabPill(
+                                  label: 'Selesai',
+                                  isSelected: _selectedTab == 'selesai',
+                                  onTap: () => setState(() => _selectedTab = 'selesai'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                            final event = visibleEvents[index];
+                            if (_searchController.text.isNotEmpty || _controller.hasActiveFilters) {
+                              return ReferenceEventCard(event: event);
+                            }
+                            return EventViewCard(
+                              event: event,
+                              controller: _controller,
+                              expandedState: _expandedState,
+                              canUpdateMainEvent: _canUpdateMainEvent,
+                              canUpdateSubEvent: _canUpdateSubEvent,
+                              canDeleteMainEvent: _canDeleteMainEvent,
+                              canDeleteSubEvent: _canDeleteSubEvent,
+                              canCreateSubEvent: _canCreateSubEvent,
+                              hasAnyCrudAccess: _hasAnyCrudAccess,
+                              onEdit: () => _addOrEditEvent(existing: event),
+                              onDelete: () => _deleteEvent(event),
+                              onAddSubEvent: () => _addOrEditEvent(forcedParentId: event.eventId),
+                              onExpandedChanged: () => setState(() {}),
+                            );
+                          },
+                          childCount: visibleEvents.length,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
-              ),
-            ),
+              );
+            },
           );
         },
       ),
     );
   }
-
-  // Helper methods delegating to EventUtilities
-  String _formatDate(DateTime date) => EventUtilities.formatDate(date);
-
-  String _formatTime(DateTime dateTime) =>
-      '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
-  
-  String _eventLocation(EventModel event) => EventUtilities.eventLocation(event);
-  
-  String _eventStatusLabel(EventModel event) => EventUtilities.eventStatusLabel(event);
-  
-  Color _eventStatusColor(EventModel event) => EventUtilities.eventStatusColor(event);
-  
-  Color _eventStatusBgColor(EventModel event) => EventUtilities.eventStatusBgColor(event);
-  
-  int _targetCount(EventModel event, int presentCount) => EventUtilities.targetCount(event, presentCount);
-  
-  List<AttendanceRecord> _attendanceForEvent(String eventId) => EventUtilities.attendanceForEvent(eventId);
 }
-

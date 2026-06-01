@@ -1,15 +1,10 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:uuid/uuid.dart';
 
-import '../../core/constants/app_constants.dart';
-import '../../core/services/hive_service.dart';
-import '../../core/services/mongo_service.dart';
-import '../../core/utils/qr_service.dart';
 import '../../models/attendance_record.dart';
-import '../../models/event_model.dart';
-import '../../models/member_model.dart';
+
+import 'data/attendance_local_data_source.dart';
+import 'data/attendance_remote_data_source.dart';
+import 'repositories/attendance_repository.dart';
 
 enum AttendanceResult {
   successHadir,
@@ -23,21 +18,21 @@ enum AttendanceResult {
 
 class AttendanceController {
   static final AttendanceController instance = AttendanceController._internal();
-  AttendanceController._internal();
+  
+  late final AttendanceRepository _repository;
+
+  AttendanceController._internal() {
+    _repository = AttendanceRepository(
+      AttendanceLocalDataSource(),
+      AttendanceRemoteDataSource(),
+    );
+  }
 
   final ValueNotifier<bool> isProcessing = ValueNotifier(false);
   final ValueNotifier<AttendanceResult?> lastResult = ValueNotifier(null);
-  // Nama member yang terakhir berhasil scan — untuk ditampilkan di UI
   final ValueNotifier<String?> lastScannedName = ValueNotifier(null);
-  // Menyimpan alasan gagal terakhir agar mudah ditampilkan di UI/debug.
   final ValueNotifier<String?> lastFailureReason = ValueNotifier(null);
 
-  bool _isPreloadingMembers = false;
-
-  /// Merekam absensi dari hasil scan QR.
-  ///
-  /// [eventId] — ID event yang sedang berjalan.
-  /// [scannedQrValue] — nilai raw dari QR Code yang di-scan.
   Future<AttendanceResult> recordAttendance({
     required String eventId,
     required String scannedQrValue,
@@ -48,94 +43,19 @@ class AttendanceController {
     lastFailureReason.value = null;
 
     try {
-      final normalizedScan = scannedQrValue.trim();
-      if (normalizedScan.isEmpty) {
-        lastFailureReason.value = 'QR kosong atau tidak terbaca';
-        lastResult.value = AttendanceResult.memberNotFound;
-        return AttendanceResult.memberNotFound;
-      }
-
-      // 1. Ambil identifier dari QR secara toleran:
-      // - format lama: plain nim
-      final nim = _extractIdentifierFromScan(normalizedScan);
-      if (nim.isEmpty) {
-        lastFailureReason.value = 'Identifier QR tidak dapat diparse';
-        lastResult.value = AttendanceResult.memberNotFound;
-        return AttendanceResult.memberNotFound;
-      }
-
-      // 2. Cari member di Hive, fallback ke cloud lalu cache ke Hive.
-      final member = await _resolveMemberForScan(
-        scannedQrValue: normalizedScan,
-        nimFromQr: nim,
-      );
-      if (member == null) {
-        if (_isLegacyDummyIdentifier(nim)) {
-          lastFailureReason.value =
-              'QR ini berasal dari data dummy lama ($nim). Gunakan QR dari akun member yang tersimpan di sistem saat ini.';
-        } else {
-          lastFailureReason.value =
-              'Member tidak ditemukan di Hive maupun cloud untuk QR: $normalizedScan';
-        }
-        lastResult.value = AttendanceResult.memberNotFound;
-        return AttendanceResult.memberNotFound;
-      }
-
-      // 3. Cek event ada
-      final event = HiveService.events.get(eventId);
-      if (event == null) {
-        lastFailureReason.value = 'Event tidak ditemukan: $eventId';
-        lastResult.value = AttendanceResult.eventNotFound;
-        return AttendanceResult.eventNotFound;
-      }
-
-      // Jika main event memiliki sub-event, absensi wajib dicatat di sub-event.
-      if (_isMainEventWithSubEvents(eventId: eventId, event: event)) {
-        lastFailureReason.value =
-            'Main event memiliki sub-event. Lakukan absensi pada sub-event.';
-        lastResult.value = AttendanceResult.mainEventHasSubEvents;
-        return AttendanceResult.mainEventHasSubEvents;
-      }
-
-      // 4. Buat compositeKey & cek duplikasi di Hive
-      final compositeKey = '${eventId}_${member.nim}';
-      final isDuplicate = HiveService.attendance.values.any(
-        (r) => r.compositeKey == compositeKey,
-      );
-      if (isDuplicate) {
-        lastFailureReason.value =
-          'Duplikat absensi untuk member ${member.nim} pada event $eventId';
-        lastResult.value = AttendanceResult.duplicate;
-        return AttendanceResult.duplicate;
-      }
-
-      // 5. Tentukan status: Hadir atau Terlambat berdasarkan waktu mulai event
-      final now = DateTime.now();
-      final baseTime = event.jamMulai ?? event.tanggalMulai;
-      final lateThreshold = baseTime.add(const Duration(minutes: 15));
-      final isLate = now.isAfter(lateThreshold);
-      final status = isLate ? 'Terlambat' : 'Hadir';
-
-      // 6. Simpan record ke Hive (offline-first, isSynced=false)
-      final record = AttendanceRecord.create(
-        recordId: const Uuid().v4(),
+      final resultData = await _repository.recordAttendance(
         eventId: eventId,
-        nim: member.nim,
-        status: status,
+        scannedQrValue: scannedQrValue,
       );
-      await HiveService.attendance.add(record);
 
-      lastScannedName.value = member.nama;
-      final result = isLate
-          ? AttendanceResult.successTerlambat
-          : AttendanceResult.successHadir;
-      lastResult.value = result;
-      debugPrint(
-        '[Attendance] ${member.nama} - $status (compositeKey: $compositeKey)',
-      );
-      return result;
-    } catch (e, st) {
-      debugPrint('[Attendance] Error: $e\n$st');
+      lastScannedName.value = resultData.scannedName;
+      lastFailureReason.value = resultData.failureReason;
+
+      final resultEnum = _mapStatusToEnum(resultData.status);
+      lastResult.value = resultEnum;
+
+      return resultEnum;
+    } catch (e) {
       lastFailureReason.value = 'Exception: $e';
       lastResult.value = AttendanceResult.error;
       return AttendanceResult.error;
@@ -144,343 +64,52 @@ class AttendanceController {
     }
   }
 
-  /// Ambil semua record kehadiran untuk satu event
   List<AttendanceRecord> getAttendanceByEvent(String eventId) {
-    return HiveService.attendance.values
-        .where((r) => r.eventId == eventId)
-        .toList()
-      ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
+    return _repository.getAttendanceByEvent(eventId);
   }
 
-  /// Ambil semua record kehadiran untuk satu member
   List<AttendanceRecord> getAttendanceByMember(String nim) {
-    return HiveService.attendance.values
-        .where((r) => r.nim == nim)
-        .toList()
-      ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
-  }
-
-  Future<MemberModel?> _resolveMemberForScan({
-    required String scannedQrValue,
-    required String nimFromQr,
-  }) async {
-    final normalizedScan = scannedQrValue.trim();
-    final normalizedIdentifier = _normalizeIdentifier(nimFromQr);
-
-    // Priority 1: exact QR match di Hive.
-    for (final m in HiveService.members.values) {
-      if (_normalizeIdentifier(m.qrCodeValue) == _normalizeIdentifier(normalizedScan)) {
-        return m;
-      }
-    }
-
-    // Priority 2: fallback by NIM di Hive (untuk data lama tanpa qrCodeValue konsisten).
-    final localByNim = HiveService.members.get(nimFromQr) ??
-        HiveService.members.get(normalizedIdentifier);
-    if (localByNim != null) {
-      if (_normalizeIdentifier(localByNim.qrCodeValue) !=
-          _normalizeIdentifier(normalizedScan)) {
-        final repaired = localByNim.copyWith(qrCodeValue: normalizedScan);
-        await HiveService.members.put(localByNim.nim, repaired);
-        return repaired;
-      }
-      return localByNim;
-    }
-
-    // Priority 2b: fallback by identifier yang dinormalisasi di Hive.
-    for (final m in HiveService.members.values) {
-      if (_normalizeIdentifier(m.nim) == normalizedIdentifier) {
-        if (_normalizeIdentifier(m.qrCodeValue) != _normalizeIdentifier(normalizedScan)) {
-          final repaired = m.copyWith(qrCodeValue: normalizedScan);
-          await HiveService.members.put(m.nim, repaired);
-          return repaired;
-        }
-        return m;
-      }
-    }
-
-    // Priority 3: ambil dari cloud jika online, lalu cache ke Hive agar bisa offline berikutnya.
-    if (!await _isOnline()) {
-      return null;
-    }
-
-    if (!MongoService.instance.isConnected) {
-      final connected = await MongoService.instance.ensureConnected();
-      if (!connected) return null;
-    }
-
-    var cloudDoc = await MongoService.instance.findOne(
-      collectionName: AppConstants.usersCollection,
-      filter: {'nim': nimFromQr},
-    );
-    cloudDoc ??= await MongoService.instance.findOne(
-      collectionName: AppConstants.usersCollection,
-      filter: {'nim': normalizedIdentifier},
-    );
-    cloudDoc ??= await MongoService.instance.findOne(
-      collectionName: AppConstants.usersCollection,
-      filter: {'nim': nimFromQr},
-    );
-    cloudDoc ??= await MongoService.instance.findOne(
-      collectionName: AppConstants.usersCollection,
-      filter: {'nim': normalizedIdentifier},
-    );
-    cloudDoc ??= await MongoService.instance.findOne(
-      collectionName: AppConstants.usersCollection,
-      filter: {'qrCodeValue': normalizedScan},
-    );
-    if (cloudDoc == null) return null;
-
-    final merged = Map<String, dynamic>.from(cloudDoc)
-      ..['nim'] = (cloudDoc['nim'] ?? nimFromQr).toString().trim()
-      ..['qrCodeValue'] = (cloudDoc['qrCodeValue'] ?? normalizedScan).toString();
-
-    final cached = MemberModel.fromMap(merged);
-    await HiveService.members.put(cached.nim, cached);
-
-    debugPrint('[Attendance] member cloud hit -> cached nim=${cached.nim}');
-    return cached;
-  }
-
-  String _extractIdentifierFromScan(String rawScan) {
-    final parsed = QrService.parseNim(rawScan);
-    if (parsed != null && parsed.trim().isNotEmpty) {
-      return parsed.trim();
-    }
-
-    // Legacy tolerance: terima plain nim, dan prefix tanpa case-sensitive.
-    final upperScan = rawScan.toUpperCase();
-    final upperPrefix = AppConstants.qrPrefix.toUpperCase();
-    if (upperScan.startsWith(upperPrefix)) {
-      return rawScan.substring(AppConstants.qrPrefix.length).trim();
-    }
-
-    return rawScan.trim();
-  }
-
-  String _normalizeIdentifier(String value) {
-    return value.trim().toUpperCase();
-  }
-
-  bool _isLegacyDummyIdentifier(String identifier) {
-    return _normalizeIdentifier(identifier).startsWith('MEMBER-PRASASTI-');
+    return _repository.getAttendanceByMember(nim);
   }
 
   Future<void> preloadMembersFromCloudToHive() async {
-    if (_isPreloadingMembers) return;
-
-    _isPreloadingMembers = true;
-    try {
-      if (!await _isOnline()) {
-        debugPrint('[Attendance] preload member skipped: offline');
-        return;
-      }
-
-      if (!MongoService.instance.isConnected) {
-        final connected = await MongoService.instance.ensureConnected();
-        if (!connected) {
-          debugPrint('[Attendance] preload member skipped: MongoDB not connected');
-          return;
-        }
-      }
-
-      final cloudUsers = await MongoService.instance.findMany(
-        collectionName: AppConstants.usersCollection,
-      );
-
-      if (cloudUsers.isEmpty) {
-        debugPrint('[Attendance] preload member: no users in cloud');
-        return;
-      }
-
-      var insertedOrUpdated = 0;
-      for (final raw in cloudUsers) {
-        final merged = Map<String, dynamic>.from(raw);
-        final nim = (merged['nim'] ?? '').toString().trim();
-        if (nim.isEmpty) continue;
-
-        merged['nim'] = nim;
-        merged['qrCodeValue'] =
-            (merged['qrCodeValue'] ?? QrService.generateQrData(nim)).toString();
-
-        final model = MemberModel.fromMap(merged);
-        await HiveService.members.put(model.nim, model);
-        insertedOrUpdated++;
-      }
-
-      debugPrint('[Attendance] preload member done: $insertedOrUpdated cached to Hive');
-    } catch (e) {
-      debugPrint('[Attendance] preload member error: $e');
-    } finally {
-      _isPreloadingMembers = false;
-    }
+    await _repository.preloadMembersFromCloudToHive();
   }
 
-  Future<bool> _isOnline() async {
-    try {
-      final connectivityResult = await Connectivity().checkConnectivity();
-      return connectivityResult.any((r) => r != ConnectivityResult.none);
-    } on MissingPluginException {
-      // Unit test / environment tertentu tidak memiliki plugin binding.
-      return false;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  /// Fitur override manual oleh Executive / Manager
   Future<bool> overrideAttendanceStatus({
     required String recordId,
     required String newStatus,
     required String overrideById,
   }) async {
-    try {
-      final record = HiveService.attendance.values.firstWhere(
-        (r) => r.recordId == recordId,
-        orElse: () => throw Exception('Record tidak ditemukan'),
-      );
-
-      record.status = newStatus;
-      record.isManualOverride = true;
-      record.overrideBy = overrideById;
-      record.isSynced = false;
-
-      await record.save();
-      debugPrint(
-        '[Attendance] Override sukses: Record $recordId menjadi $newStatus oleh $overrideById',
-      );
-      return true;
-    } catch (e) {
-      debugPrint('[Attendance] Error override status: $e');
-      return false;
-    }
+    return await _repository.overrideAttendanceStatus(
+      recordId: recordId,
+      newStatus: newStatus,
+      overrideById: overrideById,
+    );
   }
 
-  /// Fitur auto-generate "Alpha" di akhir acara
   Future<void> generateAlphaRecords(String eventId) async {
-    try {
-      final event = HiveService.events.get(eventId);
-      if (event == null) {
-        debugPrint('[Attendance] Error generate Alpha: Event tidak ditemukan');
-        return;
-      }
-
-      if (_isMainEventWithSubEvents(eventId: eventId, event: event)) {
-        debugPrint(
-          '[Attendance] Generate Alpha dibatalkan: event $eventId memiliki sub-event.',
-        );
-        return;
-      }
-
-      final existingRecords = getAttendanceByEvent(eventId);
-      final existingNims = existingRecords.map((r) => r.nim).toSet();
-
-      Iterable<MemberModel> targetMembers = HiveService.members.values;
-      if (event.targetPeserta.isNotEmpty) {
-        targetMembers = targetMembers.where(
-          (m) => event.targetPeserta.contains(m.divisi),
-        );
-      }
-
-      final uuid = const Uuid();
-      int alphaCount = 0;
-
-      for (final member in targetMembers) {
-        if (!existingNims.contains(member.nim)) {
-          final alphaRecord = AttendanceRecord.create(
-            recordId: uuid.v4(),
-            eventId: eventId,
-            nim: member.nim,
-            status: 'Alpha',
-          );
-          await HiveService.attendance.add(alphaRecord);
-          alphaCount++;
-        }
-      }
-
-      debugPrint(
-        '[Attendance] Generate Alpha sukses: $alphaCount member ditandai Alpha untuk event $eventId',
-      );
-    } catch (e) {
-      debugPrint('[Attendance] Error generate Alpha: $e');
-    }
+    await _repository.generateAlphaRecords(eventId);
   }
 
-  /// Tambah absensi manual (contoh: input oleh Manager saat dibutuhkan).
-  /// Tetap menerapkan validasi anti-duplikasi 1 user per event.
   Future<bool> addManualAttendance({
     required String eventId,
     required String nim,
     required String status,
   }) async {
-    try {
-      final event = HiveService.events.get(eventId);
-      if (event == null) return false;
-
-      if (_isMainEventWithSubEvents(eventId: eventId, event: event)) {
-        lastFailureReason.value =
-            'Main event memiliki sub-event. Tambah absensi manual pada sub-event.';
-        return false;
-      }
-
-      final memberExists = HiveService.members.values.any(
-        (m) => m.nim == nim,
-      );
-      if (!memberExists) return false;
-
-      final compositeKey = '${eventId}_$nim';
-      final isDuplicate = HiveService.attendance.values.any(
-        (r) => r.compositeKey == compositeKey,
-      );
-      if (isDuplicate) return false;
-
-      final record = AttendanceRecord.create(
-        recordId: const Uuid().v4(),
-        eventId: eventId,
-        nim: nim,
-        status: status,
-      );
-
-      await HiveService.attendance.add(record);
-      return true;
-    } catch (_) {
-      return false;
+    final result = await _repository.addManualAttendance(
+      eventId: eventId,
+      nim: nim,
+      status: status,
+    );
+    if (result.failureReason != null) {
+      lastFailureReason.value = result.failureReason;
     }
+    return result.status == 'success';
   }
 
-  /// Hapus record absensi berdasarkan recordId.
   Future<bool> deleteAttendanceRecord(String recordId) async {
-    try {
-      final target = HiveService.attendance.values.firstWhere(
-        (r) => r.recordId == recordId,
-        orElse: () => throw Exception('Record tidak ditemukan'),
-      );
-      final compositeKey = target.compositeKey;
-      await target.delete();
-
-      // Delete dari cloud (fire-and-forget)
-      _deleteAttendanceFromCloud(compositeKey);
-      return true;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  Future<void> _deleteAttendanceFromCloud(String compositeKey) async {
-    try {
-      final results = await Connectivity().checkConnectivity();
-      if (!results.any((r) => r != ConnectivityResult.none)) return;
-      if (!MongoService.instance.isConnected) {
-        await MongoService.instance.ensureConnected();
-      }
-      await MongoService.instance.deleteOne(
-        collectionName: AppConstants.attendanceCollection,
-        filter: {'compositeKey': compositeKey},
-      );
-      debugPrint('[AttendanceCtrl] cloud delete ✅ $compositeKey');
-    } catch (e) {
-      debugPrint('[AttendanceCtrl] cloud delete error: $e');
-    }
+    return await _repository.deleteAttendanceRecord(recordId);
   }
 
   void dispose() {
@@ -490,13 +119,22 @@ class AttendanceController {
     lastFailureReason.dispose();
   }
 
-  bool _isMainEventWithSubEvents({
-    required String eventId,
-    required EventModel event,
-  }) {
-    final isMainEvent = event.parentEventId == null;
-    if (!isMainEvent) return false;
-
-    return HiveService.events.values.any((e) => e.parentEventId == eventId);
+  AttendanceResult _mapStatusToEnum(String status) {
+    switch (status) {
+      case 'successHadir':
+        return AttendanceResult.successHadir;
+      case 'successTerlambat':
+        return AttendanceResult.successTerlambat;
+      case 'duplicate':
+        return AttendanceResult.duplicate;
+      case 'memberNotFound':
+        return AttendanceResult.memberNotFound;
+      case 'eventNotFound':
+        return AttendanceResult.eventNotFound;
+      case 'mainEventHasSubEvents':
+        return AttendanceResult.mainEventHasSubEvents;
+      default:
+        return AttendanceResult.error;
+    }
   }
 }
