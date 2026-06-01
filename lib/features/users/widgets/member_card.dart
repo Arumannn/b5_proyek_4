@@ -1,20 +1,23 @@
 import 'package:flutter/material.dart';
 import '../../../models/member_model.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/controllers/config_controller.dart';
 
 /// Individual member card matching the minimal reference design
 class MemberCard extends StatelessWidget {
   final MemberModel member;
-  final bool isExecutive;
+  final bool canManage;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final bool canDelete;
 
   const MemberCard({
     super.key,
     required this.member,
-    required this.isExecutive,
+    required this.canManage,
     required this.onEdit,
     required this.onDelete,
+    this.canDelete = false,
   });
 
   String _getInitials() {
@@ -51,15 +54,14 @@ class MemberCard extends StatelessWidget {
   }
 
   String _getDisplayRole(String role) {
-    final r = role.toLowerCase();
-    if (r == AppConstants.roleExecutive.toLowerCase()) {
-      return 'Eksekutif';
-    } else if (r == AppConstants.roleManager.toLowerCase()) {
-      return 'Manager';
-    } else if (r == AppConstants.roleOrganizer.toLowerCase()) {
-      return 'Organizer';
+    final matchingRole = ConfigController.instance.activeConfig.rolesConfig
+        .where((r) => r.roleName.toLowerCase() == role.trim().toLowerCase())
+        .toList();
+    if (matchingRole.isNotEmpty) {
+      return matchingRole.first.roleName;
     }
-    return 'Member';
+    if (role.isEmpty) return 'Member';
+    return '${role[0].toUpperCase()}${role.substring(1).toLowerCase()}';
   }
 
   @override
@@ -166,47 +168,39 @@ class MemberCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 4), // mb-1 equivalent space
-              if (isExecutive)
-                InkWell(
-                  onTap: () {
-                    // Show a simple bottom sheet or popup for actions since the JS only shows one edit button but we have edit/delete
-                    showModalBottomSheet(
-                      context: context,
-                      builder: (context) => SafeArea(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            ListTile(
-                              leading: const Icon(Icons.edit, color: Colors.blue),
-                              title: const Text('Edit Anggota'),
-                              onTap: () {
-                                Navigator.pop(context);
-                                onEdit();
-                              },
-                            ),
-                            ListTile(
-                              leading: const Icon(Icons.delete, color: Colors.red),
-                              title: const Text('Hapus Anggota', style: TextStyle(color: Colors.red)),
-                              onTap: () {
-                                Navigator.pop(context);
-                                onDelete();
-                              },
-                            ),
-                          ],
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (canManage)
+                    InkWell(
+                      onTap: onEdit,
+                      borderRadius: BorderRadius.circular(16),
+                      child: const Padding(
+                        padding: EdgeInsets.all(4.0),
+                        child: Icon(
+                          Icons.edit_outlined,
+                          size: 18,
+                          color: Colors.blue,
                         ),
                       ),
-                    );
-                  },
-                  borderRadius: BorderRadius.circular(16),
-                  child: const Padding(
-                    padding: EdgeInsets.all(4.0),
-                    child: Icon(
-                      Icons.edit_outlined, // Edit3 icon equivalent
-                      size: 16,
-                      color: Color(0xFF9CA3AF), // text-gray-400
                     ),
-                  ),
-                ),
+                  if (canManage && canDelete)
+                    const SizedBox(width: 8),
+                  if (canDelete)
+                    InkWell(
+                      onTap: onDelete,
+                      borderRadius: BorderRadius.circular(16),
+                      child: const Padding(
+                        padding: EdgeInsets.all(4.0),
+                        child: Icon(
+                          Icons.delete_outline,
+                          size: 18,
+                          color: Colors.red,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ],
           ),
         ],

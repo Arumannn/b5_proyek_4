@@ -6,7 +6,7 @@ import '../../../../models/event_invitation.dart';
 import '../../../../widgets/status_badge.dart';
 import '../../../../core/enums/status_enums.dart';
 import '../../../../widgets/user_avatar.dart';
-import '../../../member/invitation_response_page.dart';
+import '../../invitation_response_page.dart';
 
 class AttendanceParticipantItem {
   final String nim;

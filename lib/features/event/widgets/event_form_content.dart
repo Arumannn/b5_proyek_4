@@ -21,6 +21,7 @@ class EventFormContent extends StatelessWidget {
   final bool isSubEvent;
   final String? parentId;
   final String selectedJenis;
+  final List<String> eventTypes;
   final List<String> selectedTargetIds;
   final String selectedPenyelenggara;
   final List<String> penyelenggaraOptions;
@@ -57,6 +58,7 @@ class EventFormContent extends StatelessWidget {
     required this.isSubEvent,
     required this.parentId,
     required this.selectedJenis,
+    required this.eventTypes,
     required this.selectedTargetIds,
     required this.selectedPenyelenggara,
     required this.penyelenggaraOptions,
@@ -106,7 +108,7 @@ class EventFormContent extends StatelessWidget {
                 InlineExpandingDropdownField(
                   label: 'Jenis Event',
                   value: selectedJenis,
-                  options: const ['Rapat', 'Acara', 'Kegiatan', 'Lainnya'],
+                  options: eventTypes,
                   placeholder: 'Pilih jenis event',
                   onChanged: onJenisChanged,
                 ),

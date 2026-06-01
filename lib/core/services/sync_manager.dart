@@ -12,7 +12,9 @@ import 'mongo_service.dart';
 import '../../models/event_model.dart';
 import '../../models/event_invitation.dart';
 import '../../models/organization_config.dart';
+import 'package:mongo_dart/mongo_dart.dart';
 import '../../features/auth/auth_controller.dart';
+import '../controllers/config_controller.dart';
 
 /// SyncManager — Versi lengkap Week 11.
 ///
@@ -784,26 +786,100 @@ class SyncManager {
   /// Pull OrganizationConfig dari MongoDB berdasarkan organizationId user aktif.
   Future<void> pullOrganizationConfigFromCloud() async {
     try {
-      final orgId = AuthController.instance.currentUser.value?.organizationId;
-      if (orgId == null || orgId.isEmpty) {
-        debugPrint('[SyncManager] pullOrganizationConfig: tidak ada organizationId aktif.');
-        return;
+      final user = AuthController.instance.currentUser.value;
+      final rawOrgId = user?.organizationId?.trim() ?? '';
+      final hasOrgId = rawOrgId.isNotEmpty;
+      final orgId = hasOrgId ? rawOrgId : OrganizationConfig.defaultFallback.organizationId;
+      final existingConfig = HiveService.organizationConfigs.get(orgId) ?? OrganizationConfig.defaultFallback;
+
+      // 1. Fetch data konfigurasi dari cloud.
+      // Cari berdasarkan organizationId versi String dan ObjectId agar kompatibel
+      // dengan data dari mobile maupun web admin.
+      final orgFilters = <Map<String, dynamic>>[];
+      if (hasOrgId) {
+        orgFilters.add({'organizationId': orgId});
+        try {
+          orgFilters.add({'organizationId': ObjectId.parse(orgId)});
+        } catch (_) {}
       }
 
-      final doc = await MongoService.instance.findOne(
-        collectionName: AppConstants.organizationConfigsCollection,
-        filter: {'organizationId': orgId},
+      Future<List<Map<String, dynamic>>> fetchByOrg(List<String> collectionNames) async {
+        final merged = <String, Map<String, dynamic>>{};
+        for (final collectionName in collectionNames) {
+          if (orgFilters.isEmpty) {
+            final docs = await MongoService.instance.findMany(
+              collectionName: collectionName,
+            );
+            for (final doc in docs) {
+              final key = doc['_id']?.toString() ?? '$collectionName:${doc.hashCode}';
+              merged[key] = doc;
+            }
+            continue;
+          }
+
+          for (final filter in orgFilters) {
+            final docs = await MongoService.instance.findMany(
+              collectionName: collectionName,
+              filter: filter,
+            );
+            for (final doc in docs) {
+              final key = doc['_id']?.toString() ?? '$collectionName:${doc.hashCode}';
+              merged[key] = doc;
+            }
+          }
+        }
+        return merged.values.toList(growable: false);
+      }
+
+      final rolesRaw = await fetchByOrg(['roles']);
+      var eventTypesRaw = await fetchByOrg(['event-types', 'eventtypes']);
+
+      // Legacy fallback: beberapa data lama belum menyimpan organizationId.
+      if (hasOrgId && eventTypesRaw.isEmpty) {
+        eventTypesRaw = await MongoService.instance.findMany(
+          collectionName: 'eventtypes',
+        );
+        if (eventTypesRaw.isEmpty) {
+          eventTypesRaw = await MongoService.instance.findMany(
+            collectionName: 'event-types',
+          );
+        }
+      }
+
+      // 2. Mapping ke struktur lokal
+      final List<String> parsedEventTypes = eventTypesRaw
+          .map((type) => type['name']?.toString().trim() ?? '')
+          .where((name) => name.isNotEmpty)
+          .toSet()
+          .toList();
+
+      final List<RoleConfig> parsedRoles = rolesRaw.map((r) {
+        final rawJabatan = r['jabatan'] ?? r['jabatanList'] ?? r['divisi'] ?? const [];
+        final normalizedJabatan = rawJabatan is List
+            ? rawJabatan.map((item) => item.toString().trim()).where((item) => item.isNotEmpty).toList()
+            : <String>[];
+
+        return RoleConfig(
+          roleName: (r['name'] ?? r['roleName'] ?? '').toString().trim(),
+          permissions: List<String>.from(r['permissions'] ?? const []),
+          jabatanList: normalizedJabatan,
+        );
+      }).where((role) => role.roleName.isNotEmpty).toList();
+
+      // 3. Simpan ke Hive dengan merge terhadap cache lokal agar tidak menghapus konfigurasi yang belum tersinkron.
+      final config = OrganizationConfig(
+        organizationId: orgId,
+        eventTypes: parsedEventTypes.isNotEmpty ? parsedEventTypes : existingConfig.eventTypes,
+        rolesConfig: parsedRoles.isNotEmpty ? parsedRoles : existingConfig.rolesConfig,
       );
 
-      if (doc == null) {
-        debugPrint('[SyncManager] pullOrganizationConfig: config untuk $orgId tidak ditemukan di cloud.');
-        return;
-      }
-
-      final config = OrganizationConfig.fromMap(doc);
       await HiveService.organizationConfigs.put(config.organizationId, config);
+      ConfigController.instance.loadActiveConfig();
 
-      debugPrint('[SyncManager] pullOrganizationConfig ✅ config untuk $orgId tersimpan ke Hive.');
+      debugPrint(
+        '[SyncManager] pullOrganizationConfig ✅ config untuk $orgId tersimpan ke Hive '
+        '(${config.eventTypes.length} event types, ${config.rolesConfig.length} roles).',
+      );
     } catch (e) {
       debugPrint('[SyncManager] pullOrganizationConfig ❌ error: $e');
     }

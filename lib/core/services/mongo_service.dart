@@ -176,8 +176,37 @@ class MongoService {
   // ════════════════════════════════════════════════════════════════
   // CRUD OPERATIONS
   // Semua method di bawah ini dipakai oleh Controller & SyncManager.
-  // Selalu pastikan isConnected sebelum memanggil operasi ini.
+  // Dilengkapi mekanisme auto-retry jika Atlas mereset koneksi.
   // ════════════════════════════════════════════════════════════════
+
+  /// Wrapper untuk menangani ConnectionException / No master connection dari Atlas
+  Future<T> _withRetry<T>(Future<T> Function() operation) async {
+    try {
+      await ensureConnected();
+      return await operation();
+    } catch (e) {
+      final eStr = e.toString().toLowerCase();
+      if (eStr.contains('connection closed') || 
+          eStr.contains('no master connection') || 
+          eStr.contains('socket') || 
+          eStr.contains('connectionexception')) {
+        debugPrint('⚠️ MongoService: Connection reset detected. Reconnecting and retrying...');
+        try {
+          await _db?.close();
+        } catch (_) {}
+        _db = null;
+        _initialized = false;
+        
+        final connected = await ensureConnected();
+        if (connected) {
+          return await operation();
+        } else {
+          throw StateError('Gagal menyambung ulang ke database.');
+        }
+      }
+      rethrow;
+    }
+  }
 
   // ─── INSERT ONE ─────────────────────────────────────────────────
   /// Insert satu dokumen ke collection.
@@ -188,8 +217,9 @@ class MongoService {
     required String collectionName,
     required Map<String, dynamic> document,
   }) async {
-    await ensureConnected();
-    return await collection(collectionName).insertOne(document);
+    return await _withRetry(() async {
+      return await collection(collectionName).insertOne(document);
+    });
   }
 
   // ─── INSERT MANY ────────────────────────────────────────────────
@@ -198,8 +228,9 @@ class MongoService {
     required String collectionName,
     required List<Map<String, dynamic>> documents,
   }) async {
-    await ensureConnected();
-    return await collection(collectionName).insertMany(documents);
+    return await _withRetry(() async {
+      return await collection(collectionName).insertMany(documents);
+    });
   }
 
   // ─── FIND ONE ───────────────────────────────────────────────────
@@ -209,8 +240,9 @@ class MongoService {
     required String collectionName,
     required Map<String, dynamic> filter,
   }) async {
-    await ensureConnected();
-    return await collection(collectionName).findOne(filter);
+    return await _withRetry(() async {
+      return await collection(collectionName).findOne(filter);
+    });
   }
 
   // ─── FIND MANY ──────────────────────────────────────────────────
@@ -221,24 +253,25 @@ class MongoService {
     Map<String, dynamic>? sort,
     int? limit,
   }) async {
-    await ensureConnected();
-    SelectorBuilder selector = where;
+    return await _withRetry(() async {
+      SelectorBuilder selector = where;
 
-    if (filter != null && filter.isNotEmpty) {
-      filter.forEach((key, value) {
-        selector = selector.eq(key, value);
-      });
-    }
-    if (sort != null && sort.isNotEmpty) {
-      sort.forEach((key, value) {
-        selector = selector.sortBy(key, descending: value == -1);
-      });
-    }
-    if (limit != null) {
-      selector = selector.limit(limit);
-    }
+      if (filter != null && filter.isNotEmpty) {
+        filter.forEach((key, value) {
+          selector = selector.eq(key, value);
+        });
+      }
+      if (sort != null && sort.isNotEmpty) {
+        sort.forEach((key, value) {
+          selector = selector.sortBy(key, descending: value == -1);
+        });
+      }
+      if (limit != null) {
+        selector = selector.limit(limit);
+      }
 
-    return await collection(collectionName).find(selector).toList();
+      return await collection(collectionName).find(selector).toList();
+    });
   }
 
   // ─── UPDATE ONE ─────────────────────────────────────────────────
@@ -249,16 +282,16 @@ class MongoService {
     required Map<String, dynamic> filter,
     required Map<String, dynamic> updateFields,
   }) async {
-    await ensureConnected();
+    return await _withRetry(() async {
+      // Build ModifierBuilder dari semua field yang ingin di-update
+      ModifierBuilder modifier = modify;
+      for (final entry in updateFields.entries) {
+        modifier = modifier.set(entry.key, entry.value);
+      }
 
-    // Build ModifierBuilder dari semua field yang ingin di-update
-    ModifierBuilder modifier = modify;
-    for (final entry in updateFields.entries) {
-      modifier = modifier.set(entry.key, entry.value);
-    }
-
-    final result = await collection(collectionName).updateOne(filter, modifier);
-    return result.nModified;
+      final result = await collection(collectionName).updateOne(filter, modifier);
+      return result.nModified;
+    });
   }
 
   // ─── DELETE ONE ─────────────────────────────────────────────────
@@ -267,9 +300,10 @@ class MongoService {
     required String collectionName,
     required Map<String, dynamic> filter,
   }) async {
-    await ensureConnected();
-    final result = await collection(collectionName).deleteOne(filter);
-    return result.nRemoved;
+    return await _withRetry(() async {
+      final result = await collection(collectionName).deleteOne(filter);
+      return result.nRemoved;
+    });
   }
 
   // ─── COUNT ──────────────────────────────────────────────────────
@@ -278,8 +312,9 @@ class MongoService {
     required String collectionName,
     Map<String, dynamic>? filter,
   }) async {
-    await ensureConnected();
-    return await collection(collectionName).count(filter);
+    return await _withRetry(() async {
+      return await collection(collectionName).count(filter);
+    });
   }
 
   // ─── CHECK DUPLICATE KEY ────────────────────────────────────────

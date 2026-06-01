@@ -11,19 +11,24 @@ class RoleConfig {
   final List<String> permissions;
 
   @HiveField(2)
-  final List<String> allowedDivisions;
+  final List<String> jabatanList;
 
   RoleConfig({
     required this.roleName,
     required this.permissions,
-    required this.allowedDivisions,
+    required this.jabatanList,
   });
 
   factory RoleConfig.fromMap(Map<String, dynamic> map) {
+    final rawJabatan = map['jabatanList'] ?? map['jabatan'] ?? map['divisi'] ?? [];
+    final jabatan = rawJabatan is List
+        ? rawJabatan.map((item) => item.toString().trim()).where((item) => item.isNotEmpty).toList()
+        : <String>[];
+
     return RoleConfig(
-      roleName: map['roleName']?.toString() ?? '',
+      roleName: map['roleName']?.toString() ?? map['name']?.toString() ?? '',
       permissions: List<String>.from(map['permissions'] ?? []),
-      allowedDivisions: List<String>.from(map['allowedDivisions'] ?? []),
+      jabatanList: jabatan,
     );
   }
 
@@ -31,7 +36,7 @@ class RoleConfig {
     return {
       'roleName': roleName,
       'permissions': permissions,
-      'allowedDivisions': allowedDivisions,
+      'jabatanList': jabatanList,
     };
   }
 }
@@ -79,14 +84,15 @@ class OrganizationConfig extends HiveObject {
         RoleConfig(
           roleName: 'Executive',
           permissions: [
-            'create_main_event',
-            'update_main_event',
-            'delete_main_event',
-            'create_sub_event',
-            'update_sub_event',
-            'delete_sub_event',
+            'read_dashboard',
+            'create_event', 'read_event', 'update_event', 'delete_event',
+            'create_sub_event', 'read_sub_event', 'update_sub_event', 'delete_sub_event',
+            'create_member', 'read_member', 'update_member', 'delete_member',
+            'read_kehadiran',
+            'create_scan',
+            'read_rekap',
           ],
-          allowedDivisions: [
+          jabatanList: [
             'Ketua Himpunan',
             'Wakil Ketua Himpunan',
             'Sekretaris Jenderal',
@@ -98,11 +104,15 @@ class OrganizationConfig extends HiveObject {
         RoleConfig(
           roleName: 'Manager',
           permissions: [
-            'create_sub_event',
-            'update_sub_event',
-            'delete_sub_event',
+            'read_dashboard',
+            'read_event',
+            'create_sub_event', 'read_sub_event', 'update_sub_event', 'delete_sub_event',
+            'read_member',
+            'read_kehadiran',
+            'create_scan',
+            'read_rekap',
           ],
-          allowedDivisions: [
+          jabatanList: [
             'Ketua Departemen',
             'Wakil Ketua Departemen',
             'Ketua Biro',
@@ -112,9 +122,30 @@ class OrganizationConfig extends HiveObject {
           ],
         ),
         RoleConfig(
+          roleName: 'Organizer',
+          permissions: [
+            'read_dashboard',
+            'read_event',
+            'read_sub_event',
+            'read_kehadiran',
+            'read_rekap',
+          ],
+          jabatanList: [
+            'Koordinator Acara', 
+            'Koordinator Logistik', 
+            'Koordinator Publikasi'
+          ],
+        ),
+        RoleConfig(
           roleName: 'Member',
-          permissions: [],
-          allowedDivisions: [
+          permissions: [
+            'read_dashboard',
+            'read_event',
+            'read_sub_event',
+            'read_kehadiran',
+            'read_rekap',
+          ],
+          jabatanList: [
             'Departemen Komunikasi dan Informasi',
             'Departemen Luar Himpunan',
             'Departemen Pengembangan Sumber Daya Himpunan',

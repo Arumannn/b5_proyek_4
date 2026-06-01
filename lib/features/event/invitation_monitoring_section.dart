@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
@@ -258,7 +260,7 @@ class _InvitationMonitoringSectionState extends State<InvitationMonitoringSectio
                                           ),
                                           child: const Text('Cek Izin', style: TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w700)),
                                         )
-                                      : const Icon(Icons.chevron_right, color: Colors.grey),
+                                      : const SizedBox.shrink(),
                                 ],
                               ),
                               if (invitation.responseStatus.toLowerCase() == 'permission_requested') ...[
@@ -308,31 +310,79 @@ class _InvitationMonitoringSectionState extends State<InvitationMonitoringSectio
     final latestRecord = permissionRecords.isNotEmpty ? permissionRecords.last : null;
     final reason = latestRecord?.alasan ?? 'Tidak ada alasan terlampir.';
     final jenisIzin = latestRecord?.jenisIzin ?? 'Izin';
+    final member = HiveService.members.get(invitation.nim);
+    final submittedAt = latestRecord?.createdAt ?? invitation.invitedAt;
 
     final approved = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
           title: const Text('Tinjau Izin'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Nama: ${invitation.nim}'),
-              const SizedBox(height: 8),
-              Text('Jenis: $jenisIzin'),
-              const SizedBox(height: 8),
-              Text('Alasan: $reason'),
-            ],
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(member?.nama ?? invitation.nim, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                const SizedBox(height: 4),
+                Text(member?.nim ?? invitation.nim, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+                const SizedBox(height: 8),
+                Text('Diajukan: ${submittedAt.toLocal().toString().split('.').first}', style: const TextStyle(fontSize: 12, color: Color(0xFF9CA3AF))),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    const Text('Jenis:', style: TextStyle(fontWeight: FontWeight.w700)),
+                    const SizedBox(width: 8),
+                    Text(jenisIzin),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                const Text('Alasan:', style: TextStyle(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 6),
+                Text(reason),
+                const SizedBox(height: 12),
+                if (latestRecord?.buktiFotoPath != null || latestRecord?.buktiFotoUrl != null) ...[
+                  const Text('Lampiran:', style: TextStyle(fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed: () => _showAttachmentPreviewDialog(
+                      dialogContext,
+                      filePath: latestRecord?.buktiFotoPath,
+                      imageUrl: latestRecord?.buktiFotoUrl,
+                    ),
+                    icon: const Icon(Icons.image_outlined, size: 18),
+                    label: const Text('Tampilkan Gambar'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Tolak'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Setujui'),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(false),
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red, padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                      child: const Text('Tolak', style: TextStyle(color: Colors.white)),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(true),
+                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF16A34A), padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                      child: const Text('Setujui', style: TextStyle(color: Colors.white)),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         );
@@ -345,6 +395,52 @@ class _InvitationMonitoringSectionState extends State<InvitationMonitoringSectio
       context,
       invitation,
       approved ? InvitationStatus.approved : InvitationStatus.rejected,
+    );
+  }
+
+  Future<void> _showAttachmentPreviewDialog(
+    BuildContext context, {
+    String? filePath,
+    String? imageUrl,
+  }) async {
+    final hasLocalPath = filePath != null && filePath.isNotEmpty;
+    final localFileExists = hasLocalPath ? File(filePath).existsSync() : false;
+    final hasImageUrl = imageUrl != null && imageUrl.isNotEmpty;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Lampiran Izin'),
+          content: SizedBox(
+            width: 320,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: localFileExists
+                  ? Image.file(File(filePath), fit: BoxFit.contain)
+                  : hasImageUrl
+                      ? Image.network(
+                      imageUrl,
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) => const Padding(
+                            padding: EdgeInsets.all(16),
+                            child: Text('Gagal memuat gambar dari server.'),
+                          ),
+                        )
+                      : const Padding(
+                          padding: EdgeInsets.all(16),
+                          child: Text('Lampiran tidak tersedia.'),
+                        ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Tutup'),
+            ),
+          ],
+        );
+      },
     );
   }
 

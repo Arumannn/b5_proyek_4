@@ -147,9 +147,11 @@ class _LoginViewState extends State<LoginView> {
                                       TextFormField(
                                         controller: _nimController,
                                         keyboardType: TextInputType.number,
+                                        textInputAction: TextInputAction.next,
                                         decoration: const InputDecoration(
                                           labelText: 'NIM',
                                           prefixIcon: Icon(Icons.badge_outlined),
+                                          hintText: 'Masukkan NIM',
                                         ),
                                         validator: (value) {
                                           if (value == null || value.trim().isEmpty) {
@@ -165,9 +167,11 @@ class _LoginViewState extends State<LoginView> {
                                           return TextFormField(
                                             controller: _passwordController,
                                             obscureText: obscure,
+                                            textInputAction: TextInputAction.done,
                                             decoration: InputDecoration(
                                               labelText: 'Password',
                                               prefixIcon: const Icon(Icons.key_outlined),
+                                              hintText: 'Masukkan password',
                                               suffixIcon: IconButton(
                                                 onPressed: () {
                                                   _obscurePassword.value = !obscure;

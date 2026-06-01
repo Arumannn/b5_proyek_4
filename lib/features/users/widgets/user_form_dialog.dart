@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/controllers/config_controller.dart';
+import '../../../core/services/sync_manager.dart';
 import '../../../core/widgets/inline_expanding_dropdown_field.dart';
 import '../../../models/member_model.dart';
 import '../../../widgets/custom_snackbar.dart';
-import '../auth_controller.dart';
+import '../../auth/auth_controller.dart';
 
 class UserFormDialog extends StatefulWidget {
   const UserFormDialog({
@@ -37,19 +38,35 @@ class _UserFormDialogState extends State<UserFormDialog> {
 
   bool get _isEdit => widget.existing != null;
 
+  List<String> _dbuOptionsForRole(String role) {
+    final fromBuilder = widget.dbuItemsBuilder(role);
+    if (fromBuilder.isNotEmpty) {
+      return fromBuilder;
+    }
+    return ConfigController.instance.dbuOptionsForRole(role);
+  }
+
   @override
   void initState() {
     super.initState();
+    SyncManager.instance.pullOrganizationConfigFromCloud();
     _nimController = TextEditingController(text: widget.existing?.nim ?? '');
     _namaController = TextEditingController(text: widget.existing?.nama ?? '');
     _passwordController = TextEditingController();
 
     final existingRole = (widget.existing?.role ?? AppConstants.roleMember).trim().toLowerCase();
-    _selectedRole = AppConstants.allowedRoles.firstWhere(
-      (role) => role.trim().toLowerCase() == existingRole,
-      orElse: () => AppConstants.roleMember,
-    );
-    final dbuOptions = ConfigController.instance.dbuOptionsForRole(_selectedRole);
+    final allRoles = ConfigController.instance.activeConfig.rolesConfig;
+    if (allRoles.isEmpty) {
+      _selectedRole = AppConstants.roleMember;
+    } else {
+      final match = allRoles.where((e) => e.roleName.toLowerCase() == existingRole).toList();
+      if (match.isNotEmpty) {
+        _selectedRole = match.first.roleName;
+      } else {
+        _selectedRole = allRoles.first.roleName;
+      }
+    }
+    final dbuOptions = _dbuOptionsForRole(_selectedRole);
     _selectedDbu = widget.existing?.divisi ?? dbuOptions.first;
     if (!dbuOptions.contains(_selectedDbu)) {
       _selectedDbu = dbuOptions.first;
@@ -226,43 +243,62 @@ class _UserFormDialogState extends State<UserFormDialog> {
                           },
                         ),
                         const SizedBox(height: 12),
-                        InlineExpandingDropdownField(
-                          label: 'Role',
-                          value: _selectedRole,
-                          options: AppConstants.allowedRoles,
-                          placeholder: 'Pilih role',
-                          itemLabelBuilder: widget.roleLabelBuilder,
-                          onChanged: (value) {
-                            setState(() {
-                              _selectedRole = value;
-                              _selectedDbu = ConfigController.instance.defaultDbuForRole(value);
-                            });
-                          },
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Role wajib dipilih.';
+                        ListenableBuilder(
+                          listenable: ConfigController.instance,
+                          builder: (context, _) {
+                            final allRoles = ConfigController.instance.activeConfig.rolesConfig;
+                            if (allRoles.isNotEmpty && !allRoles.any((r) => r.roleName == _selectedRole)) {
+                              _selectedRole = allRoles.first.roleName;
                             }
-                            return null;
-                          },
+                            
+                            return InlineExpandingDropdownField(
+                              label: 'Role',
+                              value: _selectedRole,
+                              options: allRoles.map((e) => e.roleName).toList(),
+                              placeholder: 'Pilih role',
+                              itemLabelBuilder: widget.roleLabelBuilder,
+                              onChanged: (value) {
+                                setState(() {
+                                  _selectedRole = value;
+                                  _selectedDbu = ConfigController.instance.defaultDbuForRole(value);
+                                });
+                              },
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'Role wajib dipilih.';
+                                }
+                                return null;
+                              },
+                            );
+                          }
                         ),
                         const SizedBox(height: 12),
-                        InlineExpandingDropdownField(
-                          label: 'Departemen/Biro/Unit (DBU)',
-                          value: _selectedDbu,
-                          options: widget.dbuItemsBuilder(_selectedRole),
-                          placeholder: 'Pilih DBU',
-                          onChanged: (value) {
-                            setState(() {
-                              _selectedDbu = value;
-                            });
-                          },
-                          validator: (value) {
-                            final validOptions = ConfigController.instance.dbuOptionsForRole(_selectedRole);
-                            if (value == null || !validOptions.contains(value)) {
-                              return 'DBU wajib dipilih.';
+                        ListenableBuilder(
+                          listenable: ConfigController.instance,
+                          builder: (context, _) {
+                            final validOptions = _dbuOptionsForRole(_selectedRole);
+                            if (validOptions.isNotEmpty && !validOptions.contains(_selectedDbu)) {
+                              _selectedDbu = validOptions.first;
                             }
-                            return null;
-                          },
+                            
+                            return InlineExpandingDropdownField(
+                              label: 'Departemen/Biro/Unit (DBU)',
+                              value: _selectedDbu,
+                              options: validOptions,
+                              placeholder: 'Pilih DBU',
+                              onChanged: (value) {
+                                setState(() {
+                                  _selectedDbu = value;
+                                });
+                              },
+                              validator: (value) {
+                                if (value == null || !validOptions.contains(value)) {
+                                  return 'DBU wajib dipilih.';
+                                }
+                                return null;
+                              },
+                            );
+                          }
                         ),
                         const SizedBox(height: 12),
                         _buildFieldLabel('Password'),

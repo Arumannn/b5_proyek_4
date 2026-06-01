@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/constants/app_constants.dart';
 import '../../widgets/custom_confirm_dialog.dart';
 import '../../widgets/gradient_header.dart';
-import '../../core/auth/attendance_role_policy.dart';
+import 'attendance_permission.dart';
 import '../../core/services/hive_service.dart';
 import '../../models/attendance_record.dart';
 import '../../models/event_model.dart';
@@ -17,12 +17,12 @@ import 'widgets/event_selector_field.dart';
 
 class AttendanceRecapSharedView extends StatefulWidget {
   final String title;
-  final AttendanceRolePolicy policy;
+  final bool isReadOnly;
   final String? initialEventId;
   const AttendanceRecapSharedView({
     super.key,
     required this.title,
-    required this.policy,
+    required this.isReadOnly,
     this.initialEventId,
   });
   @override
@@ -40,18 +40,7 @@ class _AttendanceRecapSharedViewState extends State<AttendanceRecapSharedView> {
   String get _currentRole =>
       (AuthController.instance.currentUser.value?.role ?? '').trim();
 
-  bool get _hasAccess {
-    if (_currentRole == AppConstants.roleExecutive.toLowerCase()) {
-      return true;
-    }
-    if (_currentRole == AppConstants.roleManager.toLowerCase()) {
-      return widget.policy.canEditStatus || widget.policy.canDeleteRecord;
-    }
-    if (_currentRole == AppConstants.roleOrganizer.toLowerCase()) {
-      return !widget.policy.canEditStatus && !widget.policy.canDeleteRecord;
-    }
-    return false;
-  }
+  bool get _hasAccess => AttendancePermission.canViewRecap(_currentRole);
   @override
   void initState() {
     super.initState();
@@ -262,12 +251,12 @@ class _AttendanceRecapSharedViewState extends State<AttendanceRecapSharedView> {
                           memberById: _memberById,
                           eventLabelBuilder: _eventLabel,
                           showEventColumn: true,
-                          showActionColumn: widget.policy.hasActionColumn,
+                          showActionColumn: widget.isReadOnly ? false : AttendancePermission.hasActionColumn(_currentRole),
                           enableFilters: true,
-                          onEdit: widget.policy.canEditStatus
+                          onEdit: (widget.isReadOnly ? false : AttendancePermission.canEditStatus(_currentRole))
                             ? _editStatus
                             : null,
-                        onDelete: widget.policy.canDeleteRecord
+                        onDelete: (widget.isReadOnly ? false : AttendancePermission.canDeleteRecord(_currentRole))
                             ? _deleteRecord
                             : null,
                         emptyText: 'Belum ada data kehadiran pada event ini.',

@@ -1,8 +1,8 @@
 import '../../core/constants/app_constants.dart';
 import '../../core/controllers/config_controller.dart';
 
-class EventPermission {
-  EventPermission._();
+class DashboardPermission {
+  DashboardPermission._();
 
   static bool _hasPermission(String roleOrJobTitle, String permissionKey) {
     final config = ConfigController.instance.activeConfig;
@@ -31,55 +31,42 @@ class EventPermission {
       _isExecutive(role) || _isManager(role) || _isOrganizer(role) || _isMember(role);
 
   // ─── Permission Keys (Standar Web Admin - CRUD Matrix) ───
-  static const String keyCreateEvent = 'create_event';
-  static const String keyReadEvent = 'read_event';
+  static const String keyReadDashboard = 'read_dashboard';
+  static const String keyUpdateMember = 'update_member'; // Assuming manage translates to update
   static const String keyUpdateEvent = 'update_event';
-  static const String keyDeleteEvent = 'delete_event';
+  static const String keyReadKehadiran = 'read_kehadiran';
 
-  static const String keyCreateSubEvent = 'create_sub_event';
-  static const String keyReadSubEvent = 'read_sub_event';
-  static const String keyUpdateSubEvent = 'update_sub_event';
-  static const String keyDeleteSubEvent = 'delete_sub_event';
-
-  // ─── Pengecekan Izin (Dynamic) ────────────────────────────────────
+  // Executive dashboard hanya untuk Executive.
+  static bool showExecutiveAdmin(String role) {
+    if (_isExecutive(role)) return true;
+    if (_isManager(role) || _isOrganizer(role) || _isMember(role)) return false;
+    return _hasPermission(role, keyReadDashboard);
+  }
   
-  static bool canReadMainEvent(String role) => _isKnownRole(role) ? true : _hasPermission(role, keyReadEvent);
+  // Tampilan member menjadi fallback untuk role selain Executive.
+  static bool showMemberHome(String role) => !showExecutiveAdmin(role);
 
-  static bool canCreateMainEvent(String role) {
+  static bool canManageMembers(String role) {
     if (_isExecutive(role)) return true;
     if (_isKnownRole(role)) return false;
-    return _hasPermission(role, keyCreateEvent);
+    return _hasPermission(role, keyUpdateMember);
   }
 
-  static bool canUpdateMainEvent(String role) {
+  static bool canManageEvents(String role) {
     if (_isExecutive(role)) return true;
     if (_isKnownRole(role)) return false;
     return _hasPermission(role, keyUpdateEvent);
   }
 
-  static bool canDeleteMainEvent(String role) {
+  static bool canManageInvitations(String role) {
     if (_isExecutive(role)) return true;
     if (_isKnownRole(role)) return false;
-    return _hasPermission(role, keyDeleteEvent);
+    return _hasPermission(role, keyUpdateEvent);
   }
 
-  static bool canReadSubEvent(String role) => _isKnownRole(role) ? true : _hasPermission(role, keyReadSubEvent);
-
-  static bool canCreateSubEvent(String role) {
-    if (_isExecutive(role) || _isManager(role)) return true;
+  static bool canViewAttendance(String role) {
+    if (_isExecutive(role) || _isManager(role) || _isOrganizer(role) || _isMember(role)) return true;
     if (_isKnownRole(role)) return false;
-    return _hasPermission(role, keyCreateSubEvent);
-  }
-
-  static bool canUpdateSubEvent(String role) {
-    if (_isExecutive(role) || _isManager(role)) return true;
-    if (_isKnownRole(role)) return false;
-    return _hasPermission(role, keyUpdateSubEvent);
-  }
-
-  static bool canDeleteSubEvent(String role) {
-    if (_isExecutive(role) || _isManager(role)) return true;
-    if (_isKnownRole(role)) return false;
-    return _hasPermission(role, keyDeleteSubEvent);
+    return _hasPermission(role, keyReadKehadiran);
   }
 }

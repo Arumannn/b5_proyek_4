@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../core/services/hive_service.dart';
 import '../../../models/event_invitation.dart';
-import '../member/permission_form_view.dart';
+import '../attendance/permission_form_view.dart';
 import '../../widgets/custom_snackbar.dart';
 import '../../../core/enums/status_enums.dart';
 

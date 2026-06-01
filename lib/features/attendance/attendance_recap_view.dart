@@ -13,6 +13,7 @@ import '../../widgets/custom_confirm_dialog.dart';
 import '../../widgets/table_page_body.dart';
 import '../auth/auth_controller.dart';
 import 'attendance_controller.dart';
+import 'attendance_permission.dart';
 import 'scan_screen.dart';
 
 enum RecapMode { byMainEvent, bySubEvent, aggregateByMainEvent, global }
@@ -43,10 +44,9 @@ class _AttendanceRecapViewState extends State<AttendanceRecapView> {
           .trim()
           .toLowerCase();
 
-  bool get _canCrud =>
-      _role == AppConstants.roleExecutive || _role == AppConstants.roleManager;
+  bool get _canCrud => AttendancePermission.hasActionColumn(_role);
 
-  bool get _isReadOnly => _role == AppConstants.roleOrganizer;
+  bool get _canViewRecap => AttendancePermission.canViewRecap(_role);
 
   @override
   void initState() {
@@ -718,11 +718,20 @@ class _AttendanceRecapViewState extends State<AttendanceRecapView> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_canCrud && !_isReadOnly) {
+    if (!_canViewRecap) {
       return Scaffold(
-        appBar: const GradientHeader(title: 'Rekap Kehadiran'),
+        appBar: const GradientHeader(
+          title: 'Rekap Kehadiran',
+          subtitle: 'Akses Ditolak',
+        ),
         body: const Center(
-          child: Text('Role ini tidak memiliki akses ke rekap kehadiran.'),
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Text(
+              'Anda tidak memiliki izin untuk melihat halaman ini.',
+              textAlign: TextAlign.center,
+            ),
+          ),
         ),
       );
     }

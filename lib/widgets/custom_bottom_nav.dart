@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 class CustomBottomNavBar extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onItemTapped;
+  final List<BottomNavigationBarItem> items;
 
   const CustomBottomNavBar({
     super.key,
     required this.selectedIndex,
     required this.onItemTapped,
+    required this.items,
   });
 
   @override
@@ -32,33 +34,7 @@ class CustomBottomNavBar extends StatelessWidget {
         unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.normal, fontSize: 12),
         currentIndex: selectedIndex,
         onTap: onItemTapped,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            activeIcon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.calendar_today_outlined),
-            activeIcon: Icon(Icons.calendar_today), // Icon terisi saat aktif
-            label: 'Event',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.people_outline),
-            activeIcon: Icon(Icons.people),
-            label: 'Anggota',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.description_outlined),
-            activeIcon: Icon(Icons.description),
-            label: 'Laporan',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.access_time),
-            activeIcon: Icon(Icons.access_time_filled),
-            label: 'Riwayat',
-          ),
-        ],
+        items: items,
       ),
     );
   }

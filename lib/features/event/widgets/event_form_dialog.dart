@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/controllers/config_controller.dart';
 import '../../../core/services/hive_service.dart';
+import '../../../core/services/sync_manager.dart';
 import '../../../models/event_model.dart';
 import '../../../models/member_model.dart';
 
@@ -67,6 +68,7 @@ class _EventFormDialogState extends State<EventFormDialog> {
   @override
   void initState() {
     super.initState();
+    SyncManager.instance.pullOrganizationConfigFromCloud();
     _nameController = TextEditingController(text: widget.initial?.nama ?? '');
     _lokasiController = TextEditingController(text: widget.initial?.lokasi ?? '');
     _descController = TextEditingController(text: widget.initial?.deskripsi ?? '');
@@ -196,48 +198,66 @@ class _EventFormDialogState extends State<EventFormDialog> {
                   },
                 ),
                 const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: _selectedJenis,
-                  decoration: const InputDecoration(
-                    labelText: 'Jenis Event',
-                    prefixIcon: Icon(Icons.category_outlined),
-                  ),
-                  items: ConfigController.instance.eventTypes
-                      .map(
-                        (jenis) => DropdownMenuItem<String>(
-                          value: jenis,
-                          child: Text(jenis),
-                        ),
-                      )
-                      .toList(growable: false),
-                  onChanged: (value) {
-                    if (value == null) return;
-                    setState(() {
-                      _selectedJenis = value;
-                    });
-                  },
+                ListenableBuilder(
+                  listenable: ConfigController.instance,
+                  builder: (context, _) {
+                    final eventTypes = ConfigController.instance.eventTypes;
+                    if (!eventTypes.contains(_selectedJenis)) {
+                      _selectedJenis = eventTypes.first;
+                    }
+                    return DropdownButtonFormField<String>(
+                      value: _selectedJenis,
+                      decoration: const InputDecoration(
+                        labelText: 'Jenis Event',
+                        prefixIcon: Icon(Icons.category_outlined),
+                      ),
+                      items: eventTypes
+                          .map(
+                            (jenis) => DropdownMenuItem<String>(
+                              value: jenis,
+                              child: Text(jenis),
+                            ),
+                          )
+                          .toList(growable: false),
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setState(() {
+                          _selectedJenis = value;
+                        });
+                      },
+                    );
+                  }
                 ),
                 const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: _selectedPenyelenggara,
-                  decoration: const InputDecoration(
-                    labelText: 'Penyelenggara',
-                    prefixIcon: Icon(Icons.group_outlined),
-                  ),
-                  isExpanded: true,
-                  items: ConfigController.instance.penyelenggaraOptions
-                      .map(
-                        (p) => DropdownMenuItem<String>(
-                          value: p,
-                          child: Text(p),
-                        ),
-                      )
-                      .toList(growable: false),
-                  onChanged: (value) {
-                    setState(() {
-                      _selectedPenyelenggara = value;
-                    });
-                  },
+                ListenableBuilder(
+                  listenable: ConfigController.instance,
+                  builder: (context, _) {
+                    final penyelenggaraOptions = ConfigController.instance.penyelenggaraOptions;
+                    if (_selectedPenyelenggara != null && !penyelenggaraOptions.contains(_selectedPenyelenggara)) {
+                      _selectedPenyelenggara = penyelenggaraOptions.isNotEmpty ? penyelenggaraOptions.first : null;
+                    }
+                    return DropdownButtonFormField<String>(
+                      value: _selectedPenyelenggara,
+                      decoration: const InputDecoration(
+                        labelText: 'Penyelenggara',
+                        prefixIcon: Icon(Icons.group_outlined),
+                      ),
+                      isExpanded: true,
+                      items: penyelenggaraOptions
+                          .map(
+                            (p) => DropdownMenuItem<String>(
+                              value: p,
+                              child: Text(p),
+                            ),
+                          )
+                          .toList(growable: false),
+                      onChanged: (value) {
+                        setState(() {
+                          _selectedPenyelenggara = value;
+                        });
+                      },
+                    );
+                  }
                 ),
                 const SizedBox(height: 12),
                 TextFormField(

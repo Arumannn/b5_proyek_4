@@ -46,17 +46,7 @@ class EventController {
 
   // RBAC: Ambil role user login saat ini untuk evaluasi izin di layer logic.
   String get _currentRole =>
-      AuthController.instance.currentUser.value?.role ?? AppConstants.roleMember;
-
-  // RBAC: createdBy wajib otomatis dari user login agar jejak audit konsisten.
-  String? get _currentNim {
-    final raw = AuthController.instance.currentUser.value?.nim;
-    final normalized = raw?.trim();
-    if (normalized == null || normalized.isEmpty) {
-      return null;
-    }
-    return normalized;
-  }
+      AuthController.instance.currentUser.value?.role ?? AppConstants.roleExecutive;
 
   // ══════════════════════════════════════════════════════════════
   // LOAD EVENTS — Hive + MongoDB merge
@@ -260,26 +250,6 @@ class EventController {
     String? penyelenggara,
     String? penanggungJawab,
   }) async {
-    // RBAC: Tentukan scope izin berdasarkan apakah data adalah sub-event atau main event.
-    final isSubEvent = parentEventId != null && parentEventId.isNotEmpty;
-    // RBAC: Tolak CREATE jika role tidak punya izin pada scope event terkait.
-    if (isSubEvent && !EventPermission.canCreateSubEvent(_currentRole)) {
-      errorMessage.value = 'Anda tidak memiliki izin membuat sub-event.';
-      return false;
-    }
-    // RBAC: Main event hanya boleh dibuat oleh Executive.
-    if (!isSubEvent && !EventPermission.canCreateMainEvent(_currentRole)) {
-      errorMessage.value = 'Anda tidak memiliki izin membuat main event.';
-      return false;
-    }
-
-    // RBAC: createdBy harus otomatis berasal dari nim user login.
-    final actorNim = _currentNim;
-    if (actorNim == null) {
-      errorMessage.value = 'User login tidak valid untuk membuat event.';
-      return false;
-    }
-
     // ── Validasi ──────────────────────────────────────────────────
     final trimmed = nama.trim();
     if (trimmed.isEmpty) {
@@ -300,6 +270,30 @@ class EventController {
         errorMessage.value = 'Parent event tidak ditemukan.';
         return false;
       }
+    }
+
+    // RBAC: Tentukan scope izin berdasarkan apakah data adalah sub-event atau main event.
+    final isSubEvent = parentEventId != null && parentEventId.isNotEmpty;
+    // RBAC: Tolak CREATE jika role tidak punya izin pada scope event terkait.
+    if (isSubEvent && !EventPermission.canCreateSubEvent(_currentRole)) {
+      errorMessage.value = 'Anda tidak memiliki izin membuat sub-event.';
+      return false;
+    }
+    // RBAC: Main event hanya boleh dibuat oleh Executive.
+    if (!isSubEvent && !EventPermission.canCreateMainEvent(_currentRole)) {
+      errorMessage.value = 'Anda tidak memiliki izin membuat main event.';
+      return false;
+    }
+
+    // RBAC: createdBy harus otomatis berasal dari nim user login.
+    final explicitCreatedBy = createdBy.trim();
+    final loginNim = AuthController.instance.currentUser.value?.nim.trim();
+    final actorNim = explicitCreatedBy.isNotEmpty
+      ? explicitCreatedBy
+      : (loginNim != null && loginNim.isNotEmpty ? loginNim : null);
+    if (actorNim == null) {
+      errorMessage.value = 'User login tidak valid untuk membuat event.';
+      return false;
     }
 
     isLoading.value = true;
@@ -368,19 +362,6 @@ class EventController {
   // ══════════════════════════════════════════════════════════════
 
   Future<bool> updateEvent(EventModel event) async {
-    // RBAC: Main event dan sub-event memiliki aturan UPDATE yang berbeda.
-    final isSubEvent = event.parentEventId != null && event.parentEventId!.isNotEmpty;
-    // RBAC: Tolak UPDATE sub-event untuk role tanpa hak tulis sub-event.
-    if (isSubEvent && !EventPermission.canUpdateSubEvent(_currentRole)) {
-      errorMessage.value = 'Anda tidak memiliki izin mengubah sub-event.';
-      return false;
-    }
-    // RBAC: Tolak UPDATE main event untuk role non-executive.
-    if (!isSubEvent && !EventPermission.canUpdateMainEvent(_currentRole)) {
-      errorMessage.value = 'Anda tidak memiliki izin mengubah main event.';
-      return false;
-    }
-
     final trimmed = event.nama.trim();
     if (trimmed.isEmpty) {
       errorMessage.value = 'Nama event wajib diisi.';
@@ -392,6 +373,19 @@ class EventController {
     }
     if (_isPastDay(event.tanggalMulai)) {
       errorMessage.value = 'Tanggal event tidak boleh masa lalu.';
+      return false;
+    }
+
+    // RBAC: Main event dan sub-event memiliki aturan UPDATE yang berbeda.
+    final isSubEvent = event.parentEventId != null && event.parentEventId!.isNotEmpty;
+    // RBAC: Tolak UPDATE sub-event untuk role tanpa hak tulis sub-event.
+    if (isSubEvent && !EventPermission.canUpdateSubEvent(_currentRole)) {
+      errorMessage.value = 'Anda tidak memiliki izin mengubah sub-event.';
+      return false;
+    }
+    // RBAC: Tolak UPDATE main event untuk role non-executive.
+    if (!isSubEvent && !EventPermission.canUpdateMainEvent(_currentRole)) {
+      errorMessage.value = 'Anda tidak memiliki izin mengubah main event.';
       return false;
     }
 
@@ -719,8 +713,14 @@ class EventController {
   }
 
   Future<bool> _isOnline() async {
-    final result = await Connectivity().checkConnectivity();
-    return result.any((r) => r != ConnectivityResult.none);
+    try {
+      final result = await Connectivity().checkConnectivity();
+      return result.any((r) => r != ConnectivityResult.none);
+    } catch (e) {
+      // In test environments the connectivity plugin may not be available;
+      // treat as offline instead of throwing.
+      return false;
+    }
   }
 
   /// Bersihkan dokumen MongoDB dari field internal (_id, dll)

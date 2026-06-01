@@ -23,13 +23,22 @@ void main() {
       return Directory.systemTemp.path;
     });
 
+    const connectivityChannel = MethodChannel('dev.fluttercommunity.plus/connectivity');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(connectivityChannel, (methodCall) async {
+      if (methodCall.method == 'check') return <String>['none'];
+      return null;
+    });
+
     await HiveService.init();
   });
 
   tearDownAll(() async {
     await HiveService.closeAll();
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(pathProviderChannel, null);
+      .setMockMethodCallHandler(pathProviderChannel, null);
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+      .setMockMethodCallHandler(const MethodChannel('dev.fluttercommunity.plus/connectivity'), null);
   });
 
   setUp(() async {
@@ -266,8 +275,12 @@ void main() {
       expect(ok, isTrue);
       expect(controller.events.value.length, 1);
       expect(controller.events.value.single.eventId, 'other-1');
-      expect(HiveService.events.containsKey('root-1'), isFalse);
-      expect(HiveService.events.containsKey('child-1'), isFalse);
+      final rootSaved = HiveService.events.get('root-1');
+      expect(rootSaved, isNotNull);
+      expect(rootSaved!.deletedAt, isNotNull);
+      final childSaved = HiveService.events.get('child-1');
+      expect(childSaved, isNotNull);
+      expect(childSaved!.deletedAt, isNotNull);
       expect(HiveService.events.containsKey('other-1'), isTrue);
     });
   });

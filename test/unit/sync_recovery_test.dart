@@ -35,6 +35,15 @@ class MockMongoService extends Mock implements MongoService {
     }
     return MockWriteResult();
   }
+
+  @override
+  Future<Map<String, dynamic>?> findOne({
+    required String collectionName,
+    required Map<String, dynamic> filter,
+  }) async {
+    // For tests we default to "not found" — return a Future that completes with null.
+    return null;
+  }
 }
 
 class MockWriteResult extends Mock implements WriteResult {}
@@ -54,6 +63,13 @@ void main() {
       return Directory.systemTemp.path;
     });
 
+    const connectivityChannel = MethodChannel('dev.fluttercommunity.plus/connectivity');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(connectivityChannel, (methodCall) async {
+      if (methodCall.method == 'check') return <int>[1];
+      return null;
+    });
+
     await HiveService.init();
     
     // Override delay to make tests run faster
@@ -63,7 +79,9 @@ void main() {
   tearDownAll(() async {
     await HiveService.closeAll();
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(pathProviderChannel, null);
+      .setMockMethodCallHandler(pathProviderChannel, null);
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+      .setMockMethodCallHandler(const MethodChannel('dev.fluttercommunity.plus/connectivity'), null);
   });
 
   setUp(() async {

@@ -8,13 +8,13 @@ import '../../../../models/notulensi_model.dart';
 class EventNotulensiSection extends StatefulWidget {
   final EventModel currentEvent;
   final String userRole;
-  final bool isManagerOrExecutive;
+  final bool canEdit;
 
   const EventNotulensiSection({
     super.key,
     required this.currentEvent,
     required this.userRole,
-    required this.isManagerOrExecutive,
+    required this.canEdit,
   });
 
   @override
@@ -79,7 +79,7 @@ class _EventNotulensiSectionState extends State<EventNotulensiSection> {
                   letterSpacing: 0.5,
                 ),
               ),
-              if (widget.isManagerOrExecutive)
+              if (widget.canEdit)
                 GestureDetector(
                   onTap: () {
                     if (_isEditingNotulensi) {

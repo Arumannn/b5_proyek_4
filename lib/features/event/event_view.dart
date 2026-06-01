@@ -3,12 +3,9 @@
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_constants.dart';
-import '../../core/controllers/config_controller.dart';
 import '../../models/event_model.dart';
 import '../../models/attendance_record.dart';
-import '../../models/member_model.dart';
 import '../../core/enums/status_enums.dart';
-import '../../core/services/hive_service.dart';
 import '../../widgets/custom_snackbar.dart';
 import '../../widgets/custom_confirm_dialog.dart';
 import '../../widgets/white_status_header.dart';
@@ -506,9 +503,8 @@ class _EventViewState extends State<EventView> {
     final canDelete = isSubEvent ? _canDeleteSubEvent : _canDeleteMainEvent; // RBAC: DELETE berbeda antara main/sub.
     final canAddSubEvent = !isSubEvent && _canCreateSubEvent; // RBAC: CREATE sub-event boleh Executive/Manager pada parent main event.
 
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
+    return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         if (canScan)
           OutlinedButton.icon(
@@ -523,24 +519,62 @@ class _EventViewState extends State<EventView> {
             icon: const Icon(Icons.qr_code_scanner, size: 18),
             label: const Text('Scan'),
           ),
-        if (canEdit)
-          OutlinedButton.icon(
-            onPressed: () => _addOrEditEvent(existing: event),
-            icon: const Icon(Icons.edit_outlined, size: 18),
-            label: const Text('Edit'),
-          ),
-        if (canDelete)
-          OutlinedButton.icon(
-            onPressed: () => _deleteEvent(event),
-            icon: const Icon(Icons.delete_outline, size: 18),
-            label: const Text('Hapus'),
-            style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
-          ),
-        if (canAddSubEvent)
-          OutlinedButton.icon(
-            onPressed: () => _addOrEditEvent(forcedParentId: event.eventId),
-            icon: const Icon(Icons.add_circle_outline, size: 18),
-            label: const Text('Tambah Sub-Event'),
+        if (canScan && (canEdit || canDelete || canAddSubEvent))
+          const SizedBox(width: 8),
+        if (canEdit || canDelete || canAddSubEvent)
+          Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert, color: Color(0xFF4B5563), size: 20),
+              padding: EdgeInsets.zero,
+              onSelected: (value) {
+                if (value == 'add_sub') {
+                  _addOrEditEvent(forcedParentId: event.eventId);
+                } else if (value == 'edit') {
+                  _addOrEditEvent(existing: event);
+                } else if (value == 'delete') {
+                  _deleteEvent(event);
+                }
+              },
+              itemBuilder: (context) => [
+                if (canAddSubEvent)
+                  const PopupMenuItem(
+                    value: 'add_sub',
+                    child: Row(
+                      children: [
+                        Icon(Icons.add_circle_outline, size: 18, color: Color(0xFF4B5563)),
+                        SizedBox(width: 8),
+                        Text('Tambah Sub-Event', style: TextStyle(fontSize: 14)),
+                      ],
+                    ),
+                  ),
+                if (canEdit)
+                  const PopupMenuItem(
+                    value: 'edit',
+                    child: Row(
+                      children: [
+                        Icon(Icons.edit_outlined, size: 18, color: Color(0xFF4B5563)),
+                        SizedBox(width: 8),
+                        Text('Edit', style: TextStyle(fontSize: 14)),
+                      ],
+                    ),
+                  ),
+                if (canDelete)
+                  const PopupMenuItem(
+                    value: 'delete',
+                    child: Row(
+                      children: [
+                        Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                        SizedBox(width: 8),
+                        Text('Hapus', style: TextStyle(color: Colors.red, fontSize: 14)),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
           ),
       ],
     );

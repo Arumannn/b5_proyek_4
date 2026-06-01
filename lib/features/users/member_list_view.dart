@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/services/hive_service.dart';
 import '../../core/services/mongo_service.dart';
+import '../../core/services/sync_manager.dart';
 import '../../core/utils/network_status_controller.dart';
 import '../../widgets/custom_snackbar.dart';
 import '../../widgets/white_status_header.dart';
@@ -12,6 +13,7 @@ import 'member_controller.dart';
 import '../../models/member_model.dart';
 import 'widgets/member_card.dart';
 import '../../widgets/custom_confirm_dialog.dart';
+import 'user_permission.dart';
 
 class MemberListView extends StatefulWidget {
   final bool showBottomNav;
@@ -29,7 +31,9 @@ class _MemberListViewState extends State<MemberListView> {
   @override
   void initState() {
     super.initState();
-    _loadMembers();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadMembers();
+    });
     _searchController.addListener(() {
       _controller.setSearchQuery(_searchController.text);
     });
@@ -41,12 +45,24 @@ class _MemberListViewState extends State<MemberListView> {
     super.dispose();
   }
 
-  bool get _isExecutive {
-    final role = (AuthController.instance.currentUser.value?.role ?? '').trim().toLowerCase();
-    return role == AppConstants.roleExecutive.toLowerCase();
+  String get _currentRole =>
+      (AuthController.instance.currentUser.value?.role ?? '').trim().toLowerCase();
+
+  bool get _canCreate => UserPermission.canCreateUsers(_currentRole);
+  bool get _canManage => UserPermission.canManageUsers(_currentRole);
+  bool get _canDelete => UserPermission.canDeleteUsers(_currentRole);
+
+  Future<void> _refreshConfigFromCloud() async {
+    if (!NetworkStatusController.instance.isOnline.value) return;
+    if (!MongoService.instance.isConnected) return;
+
+    await SyncManager.instance.pullOrganizationConfigFromCloud();
   }
 
   Future<void> _editMember(MemberModel member) async {
+    await _refreshConfigFromCloud();
+    if (!mounted) return;
+
     final saved = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) => MemberFormView(existing: member),
@@ -61,6 +77,9 @@ class _MemberListViewState extends State<MemberListView> {
   }
 
   Future<void> _addMember() async {
+    await _refreshConfigFromCloud();
+    if (!mounted) return;
+
     final saved = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) => const MemberFormView(),
@@ -106,6 +125,10 @@ class _MemberListViewState extends State<MemberListView> {
   }
 
   Future<void> _loadMembers({bool syncFromCloud = true}) async {
+    if (syncFromCloud) {
+      await _refreshConfigFromCloud();
+    }
+
     if (mounted) {
       _controller.loadMembers();
     }
@@ -179,7 +202,7 @@ class _MemberListViewState extends State<MemberListView> {
             );
           },
         ),
-        actions: _isExecutive
+        actions: _canCreate
             ? [
                 IconButton(
                   tooltip: 'Tambah Anggota',
@@ -257,7 +280,8 @@ class _MemberListViewState extends State<MemberListView> {
                         final member = filtered[index];
                         return MemberCard(
                           member: member,
-                          isExecutive: _isExecutive,
+                          canManage: _canManage,
+                          canDelete: _canDelete,
                           onEdit: () => _editMember(member),
                           onDelete: () => _deleteMember(member),
                         );

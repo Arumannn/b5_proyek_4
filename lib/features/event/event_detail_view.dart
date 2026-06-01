@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/attendance_record.dart';
 import '../../models/event_invitation.dart';
+import '../../core/controllers/config_controller.dart';
 import '../../models/event_model.dart';
 import '../../models/member_model.dart';
 import '../../models/permission_record.dart';
@@ -8,7 +9,6 @@ import '../../core/services/hive_service.dart';
 import '../../core/enums/status_enums.dart';
 import '../../widgets/custom_snackbar.dart';
 import '../../widgets/custom_confirm_dialog.dart';
-import '../attendance/attendance_recap_view.dart';
 import 'event_permission.dart';
 import 'event_controller.dart';
 import 'event_form_view.dart';
@@ -199,7 +199,7 @@ class _EventDetailViewState extends State<EventDetailView> {
     required EventFormValue initialValue,
     required bool isEdit,
   }) async {
-    final result = await Navigator.push<bool>(
+    final result = await Navigator.push<EventFormValue>(
       context,
       MaterialPageRoute(
         builder: (_) => EventFormView(
@@ -208,8 +208,56 @@ class _EventDetailViewState extends State<EventDetailView> {
         ),
       ),
     );
-    if (result == true) {
-      if (mounted) setState(() {});
+
+    if (result == null || !mounted) return;
+
+    bool success = false;
+    if (isEdit) {
+      final updatedEvent = _currentEvent.copyWith(
+        nama: result.name,
+        tanggalMulai: result.date,
+        tanggalSelesai: result.endDate,
+        jamSelesai: result.jamSelesai,
+        parentEventId: result.isSubEvent ? result.parentId : null,
+        jenis: result.jenis,
+        lokasi: result.lokasi,
+        deskripsi: result.deskripsi,
+        targetPeserta: result.targetPeserta,
+        requiresInvitation: result.requiresInvitation,
+        penyelenggara: result.penyelenggara,
+        penanggungJawab: result.penanggungJawab,
+      );
+      success = await _controller.updateEvent(updatedEvent);
+    } else {
+      success = await _controller.createEvent(
+        nama: result.name,
+        tanggalMulai: result.date,
+        tanggalSelesai: result.endDate,
+        jamSelesai: result.jamSelesai,
+        parentEventId: result.isSubEvent ? result.parentId : null,
+        jenis: result.jenis,
+        lokasi: result.lokasi,
+        deskripsi: result.deskripsi,
+        targetPeserta: result.targetPeserta,
+        requiresInvitation: result.requiresInvitation,
+        penyelenggara: result.penyelenggara,
+        penanggungJawab: result.penanggungJawab,
+      );
+    }
+
+    if (!mounted) return;
+
+    if (success) {
+      CustomSnackbar.showSuccess(
+        context,
+        isEdit ? 'Event berhasil diperbarui.' : 'Sub-event berhasil ditambahkan.',
+      );
+      setState(() {});
+    } else {
+      CustomSnackbar.showError(
+        context,
+        _controller.errorMessage.value ?? 'Terjadi kesalahan sistem.',
+      );
     }
   }
 
@@ -375,7 +423,8 @@ class _EventDetailViewState extends State<EventDetailView> {
                   EventNotulensiSection(
                     currentEvent: currentEvent,
                     userRole: widget.userRole,
-                    isManagerOrExecutive: widget.userRole.toLowerCase() == 'manager' || widget.userRole.toLowerCase() == 'executive',
+                    canEdit: !(ConfigController.instance.roleMatchesConfiguredNameOrJob(widget.userRole, 'Member') || 
+                               ConfigController.instance.roleMatchesConfiguredNameOrJob(widget.userRole, 'Organizer')),
                   ),
                   const SizedBox(height: 24),
                 ],

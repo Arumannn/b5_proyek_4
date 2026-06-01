@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/services/hive_service.dart';
 import '../../attendance/scan_screen.dart';
 import '../../event/event_form_view.dart';
-import '../../member/member_list_view.dart';
+import '../../users/member_list_view.dart';
 import '../../dashboard/manage_invitations_view.dart';
 import '../../event/event_controller.dart';
 import '../../../models/event_model.dart';

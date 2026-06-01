@@ -61,21 +61,38 @@ class MemberModel extends HiveObject {
     };
   }
 
+  static String? _parseStringOrObjectId(dynamic value) {
+    if (value == null) return null;
+    final str = value.toString();
+    if (str.startsWith('ObjectId("') && str.endsWith('")')) {
+      return str.substring(10, str.length - 2);
+    }
+    return str;
+  }
+
   factory MemberModel.fromMap(Map<String, dynamic> map) {
     final nim = map['nim']?.toString() ?? '';
     final normalizedNim = nim.trim();
+    
+    String parsedRole = AppConstants.roleMember;
+    if (map['role'] is Map) {
+      parsedRole = map['role']['name']?.toString() ?? AppConstants.roleMember;
+    } else if (map['role'] != null) {
+      parsedRole = map['role'].toString();
+    }
+
     return MemberModel(
       nama: map['nama']?.toString() ?? '',
       nim: normalizedNim,
-      divisi: map['divisi']?.toString() ?? '',
-      role: map['role']?.toString() ?? AppConstants.roleMember,
+      divisi: map['divisi']?.toString() ?? map['jabatan']?.toString() ?? '',
+      role: parsedRole,
       password: map['password']?.toString() ?? '',
       // support nama field lama 'qrData' untuk backward compat
       qrCodeValue: map['qrCodeValue']?.toString() ??
           map['qrData']?.toString() ?? '',
       fcmToken: map['fcmToken']?.toString(),
-      organizationId: map['organizationId']?.toString(),
-      jobTitle: map['jobTitle']?.toString(),
+      organizationId: _parseStringOrObjectId(map['organizationId'] ?? map['organization_id']),
+      jobTitle: map['jobTitle']?.toString() ?? map['jabatan']?.toString() ?? map['job_title']?.toString(),
     );
   }
 

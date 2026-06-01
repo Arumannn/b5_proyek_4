@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../core/constants/app_constants.dart';
 import '../../core/controllers/config_controller.dart';
+import '../../core/services/sync_manager.dart';
 import '../../widgets/gradient_header.dart';
 import '../auth/auth_controller.dart';
 import 'event_form_models.dart';
@@ -61,6 +61,7 @@ class _EventFormViewState extends State<EventFormView> {
   @override
   void initState() {
     super.initState();
+    SyncManager.instance.pullOrganizationConfigFromCloud();
     _nameController = TextEditingController(text: widget.initialValue?.name ?? '');
     _lokasiController = TextEditingController(text: widget.initialValue?.lokasi ?? '');
     _deskripsiController = TextEditingController(text: widget.initialValue?.deskripsi ?? '');
@@ -323,52 +324,68 @@ class _EventFormViewState extends State<EventFormView> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: EventFormContent(
-          formKey: _formKey,
-          title: widget.title,
-          nameController: _nameController,
-          lokasiController: _lokasiController,
-          deskripsiController: _deskripsiController,
-          penanggungJawabController: _penanggungJawabController,
-          customPenyelenggaraController: _customPenyelenggaraController,
-          selectedDate: _selectedDate,
-          selectedEndDate: _selectedEndDate,
-          selectedJamSelesai: _selectedJamSelesai,
-          isSubEvent: _isSubEvent,
-          parentId: _parentId,
-          selectedJenis: _selectedJenis,
-          selectedTargetIds: _selectedTargetIds,
-          selectedPenyelenggara: _selectedPenyelenggara,
-          penyelenggaraOptions: [
-            ...ConfigController.instance.penyelenggaraOptions,
-            'Lainnya'
-          ],
-          parentOptions: widget.parentOptions,
-          canChangeHierarchy: widget.canChangeHierarchy,
-          onPickDate: _pickDate,
-          onPickEndDate: _pickEndDate,
-          onPickTime: _pickTime,
-          onPickEndTime: _pickEndTime,
-          onClearEndTime: () => setState(() => _selectedJamSelesai = null),
-          onJenisChanged: (value) => setState(() => _selectedJenis = value),
-          onPenyelenggaraChanged: (value) => setState(() => _selectedPenyelenggara = value),
-          onSubEventChanged: (value) {
-            setState(() {
-              _isSubEvent = value;
-              if (!_isSubEvent) {
-                _parentId = null;
-              } else if ((_parentId == null || _parentId!.isEmpty) && widget.parentOptions.isNotEmpty) {
-                _parentId = widget.parentOptions.first.id;
-              }
-            });
-          },
-          onParentChanged: (value) => setState(() => _parentId = value),
-          onTargetChanged: (selectedIds) => setState(() => _selectedTargetIds = selectedIds),
-          requiresInvitation: _requiresInvitation,
-          onRequiresInvitationChanged: (value) => setState(() => _requiresInvitation = value),
-          onSubmit: _submit,
-          formatDate: _formatDate,
-          formatTime: _formatTime,
+        child: ListenableBuilder(
+          listenable: ConfigController.instance,
+          builder: (context, _) {
+            final eventTypes = ConfigController.instance.eventTypes;
+            if (!eventTypes.contains(_selectedJenis)) {
+              _selectedJenis = eventTypes.first;
+            }
+
+            final penyelenggaraOptions = [
+              ...ConfigController.instance.penyelenggaraOptions,
+              'Lainnya'
+            ];
+            if (!penyelenggaraOptions.contains(_selectedPenyelenggara) && _selectedPenyelenggara != 'Lainnya') {
+              _selectedPenyelenggara = penyelenggaraOptions.first;
+            }
+
+            return EventFormContent(
+              formKey: _formKey,
+              title: widget.title,
+              nameController: _nameController,
+              lokasiController: _lokasiController,
+              deskripsiController: _deskripsiController,
+              penanggungJawabController: _penanggungJawabController,
+              customPenyelenggaraController: _customPenyelenggaraController,
+              selectedDate: _selectedDate,
+              selectedEndDate: _selectedEndDate,
+              selectedJamSelesai: _selectedJamSelesai,
+              isSubEvent: _isSubEvent,
+              parentId: _parentId,
+              selectedJenis: _selectedJenis,
+              eventTypes: eventTypes,
+              selectedTargetIds: _selectedTargetIds,
+              selectedPenyelenggara: _selectedPenyelenggara,
+              penyelenggaraOptions: penyelenggaraOptions,
+              parentOptions: widget.parentOptions,
+              canChangeHierarchy: widget.canChangeHierarchy,
+              onPickDate: _pickDate,
+              onPickEndDate: _pickEndDate,
+              onPickTime: _pickTime,
+              onPickEndTime: _pickEndTime,
+              onClearEndTime: () => setState(() => _selectedJamSelesai = null),
+              onJenisChanged: (value) => setState(() => _selectedJenis = value),
+              onPenyelenggaraChanged: (value) => setState(() => _selectedPenyelenggara = value),
+              onSubEventChanged: (value) {
+                setState(() {
+                  _isSubEvent = value;
+                  if (!_isSubEvent) {
+                    _parentId = null;
+                  } else if ((_parentId == null || _parentId!.isEmpty) && widget.parentOptions.isNotEmpty) {
+                    _parentId = widget.parentOptions.first.id;
+                  }
+                });
+              },
+              onParentChanged: (value) => setState(() => _parentId = value),
+              onTargetChanged: (selectedIds) => setState(() => _selectedTargetIds = selectedIds),
+              requiresInvitation: _requiresInvitation,
+              onRequiresInvitationChanged: (value) => setState(() => _requiresInvitation = value),
+              onSubmit: _submit,
+              formatDate: _formatDate,
+              formatTime: _formatTime,
+            );
+          }
         ),
       ),
     );

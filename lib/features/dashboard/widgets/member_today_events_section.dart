@@ -5,7 +5,7 @@ import '../../event/event_view.dart';
 import '../../event/event_detail_view.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../auth/auth_controller.dart';
-import '../../member/permission_form_view.dart';
+import '../../attendance/permission_form_view.dart';
 
 class MemberTodayEventsSection extends StatelessWidget {
   final List<EventModel> ongoingEvents;

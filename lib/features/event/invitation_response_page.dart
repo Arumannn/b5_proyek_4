@@ -15,7 +15,7 @@ class InvitationResponsePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(eventName == null ? 'Tanggapan Undangan' : 'Tanggapan: ${eventName!}'),
+        title: Text(eventName == null ? 'KelolaTanggapan Undangan' : 'Kelola Tanggapan Undangan: ${eventName!}'),
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,

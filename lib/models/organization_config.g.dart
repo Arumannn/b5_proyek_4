@@ -19,7 +19,7 @@ class RoleConfigAdapter extends TypeAdapter<RoleConfig> {
     return RoleConfig(
       roleName: fields[0] as String,
       permissions: (fields[1] as List).cast<String>(),
-      allowedDivisions: (fields[2] as List).cast<String>(),
+      jabatanList: (fields[2] as List).cast<String>(),
     );
   }
 
@@ -32,7 +32,7 @@ class RoleConfigAdapter extends TypeAdapter<RoleConfig> {
       ..writeByte(1)
       ..write(obj.permissions)
       ..writeByte(2)
-      ..write(obj.allowedDivisions);
+      ..write(obj.jabatanList);
   }
 
   @override

@@ -6,6 +6,7 @@ import '../../widgets/table_page_body.dart';
 
 import '../auth/auth_controller.dart';
 import '../../models/member_model.dart';
+import 'user_permission.dart';
 
 class ManagerUserReadonlyView extends StatefulWidget {
   const ManagerUserReadonlyView({super.key});
@@ -22,9 +23,7 @@ class _ManagerUserReadonlyViewState extends State<ManagerUserReadonlyView> {
   String get _currentRole =>
       (AuthController.instance.currentUser.value?.role ?? '').trim().toLowerCase();
 
-  bool get _hasAccess =>
-      _currentRole == AppConstants.roleManager.toLowerCase() ||
-      _currentRole == AppConstants.roleExecutive.toLowerCase();
+  bool get _hasAccess => UserPermission.canViewUsers(_currentRole);
 
   @override
   void initState() {
@@ -66,7 +65,7 @@ class _ManagerUserReadonlyViewState extends State<ManagerUserReadonlyView> {
           child: Padding(
             padding: EdgeInsets.all(24),
             child: Text(
-              'Halaman ini hanya dapat diakses oleh Manager atau Executive.',
+              'Halaman ini hanya dapat diakses oleh admin/manager.',
               textAlign: TextAlign.center,
             ),
           ),
@@ -99,7 +98,7 @@ class _ManagerUserReadonlyViewState extends State<ManagerUserReadonlyView> {
           ],
         ),
         summaryArea: const Text(
-          'Manager hanya dapat melihat data akun tanpa akses tambah, edit, atau hapus.',
+          'Anda hanya dapat melihat data akun tanpa akses tambah, edit, atau hapus di halaman ini.',
         ),
         filterArea: const SizedBox.shrink(),
         tableBuilder: (context) => _users.isEmpty

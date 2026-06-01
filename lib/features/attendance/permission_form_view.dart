@@ -2,11 +2,9 @@ import 'package:flutter/material.dart';
 import '../../core/services/hive_service.dart';
 import '../auth/auth_controller.dart';
 import '../../models/permission_record.dart';
-import '../../widgets/white_status_header.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
-import '../event/event_controller.dart';
 
 class PermissionFormView extends StatefulWidget {
   final String eventId;
@@ -25,21 +23,29 @@ class PermissionFormView extends StatefulWidget {
 }
 
 class _PermissionFormViewState extends State<PermissionFormView> {
-  String _selectedType = 'Sakit (Lampirkan Surat)';
+  String _selectedType = 'Sakit';
   bool _isLoading = false;
   String? _buktiFotoPath;
   final ImagePicker _picker = ImagePicker();
   String? _selectedEventId;
 
+  static const List<String> _keteranganOptions = [
+    'Sakit',
+    'Izin',
+    'Tidak Ada Alasan',
+  ];
+
   @override
   void initState() {
     super.initState();
-    _selectedEventId = widget.eventId;
   }
 
   Future<void> _pickImage() async {
     try {
-      final XFile? image = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 80,
+      );
       if (image != null) {
         setState(() {
           _buktiFotoPath = image.path;
@@ -48,7 +54,10 @@ class _PermissionFormViewState extends State<PermissionFormView> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal memilih gambar: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Gagal memilih gambar: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -58,13 +67,14 @@ class _PermissionFormViewState extends State<PermissionFormView> {
     setState(() => _isLoading = true);
 
     try {
-      final currentNim = AuthController.instance.currentUser.value?.nim ?? 'unknown';
+      final currentNim =
+          AuthController.instance.currentUser.value?.nim ?? 'unknown';
 
       final permissionId = 'PERM-${DateTime.now().millisecondsSinceEpoch}';
 
       final newPermission = PermissionRecord(
         permissionId: permissionId,
-        eventId: _selectedEventId ?? widget.eventId,
+        eventId: widget.eventId,
         nim: currentNim,
         jenisIzin: _selectedType.startsWith('Sakit') ? 'Sakit' : 'Izin',
         alasan: _selectedType,
@@ -106,6 +116,8 @@ class _PermissionFormViewState extends State<PermissionFormView> {
 
   @override
   Widget build(BuildContext context) {
+    // event selection removed; form uses the event passed by the caller.
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -136,49 +148,24 @@ class _PermissionFormViewState extends State<PermissionFormView> {
             children: [
               // Event Tujuan
               const Text(
-                'PILIH EVENT',
+                'EVENT',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF374151), // gray-700
-                  letterSpacing: 0.5, // tracking-wide
+                  color: Color(0xFF374151),
+                  letterSpacing: 0.5,
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 6),
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                 decoration: BoxDecoration(
                   color: const Color(0xFFF9FAFB),
                   border: Border.all(color: const Color(0xFFE5E7EB)),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: _selectedEventId,
-                    isExpanded: true,
-                    icon: const Icon(Icons.keyboard_arrow_down, color: Colors.grey),
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Color(0xFF1F2937),
-                    ),
-                    items: EventController.instance.events.value
-                        .map((event) => DropdownMenuItem(
-                              value: event.eventId,
-                              child: Text(
-                                event.nama,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ))
-                        .toList(),
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() => _selectedEventId = value);
-                      }
-                    },
-                  ),
-                ),
+                child: Text(widget.eventTitle, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF1F2937))),
               ),
               const SizedBox(height: 16),
 
@@ -195,7 +182,10 @@ class _PermissionFormViewState extends State<PermissionFormView> {
               const SizedBox(height: 4),
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2), // matching p-3 roughly
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 2,
+                ), // matching p-3 roughly
                 decoration: BoxDecoration(
                   color: const Color(0xFFF9FAFB),
                   border: Border.all(color: const Color(0xFFE5E7EB)),
@@ -205,25 +195,22 @@ class _PermissionFormViewState extends State<PermissionFormView> {
                   child: DropdownButton<String>(
                     value: _selectedType,
                     isExpanded: true,
-                    icon: const Icon(Icons.keyboard_arrow_down, color: Colors.grey),
+                    icon: const Icon(
+                      Icons.keyboard_arrow_down,
+                      color: Colors.grey,
+                    ),
                     style: const TextStyle(
                       fontSize: 14,
                       color: Color(0xFF1F2937),
                     ),
-                    items: const [
-                      DropdownMenuItem(
-                        value: 'Sakit (Lampirkan Surat)',
-                        child: Text('Sakit (Lampirkan Surat)'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'Izin - Urusan Akademik/Kuliah',
-                        child: Text('Izin - Urusan Akademik/Kuliah'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'Izin - Keperluan Keluarga',
-                        child: Text('Izin - Keperluan Keluarga'),
-                      ),
-                    ],
+                    items: _keteranganOptions
+                        .map(
+                          (option) => DropdownMenuItem<String>(
+                            value: option,
+                            child: Text(option),
+                          ),
+                        )
+                        .toList(growable: false),
                     onChanged: (value) {
                       if (value != null) {
                         setState(() => _selectedType = value);
@@ -249,12 +236,17 @@ class _PermissionFormViewState extends State<PermissionFormView> {
                 onTap: _pickImage,
                 child: Container(
                   width: double.infinity,
-                  padding: _buktiFotoPath != null ? EdgeInsets.zero : const EdgeInsets.all(32),
+                  padding: _buktiFotoPath != null
+                      ? EdgeInsets.zero
+                      : const EdgeInsets.all(32),
                   clipBehavior: Clip.hardEdge,
                   decoration: BoxDecoration(
                     color: const Color(0xFFF9FAFB),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFD1D5DB), width: 2),
+                    border: Border.all(
+                      color: const Color(0xFFD1D5DB),
+                      width: 2,
+                    ),
                   ),
                   child: _buktiFotoPath != null
                       ? Stack(
@@ -273,17 +265,26 @@ class _PermissionFormViewState extends State<PermissionFormView> {
                                 shape: BoxShape.circle,
                               ),
                               child: IconButton(
-                                icon: const Icon(Icons.close, color: Colors.red, size: 20),
+                                icon: const Icon(
+                                  Icons.close,
+                                  color: Colors.red,
+                                  size: 20,
+                                ),
                                 padding: const EdgeInsets.all(4),
                                 constraints: const BoxConstraints(),
-                                onPressed: () => setState(() => _buktiFotoPath = null),
+                                onPressed: () =>
+                                    setState(() => _buktiFotoPath = null),
                               ),
                             ),
                           ],
                         )
                       : const Column(
                           children: [
-                            Icon(LucideIcons.upload, size: 32, color: Color(0xFF9CA3AF)),
+                            Icon(
+                              LucideIcons.upload,
+                              size: 32,
+                              color: Color(0xFF9CA3AF),
+                            ),
                             SizedBox(height: 8),
                             Text(
                               'Unggah File/Foto',
@@ -298,7 +299,6 @@ class _PermissionFormViewState extends State<PermissionFormView> {
               ),
 
               const SizedBox(height: 24), // mt-6
-
               // Button
               ElevatedButton(
                 onPressed: _isLoading ? null : _submitPermission,
@@ -315,7 +315,10 @@ class _PermissionFormViewState extends State<PermissionFormView> {
                     ? const SizedBox(
                         width: 20,
                         height: 20,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
                       )
                     : const Text(
                         'Kirim Pengajuan',

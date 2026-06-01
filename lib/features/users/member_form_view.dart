@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../core/controllers/config_controller.dart';
+import '../../core/services/sync_manager.dart';
 import '../../core/widgets/inline_expanding_dropdown_field.dart';
 import '../../models/member_model.dart';
 import '../../widgets/custom_snackbar.dart';
@@ -31,16 +32,24 @@ class _MemberFormViewState extends State<MemberFormView> {
   @override
   void initState() {
     super.initState();
+    SyncManager.instance.pullOrganizationConfigFromCloud();
     _nimController = TextEditingController(text: widget.existing?.nim ?? '');
     _namaController = TextEditingController(text: widget.existing?.nama ?? '');
     _passwordController = TextEditingController();
 
     final existingRole =
         (widget.existing?.role ?? AppConstants.roleMember).trim().toLowerCase();
-    _selectedRole = AppConstants.allowedRoles.firstWhere(
-      (role) => role.trim().toLowerCase() == existingRole,
-      orElse: () => AppConstants.roleMember,
-    );
+    final allRoles = ConfigController.instance.activeConfig.rolesConfig;
+    if (allRoles.isEmpty) {
+      _selectedRole = AppConstants.roleMember;
+    } else {
+      final match = allRoles.where((e) => e.roleName.toLowerCase() == existingRole).toList();
+      if (match.isNotEmpty) {
+        _selectedRole = match.first.roleName;
+      } else {
+        _selectedRole = allRoles.first.roleName;
+      }
+    }
     
     final dbuOptions = ConfigController.instance.dbuOptionsForRole(_selectedRole);
     _selectedDbu = widget.existing?.divisi ?? dbuOptions.first;
@@ -58,13 +67,15 @@ class _MemberFormViewState extends State<MemberFormView> {
   }
 
   String _roleLabel(String role) {
-    final normalized = role.trim().toLowerCase();
-    if (normalized == AppConstants.roleExecutive.toLowerCase()) {
-      return 'Eksekutif';
+    // Gunakan nama asli dari konfigurasi, atau fallback capitalize
+    final matchingRole = ConfigController.instance.activeConfig.rolesConfig
+        .where((r) => r.roleName.toLowerCase() == role.trim().toLowerCase())
+        .toList();
+    if (matchingRole.isNotEmpty) {
+      return matchingRole.first.roleName;
     }
-    if (normalized == AppConstants.roleManager) return 'Manager';
-    if (normalized == AppConstants.roleOrganizer) return 'Organizer';
-    return 'Member';
+    if (role.isEmpty) return 'Member';
+    return '${role[0].toUpperCase()}${role.substring(1).toLowerCase()}';
   }
 
   Future<void> _submit() async {
@@ -82,7 +93,7 @@ class _MemberFormViewState extends State<MemberFormView> {
             nama: _namaController.text,
             divisi: _selectedDbu,
             role: _selectedRole,
-            password: _passwordController.text,
+            password: _passwordController.text.trim().isEmpty ? null : _passwordController.text,
           )
         : await AuthController.instance.createUserByExecutive(
             nama: _namaController.text,
@@ -213,49 +224,69 @@ class _MemberFormViewState extends State<MemberFormView> {
               const SizedBox(height: 16),
 
               // Peran (Role Sistem)
-              InlineExpandingDropdownField(
-                label: 'Peran (Role Sistem)',
-                value: _selectedRole,
-                options: AppConstants.allowedRoles,
-                placeholder: 'Pilih role',
-                itemLabelBuilder: _roleLabel,
-                onChanged: (value) {
-                  setState(() {
-                    _selectedRole = value;
-                    _selectedDbu = ConfigController.instance.defaultDbuForRole(value);
-                  });
-                },
+              ListenableBuilder(
+                listenable: ConfigController.instance,
+                builder: (context, _) {
+                  // Ensure selected role is still valid
+                  final allRoles = ConfigController.instance.activeConfig.rolesConfig;
+                  if (allRoles.isNotEmpty && !allRoles.any((r) => r.roleName == _selectedRole)) {
+                    _selectedRole = allRoles.first.roleName;
+                  }
+                  
+                  return InlineExpandingDropdownField(
+                    label: 'Peran (Role Sistem)',
+                    value: _selectedRole,
+                    options: allRoles.map((e) => e.roleName).toList(),
+                    placeholder: 'Pilih role',
+                    itemLabelBuilder: _roleLabel,
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedRole = value;
+                        _selectedDbu = ConfigController.instance.defaultDbuForRole(value);
+                      });
+                    },
+                  );
+                }
               ),
               const SizedBox(height: 16),
 
-              InlineExpandingDropdownField(
-                label: 'Jabatan / Departemen (DBU)',
-                value: _selectedDbu,
-                options: ConfigController.instance.dbuOptionsForRole(_selectedRole),
-                placeholder: 'Pilih Jabatan/Departemen',
-                onChanged: (value) {
-                  setState(() {
-                    _selectedDbu = value;
-                  });
-                },
-                validator: (value) {
+              ListenableBuilder(
+                listenable: ConfigController.instance,
+                builder: (context, _) {
                   final validOptions = ConfigController.instance.dbuOptionsForRole(_selectedRole);
-                  if (value == null || !validOptions.contains(value)) {
-                    return 'Jabatan/Departemen wajib dipilih.';
+                  if (validOptions.isNotEmpty && !validOptions.contains(_selectedDbu)) {
+                    _selectedDbu = validOptions.first;
                   }
-                  return null;
-                },
+                  
+                  return InlineExpandingDropdownField(
+                    label: 'Jabatan / Departemen (DBU)',
+                    value: _selectedDbu,
+                    options: validOptions,
+                    placeholder: 'Pilih Jabatan/Departemen',
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedDbu = value;
+                      });
+                    },
+                    validator: (value) {
+                      if (value == null || !validOptions.contains(value)) {
+                        return 'Jabatan/Departemen wajib dipilih.';
+                      }
+                      return null;
+                    },
+                  );
+                }
               ),
               const SizedBox(height: 16),
 
               // Password
-              _buildInputLabel('Password'),
+              _buildInputLabel(_isEdit ? 'Password (Kosongkan jika tidak ingin diubah)' : 'Password'),
               TextFormField(
                 controller: _passwordController,
                 obscureText: true,
-                decoration: _inputDecoration(hintText: 'Masukkan password'),
+                decoration: _inputDecoration(hintText: _isEdit ? 'Biarkan kosong untuk mempertahankan password lama' : 'Masukkan password'),
                 validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
+                  if (!_isEdit && (value == null || value.trim().isEmpty)) {
                     return 'Password wajib diisi.';
                   }
                   return null;

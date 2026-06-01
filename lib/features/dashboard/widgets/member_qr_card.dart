@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../models/member_model.dart';
-import '../../member/qr_display_view.dart';
+import '../../attendance/qr_display_view.dart';
 
 class MemberQrCard extends StatelessWidget {
   final MemberModel member;

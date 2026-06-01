@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/constants/design_system.dart';
 import '../auth/auth_controller.dart';
-import '../auth/user_management_view.dart';
+import '../users/user_management_view.dart';
 import '../dashboard/dashboard_view.dart';
 import '../event/event_view.dart';
 import '../laporan/laporan_view.dart';
 import '../attendance/attendance_history_view.dart';
+import 'navigation_permission.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   final int initialIndex;
@@ -33,31 +34,79 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         .trim()
         .toLowerCase();
 
-    switch (index) {
-      case 0:
-        return const DashboardView();
-      case 1:
-        return const EventView();
-      case 2:
-        return const UserManagementView();
-      case 3:
-        // Laporan/Reports
-        return const LaporanView();
-      case 4:
-        // Riwayat - gunakan AttendanceHistoryView (jika member)
-        if (role == AppConstants.roleMember) {
-          final user = currentUser;
-          if (user != null) {
-            return AttendanceHistoryView(
-              nim: user.nim,
-            );
-          }
-        }
-        // Fallback untuk non-member
-        return const EventView();
-      default:
-        return const DashboardView();
+    final items = _buildNavItems(role);
+    if (items.isEmpty) return const DashboardView();
+    
+    // Fallback if index is out of bounds
+    final safeIndex = index < items.length ? index : 0;
+    final item = items[safeIndex];
+    return item.screenBuilder(currentUser);
+  }
+
+  List<_NavItem> _buildNavItems(String role) {
+    final List<_NavItem> items = [];
+
+    if (NavigationPermission.showHomeTab(role)) {
+      items.add(_NavItem(
+        screenBuilder: (_) => const DashboardView(),
+        destination: const NavigationDestination(
+          icon: Icon(Icons.home_outlined),
+          selectedIcon: Icon(Icons.home),
+          label: 'Home',
+        ),
+      ));
     }
+
+    if (NavigationPermission.showEventTab(role)) {
+      items.add(_NavItem(
+        screenBuilder: (_) => const EventView(),
+        destination: const NavigationDestination(
+          icon: Icon(Icons.event_outlined),
+          selectedIcon: Icon(Icons.event),
+          label: 'Event',
+        ),
+      ));
+    }
+
+    if (NavigationPermission.showUsersTab(role)) {
+      items.add(_NavItem(
+        screenBuilder: (_) => const UserManagementView(),
+        destination: const NavigationDestination(
+          icon: Icon(Icons.groups_outlined),
+          selectedIcon: Icon(Icons.groups),
+          label: 'Anggota',
+        ),
+      ));
+    }
+
+    if (NavigationPermission.showReportsTab(role)) {
+      items.add(_NavItem(
+        screenBuilder: (_) => const LaporanView(),
+        destination: const NavigationDestination(
+          icon: Icon(Icons.description_outlined),
+          selectedIcon: Icon(Icons.description),
+          label: 'Laporan',
+        ),
+      ));
+    }
+
+    if (NavigationPermission.showHistoryTab(role)) {
+      items.add(_NavItem(
+        screenBuilder: (user) {
+          if (user != null) {
+            return AttendanceHistoryView(nim: user.nim);
+          }
+          return const EventView(); // Fallback
+        },
+        destination: const NavigationDestination(
+          icon: Icon(Icons.schedule_outlined),
+          selectedIcon: Icon(Icons.schedule),
+          label: 'Riwayat',
+        ),
+      ));
+    }
+
+    return items;
   }
 
   @override
@@ -84,36 +133,23 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             backgroundColor: Colors.transparent,
             elevation: 0,
             labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-            destinations: const [
-              NavigationDestination(
-                icon: Icon(Icons.home_outlined),
-                selectedIcon: Icon(Icons.home),
-                label: 'Home',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.event_outlined),
-                selectedIcon: Icon(Icons.event),
-                label: 'Event',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.groups_outlined),
-                selectedIcon: Icon(Icons.groups),
-                label: 'Anggota',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.description_outlined),
-                selectedIcon: Icon(Icons.description),
-                label: 'Laporan',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.schedule_outlined),
-                selectedIcon: Icon(Icons.schedule),
-                label: 'Riwayat',
-              ),
-            ],
+            destinations: _buildNavItems((AuthController.instance.currentUser.value?.role ?? AppConstants.roleMember).trim().toLowerCase())
+                .map((e) => e.destination)
+                .toList(),
           ),
         ),
       ),
     );
   }
 }
+
+class _NavItem {
+  final Widget Function(dynamic user) screenBuilder;
+  final NavigationDestination destination;
+
+  _NavItem({
+    required this.screenBuilder,
+    required this.destination,
+  });
+}
+
