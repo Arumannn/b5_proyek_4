@@ -13,14 +13,19 @@ void main() {
 
   const pathProviderChannel = MethodChannel('plugins.flutter.io/path_provider');
   const connectivityChannel = MethodChannel('dev.fluttercommunity.plus/connectivity');
+  late final Directory testDocumentsDir;
 
   setUpAll(() async {
+    testDocumentsDir = Directory(
+      '${Directory.systemTemp.path}${Platform.pathSeparator}invitation_monitoring_${DateTime.now().microsecondsSinceEpoch}',
+    );
+    testDocumentsDir.createSync(recursive: true);
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(pathProviderChannel, (methodCall) async {
       if (methodCall.method == 'getApplicationDocumentsDirectory') {
-        return Directory.systemTemp.path;
+        return testDocumentsDir.path;
       }
-      return Directory.systemTemp.path;
+      return testDocumentsDir.path;
     });
 
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger

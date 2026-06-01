@@ -9,16 +9,21 @@ import 'package:b5_proyek_4/features/auth/auth_controller.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   const pathProviderChannel = MethodChannel('plugins.flutter.io/path_provider');
+  late final Directory testDocumentsDir;
 
   final auth = AuthController.instance;
 
   setUpAll(() async {
+    testDocumentsDir = Directory(
+      '${Directory.systemTemp.path}${Platform.pathSeparator}auth_controller_${DateTime.now().microsecondsSinceEpoch}',
+    );
+    testDocumentsDir.createSync(recursive: true);
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(pathProviderChannel, (methodCall) async {
       if (methodCall.method == 'getApplicationDocumentsDirectory') {
-        return Directory.systemTemp.path;
+        return testDocumentsDir.path;
       }
-      return Directory.systemTemp.path;
+      return testDocumentsDir.path;
     });
 
     const connectivityChannel = MethodChannel('dev.fluttercommunity.plus/connectivity');

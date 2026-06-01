@@ -8,6 +8,8 @@ import 'package:b5_proyek_4/features/attendance/attendance_controller.dart';
 import 'package:b5_proyek_4/models/attendance_record.dart';
 import 'package:b5_proyek_4/models/event_model.dart';
 import 'package:b5_proyek_4/models/member_model.dart';
+import 'package:b5_proyek_4/core/services/mongo_service.dart';
+import '../helpers/mock_mongo_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -17,6 +19,7 @@ void main() {
   final controller = AttendanceController.instance;
 
   setUpAll(() async {
+    MongoService.instance = MockMongoService();
     testDocumentsDir = Directory(
       '${Directory.systemTemp.path}${Platform.pathSeparator}attendance_controller_${DateTime.now().microsecondsSinceEpoch}',
     );

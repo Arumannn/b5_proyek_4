@@ -51,16 +51,21 @@ class MockWriteResult extends Mock implements WriteResult {}
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   const pathProviderChannel = MethodChannel('plugins.flutter.io/path_provider');
+  late final Directory testDocumentsDir;
 
   late MockMongoService mockMongoService;
 
   setUpAll(() async {
+    testDocumentsDir = Directory(
+      '${Directory.systemTemp.path}${Platform.pathSeparator}sync_recovery_${DateTime.now().microsecondsSinceEpoch}',
+    );
+    testDocumentsDir.createSync(recursive: true);
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(pathProviderChannel, (methodCall) async {
       if (methodCall.method == 'getApplicationDocumentsDirectory') {
-        return Directory.systemTemp.path;
+        return testDocumentsDir.path;
       }
-      return Directory.systemTemp.path;
+      return testDocumentsDir.path;
     });
 
     const connectivityChannel = MethodChannel('dev.fluttercommunity.plus/connectivity');
