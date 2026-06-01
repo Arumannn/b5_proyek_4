@@ -64,7 +64,9 @@ void main() {
       password: 'pass',
       qrCodeValue: 'qr',
     );
-    await HiveService.members.put(member.nim, member);
+    await tester.runAsync(() async {
+      await HiveService.members.put(member.nim, member);
+    });
     AuthController.instance.currentUser.value = member;
 
     var submitted = false;
@@ -83,8 +85,13 @@ void main() {
     expect(find.text('Event Test'), findsOneWidget);
 
     // Submit form
-    await tester.tap(find.text('Kirim Pengajuan'));
-    await tester.pump(const Duration(milliseconds: 100));
+    await tester.runAsync(() async {
+      await tester.tap(find.text('Kirim Pengajuan'));
+      // Allow some time for real filesystem writes in the async flow to complete
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+    });
+    
+    await tester.pump();
 
     // Assert: permission saved and callback invoked
     expect(submitted, isTrue);
@@ -92,5 +99,8 @@ void main() {
     final saved = HiveService.permissions.values.first;
     expect(saved.eventId, 'evt-1');
     expect(saved.nim, member.nim);
+
+    // Settle all remaining animations and timers (e.g. SnackBar)
+    await tester.pumpAndSettle();
   });
 }

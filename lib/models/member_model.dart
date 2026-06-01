@@ -86,7 +86,9 @@ class MemberModel extends HiveObject {
       nim: normalizedNim,
       divisi: map['divisi']?.toString() ?? map['jabatan']?.toString() ?? '',
       role: parsedRole,
-      password: map['password']?.toString() ?? '',
+      password: map['password']?.toString() ??
+          map['passwordHash']?.toString() ??
+          '',
       // support nama field lama 'qrData' untuk backward compat
       qrCodeValue: map['qrCodeValue']?.toString() ??
           map['qrData']?.toString() ?? '',

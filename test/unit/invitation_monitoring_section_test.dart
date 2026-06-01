@@ -61,7 +61,9 @@ void main() {
       password: 'pass',
       qrCodeValue: 'qr',
     );
-    await HiveService.members.put(member.nim, member);
+    await tester.runAsync(() async {
+      await HiveService.members.put(member.nim, member);
+    });
 
     final invitation = EventInvitation(
       invitationId: 'inv-1',
@@ -72,7 +74,9 @@ void main() {
       invitedBy: 'org',
       invitedAt: DateTime.now(),
     );
-    await HiveService.invitations.put(invitation.invitationId, invitation);
+    await tester.runAsync(() async {
+      await HiveService.invitations.put(invitation.invitationId, invitation);
+    });
 
     // Act: pump widget
     await tester.pumpWidget(MaterialApp(

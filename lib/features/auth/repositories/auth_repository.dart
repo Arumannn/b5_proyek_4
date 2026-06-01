@@ -92,7 +92,6 @@ class AuthRepository {
         role: AppConstants.roleManager,
         password: AppConstants.defaultManagerPassword,
       );
-
     } catch (e, st) {
       debugPrint('[AuthRepo][seed] error: $e');
       debugPrint(st.toString());
@@ -120,7 +119,7 @@ class AuthRepository {
     }
 
     userDoc['role'] = _local.normalizeRole((userDoc['role'] ?? '').toString());
-    final savedPassword = (userDoc['password'] ?? '').toString();
+    final savedPassword = (userDoc['password'] ?? userDoc['passwordHash'] ?? '').toString();
     if (!verifyPassword(password, savedPassword)) {
       throw Exception('Password salah.');
     }
@@ -130,9 +129,16 @@ class AuthRepository {
       userDoc = {
         ...userDoc,
         if ((cloudDoc['organizationId'] ?? cloudDoc['organization_id']) != null)
-          'organizationId': cloudDoc['organizationId'] ?? cloudDoc['organization_id'],
-        if ((cloudDoc['jobTitle'] ?? cloudDoc['jabatan'] ?? cloudDoc['job_title']) != null)
-          'jobTitle': cloudDoc['jobTitle'] ?? cloudDoc['jabatan'] ?? cloudDoc['job_title'],
+          'organizationId':
+              cloudDoc['organizationId'] ?? cloudDoc['organization_id'],
+        if ((cloudDoc['jobTitle'] ??
+                cloudDoc['jabatan'] ??
+                cloudDoc['job_title']) !=
+            null)
+          'jobTitle':
+              cloudDoc['jobTitle'] ??
+              cloudDoc['jabatan'] ??
+              cloudDoc['job_title'],
         if ((cloudDoc['divisi'] ?? cloudDoc['jabatan']) != null)
           'divisi': cloudDoc['divisi'] ?? cloudDoc['jabatan'],
       };
@@ -168,7 +174,8 @@ class AuthRepository {
       'isSynced': false,
       'createdAt': nowIso,
       'updatedAt': nowIso,
-      if (jobTitle != null && jobTitle.trim().isNotEmpty) 'jobTitle': jobTitle.trim(),
+      if (jobTitle != null && jobTitle.trim().isNotEmpty)
+        'jobTitle': jobTitle.trim(),
     };
 
     await _local.saveUser(normalizedNim, localDoc);
@@ -192,22 +199,32 @@ class AuthRepository {
     }
 
     final updatedDoc = Map<String, dynamic>.from(currentDoc);
-    if (nama != null && nama.trim().isNotEmpty) updatedDoc['nama'] = nama.trim();
-    if (divisi != null && divisi.trim().isNotEmpty) updatedDoc['divisi'] = divisi.trim();
-    if (role != null && role.trim().isNotEmpty) updatedDoc['role'] = _local.normalizeRole(role);
-    if (password != null && password.trim().isNotEmpty) updatedDoc['password'] = hashPassword(password);
-    if (jobTitle != null && jobTitle.trim().isNotEmpty) updatedDoc['jobTitle'] = jobTitle.trim();
+    if (nama != null && nama.trim().isNotEmpty)
+      updatedDoc['nama'] = nama.trim();
+    if (divisi != null && divisi.trim().isNotEmpty)
+      updatedDoc['divisi'] = divisi.trim();
+    if (role != null && role.trim().isNotEmpty)
+      updatedDoc['role'] = _local.normalizeRole(role);
+    if (password != null && password.trim().isNotEmpty)
+      updatedDoc['password'] = hashPassword(password);
+    if (jobTitle != null && jobTitle.trim().isNotEmpty)
+      updatedDoc['jobTitle'] = jobTitle.trim();
 
     updatedDoc['isSynced'] = false;
     updatedDoc['updatedAt'] = DateTime.now().toIso8601String();
 
     final nimStorageKey = (updatedDoc['nim'] ?? '').toString().trim();
-    final updatedStorageKey = nimStorageKey.isNotEmpty ? nimStorageKey : (storageKey ?? nim.trim());
+    final updatedStorageKey = nimStorageKey.isNotEmpty
+        ? nimStorageKey
+        : (storageKey ?? nim.trim());
 
     await _local.saveUser(updatedStorageKey, updatedDoc);
     _local.enqueuePendingUpsert(updatedStorageKey);
-    await syncUpsertUserInBackground(nim: updatedStorageKey, userDoc: updatedDoc);
-    
+    await syncUpsertUserInBackground(
+      nim: updatedStorageKey,
+      userDoc: updatedDoc,
+    );
+
     return _local.memberFromMap(updatedDoc);
   }
 
@@ -263,7 +280,9 @@ class AuthRepository {
       final doc = _local.toMap(entry.value);
       if (doc == null) continue;
 
-      final normalizedRole = _local.normalizeRole((doc['role'] ?? '').toString());
+      final normalizedRole = _local.normalizeRole(
+        (doc['role'] ?? '').toString(),
+      );
       if (normalizedRole != doc['role']) {
         doc['role'] = normalizedRole;
         doc['isSynced'] = false;
@@ -282,7 +301,10 @@ class AuthRepository {
     }
   }
 
-  Future<void> syncUpsertUserInBackground({required String nim, required Map<String, dynamic> userDoc}) async {
+  Future<void> syncUpsertUserInBackground({
+    required String nim,
+    required Map<String, dynamic> userDoc,
+  }) async {
     try {
       _local.enqueuePendingUpsert(nim);
       if (!await _isOnline()) return;
@@ -333,6 +355,8 @@ class AuthRepository {
       'qrCodeValue': doc['qrCodeValue'] ?? doc['qrData'],
       'createdAt': doc['createdAt'],
       'updatedAt': doc['updatedAt'],
+      'password': doc['password'] ?? doc['passwordHash'],
+      'passwordHash': doc['password'] ?? doc['passwordHash'],
     };
   }
 
@@ -365,10 +389,11 @@ class AuthRepository {
     final normalizedNim = nim.trim();
     final userDoc = _local.findLocalUserByNim(normalizedNim);
     if (userDoc == null) throw Exception('Akun tidak ditemukan.');
-    
-    final savedPassword = (userDoc['password'] ?? '').toString();
-    if (!verifyPassword(password, savedPassword)) throw Exception('Password salah.');
-    
+
+    final savedPassword = (userDoc['password'] ?? userDoc['passwordHash'] ?? '').toString();
+    if (!verifyPassword(password, savedPassword))
+      throw Exception('Password salah.');
+
     return _local.memberFromMap(userDoc);
   }
 
