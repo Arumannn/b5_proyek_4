@@ -17,51 +17,48 @@ class EventInvitationAdapter extends TypeAdapter<EventInvitation> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return EventInvitation(
-      invitationId: fields[0] as String,
-      eventId: fields[1] as String,
-      nim: fields[2] as String,
-      responseStatus: fields[3] as String,
-      responseMessage: fields[4] as String?,
-      respondedAt: fields[5] as DateTime?,
-      attendanceStatus: fields[6] as String,
-      attendanceTime: fields[7] as DateTime,
-      invitedBy: fields[8] as String,
-      invitedAt: fields[9] as DateTime,
-      isRequired: fields[10] as bool,
-      isSynced: fields[11] as bool,
-      organizationId: fields[12] as String?,
+      eventId: fields[0] as String,
+      nim: fields[1] as String,
+      responseStatus: fields[2] as String,
+      responseMessage: fields[3] as String?,
+      respondedAt: fields[4] as DateTime?,
+      attendanceStatus: fields[5] as String,
+      attendanceTime: fields[6] as DateTime,
+      invitedBy: fields[7] as String,
+      invitedAt: fields[8] as DateTime,
+      isRequired: fields[9] as bool,
+      isSynced: fields[10] as bool,
+      organizationId: fields[11] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, EventInvitation obj) {
     writer
-      ..writeByte(13)
-      ..writeByte(0)
-      ..write(obj.invitationId)
-      ..writeByte(1)
-      ..write(obj.eventId)
-      ..writeByte(2)
-      ..write(obj.nim)
-      ..writeByte(3)
-      ..write(obj.responseStatus)
-      ..writeByte(4)
-      ..write(obj.responseMessage)
-      ..writeByte(5)
-      ..write(obj.respondedAt)
-      ..writeByte(6)
-      ..write(obj.attendanceStatus)
-      ..writeByte(7)
-      ..write(obj.attendanceTime)
-      ..writeByte(8)
-      ..write(obj.invitedBy)
-      ..writeByte(9)
-      ..write(obj.invitedAt)
-      ..writeByte(10)
-      ..write(obj.isRequired)
-      ..writeByte(11)
-      ..write(obj.isSynced)
       ..writeByte(12)
+      ..writeByte(0)
+      ..write(obj.eventId)
+      ..writeByte(1)
+      ..write(obj.nim)
+      ..writeByte(2)
+      ..write(obj.responseStatus)
+      ..writeByte(3)
+      ..write(obj.responseMessage)
+      ..writeByte(4)
+      ..write(obj.respondedAt)
+      ..writeByte(5)
+      ..write(obj.attendanceStatus)
+      ..writeByte(6)
+      ..write(obj.attendanceTime)
+      ..writeByte(7)
+      ..write(obj.invitedBy)
+      ..writeByte(8)
+      ..write(obj.invitedAt)
+      ..writeByte(9)
+      ..write(obj.isRequired)
+      ..writeByte(10)
+      ..write(obj.isSynced)
+      ..writeByte(11)
       ..write(obj.organizationId);
   }
 

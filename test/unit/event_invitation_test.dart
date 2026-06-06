@@ -6,7 +6,6 @@ void main() {
   group('EventInvitation', () {
     test('fromJson parses date strings and defaults', () {
       final map = {
-        'invitationId': 'inv1',
         'eventId': 'evt1',
         'nim': '11111',
         'responseStatus': 'approved',
@@ -23,7 +22,7 @@ void main() {
 
       final inv = EventInvitation.fromJson(map);
 
-      expect(inv.invitationId, 'inv1');
+      expect(inv.compositeKey, 'evt1_11111');
       expect(inv.eventId, 'evt1');
       expect(inv.nim, '11111');
       expect(inv.responseStatus, 'approved');
@@ -47,7 +46,6 @@ void main() {
       final attendanceTime = DateTime.utc(2023, 3, 5, 6, 7, 8);
 
       final inv = EventInvitation(
-        invitationId: 'inv2',
         eventId: 'evt2',
         nim: '22222',
         responseStatus: 'pending',
@@ -58,7 +56,7 @@ void main() {
 
       final map = inv.toJson();
 
-      expect(map['invitationId'], 'inv2');
+      expect(inv.compositeKey, 'evt2_22222');
       expect(map['eventId'], 'evt2');
       expect(map['nim'], '22222');
       expect(map['responseStatus'], 'pending');

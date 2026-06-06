@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_constants.dart';
+import '../../core/controllers/config_controller.dart';
 import '../../widgets/custom_confirm_dialog.dart';
 import '../../widgets/gradient_header.dart';
 import 'attendance_permission.dart';
@@ -80,9 +81,18 @@ class _AttendanceRecapSharedViewState extends State<AttendanceRecapSharedView> {
 
   List<AttendanceRecord> get _filteredRecords {
     if (_selectedEventId == null) return const [];
-    return _records
-        .where((r) => r.eventId == _selectedEventId)
-        .toList(growable: false);
+    var records = _records.where((r) => r.eventId == _selectedEventId);
+    
+    final currentUser = AuthController.instance.currentUser.value;
+    if (currentUser != null) {
+      final role = currentUser.role.trim().toLowerCase();
+      final isOrganizer = ConfigController.instance.roleMatchesConfiguredName(role, AppConstants.roleOrganizer);
+      final isMember = ConfigController.instance.roleMatchesConfiguredName(role, AppConstants.roleMember);
+      if (isOrganizer || isMember) {
+        records = records.where((r) => r.nim == currentUser.nim);
+      }
+    }
+    return records.toList(growable: false);
   }
 
   String _eventLabel(String eventId) {

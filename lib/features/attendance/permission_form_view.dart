@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../core/services/hive_service.dart';
 import '../auth/auth_controller.dart';
 import '../../models/permission_record.dart';
+import '../../models/event_invitation.dart';
+import '../../core/enums/status_enums.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
@@ -69,6 +71,48 @@ class _PermissionFormViewState extends State<PermissionFormView> {
     try {
       final currentNim =
           AuthController.instance.currentUser.value?.nim ?? 'unknown';
+
+      // 1. Validasi: Cegah izin jika sudah melakukan absensi (overlapping)
+      final hasCheckedIn = HiveService.attendance.values.any(
+        (r) => r.eventId == widget.eventId && r.nim == currentNim,
+      );
+      if (hasCheckedIn) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Anda sudah melakukan absensi, tidak bisa mengajukan izin!'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      // 2. Hubungkan ke EventInvitation (Cari atau buat jika belum ada)
+      final invitationsBox = HiveService.invitations;
+      EventInvitation? invitation;
+      try {
+        invitation = invitationsBox.values.firstWhere(
+          (inv) => inv.eventId == widget.eventId && inv.nim == currentNim,
+        );
+      } catch (_) {
+        invitation = EventInvitation(
+          eventId: widget.eventId,
+          nim: currentNim,
+          responseStatus: 'permission_requested',
+          attendanceTime: DateTime.now(),
+          invitedBy: 'system',
+          invitedAt: DateTime.now(),
+          isSynced: false,
+        );
+      }
+
+      // Update status respon undangan menjadi permissionRequested
+      invitation.responseStatusEnum = InvitationStatus.permissionRequested;
+      invitation.respondedAt = DateTime.now();
+      invitation.isSynced = false;
+      await invitationsBox.put(invitation.compositeKey, invitation);
 
       final permissionId = 'PERM-${DateTime.now().millisecondsSinceEpoch}';
 

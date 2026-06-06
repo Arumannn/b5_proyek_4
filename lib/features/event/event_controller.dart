@@ -52,6 +52,11 @@ class EventController {
     });
   }
 
+  void stopStatusRefreshTimer() {
+    _statusRefreshTimer?.cancel();
+    _statusRefreshTimer = null;
+  }
+
   Future<void> loadEvents({bool force = false, bool cloudSync = true}) async {
     if (_hasLoaded && !force) return;
 

@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
+import '../../../core/enums/status_enums.dart';
 import '../../../core/services/hive_service.dart';
+import '../../../models/attendance_record.dart';
+import '../../../models/permission_record.dart';
 import '../../attendance/scan_screen.dart';
 import '../../event/event_form_view.dart';
 import '../../users/member_list_view.dart';
@@ -36,141 +40,162 @@ class _ExecutiveDashboardSectionState extends State<ExecutiveDashboardSection> {
         final rootEvents = events.where((e) => e.parentEventId == null).toList(growable: false);
         final ongoing = rootEvents.where((e) => _isOngoingEvent(e, now)).toList(growable: false)
           ..sort((a, b) => a.tanggalMulai.compareTo(b.tanggalMulai));
-        final totalHadir = _estimateTotalHadir(events);
-        final izinSakit = _estimateIzinSakit(events);
-        final perluValidasi = _estimatePerluValidasi(events);
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Top stats area: big left card + two small right cards
-            IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () {},
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF2563EB),
-                          borderRadius: BorderRadius.circular(18),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.06),
-                              blurRadius: 14,
-                              offset: const Offset(0, 6),
+        return ValueListenableBuilder<Box<AttendanceRecord>>(
+          valueListenable: HiveService.attendance.listenable(),
+          builder: (context, attendanceBox, _) {
+            final totalHadir = attendanceBox.values.length;
+
+            return ValueListenableBuilder<Box<PermissionRecord>>(
+              valueListenable: HiveService.permissions.listenable(),
+              builder: (context, permissionsBox, _) {
+                final izinSakit = permissionsBox.values
+                    .where((p) => p.statusEnum == PermissionStatus.approved)
+                    .length;
+                final perluValidasi = permissionsBox.values
+                    .where((p) => p.statusEnum == PermissionStatus.pending)
+                    .length;
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Top stats area: big left card + two small right cards
+                    IntrinsicHeight(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () {},
+                              child: Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF2563EB),
+                                  borderRadius: BorderRadius.circular(18),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.06),
+                                      blurRadius: 14,
+                                      offset: const Offset(0, 6),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        const Text('Total Hadir', style: TextStyle(color: Color(0xFFDFF6F0), fontSize: 12, fontWeight: FontWeight.w600)),
+                                        Icon(Icons.bar_chart, color: const Color(0xFFDBEAFE)),
+                                      ],
+                                    ),
+                                    const Spacer(),
+                                    Text('$totalHadir', style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
+                                    const SizedBox(height: 4),
+                                  ],
+                                ),
+                              ),
                             ),
-                          ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Text('Total Hadir', style: TextStyle(color: Color(0xFFDFF6F0), fontSize: 12, fontWeight: FontWeight.w600)),
-                                Icon(Icons.bar_chart, color: const Color(0xFFDBEAFE)),                              ],
+                                _smallStatCard('Izin / Sakit', '$izinSakit', Icons.description, const Color(0xFFFFEDD5), const Color(0xFFF97316)),
+                                const SizedBox(height: 12),
+                                _smallStatCard('Perlu Validasi', '$perluValidasi', Icons.check_circle, const Color(0xFFFEE2E2), const Color(0xFFDC2626)),
+                              ],
                             ),
-                            const Spacer(),
-                            Text('$totalHadir', style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
-                            const SizedBox(height: 4),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(color: const Color(0x3356A3F7), borderRadius: BorderRadius.circular(999)),
-                              child: const Text('+12 dari kemarin', style: TextStyle(color: Color(0xFFE6F2FF), fontSize: 10, fontWeight: FontWeight.w700)),
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    const SizedBox(height: 18),
+                    const Text(
+                      'MENU ADMINISTRASI',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF1F2937), letterSpacing: 0.6),
+                    ),
+                    const SizedBox(height: 12),
+                    GridView.count(
+                      crossAxisCount: 3,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      mainAxisSpacing: 12,
+                      crossAxisSpacing: 12,
+                      childAspectRatio: 0.9,
                       children: [
-                        _smallStatCard('Izin / Sakit', '$izinSakit', Icons.description, const Color(0xFFFFEDD5), const Color(0xFFF97316)),
-                        const SizedBox(height: 12),
-                        _smallStatCard('Perlu Validasi', '$perluValidasi', Icons.check_circle, const Color(0xFFFEE2E2), const Color(0xFFDC2626)),
+                        _menuAction(context, 'Buat Event', Icons.calendar_today, const Color(0xFF2563EB), const Color(0xFFDBEAFE), () async {
+                          final isManager = (AuthController.instance.currentUser.value?.role ?? '').trim().toLowerCase() == AppConstants.roleManager;
+                          final parentOptions = _eventController.getRootEvents()
+                              .map((e) => EventParentOption(id: e.eventId, name: e.nama))
+                              .toList();
+                          final result = await Navigator.push<EventFormValue>(
+                            context, 
+                            MaterialPageRoute(
+                              builder: (_) => EventFormView(
+                                title: isManager ? 'Buat Sub-Event' : 'Buat Event Baru',
+                                parentOptions: parentOptions,
+                              ),
+                            ),
+                          );
+                          if (result == null) return;
+                          final success = await _eventController.createEvent(
+                            nama: result.name,
+                            tanggalMulai: result.date,
+                            tanggalSelesai: result.endDate,
+                            jamSelesai: result.jamSelesai,
+                            parentEventId: result.isSubEvent ? result.parentId : null,
+                            jenis: result.jenis,
+                            lokasi: result.lokasi,
+                            deskripsi: result.deskripsi,
+                            targetPeserta: result.targetPeserta,
+                            requiresInvitation: result.requiresInvitation,
+                            penyelenggara: result.penyelenggara,
+                            penanggungJawab: result.penanggungJawab,
+                          );
+                          if (!mounted) return;
+                          if (success) {
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Event berhasil ditambahkan.')));
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_eventController.errorMessage.value ?? 'Gagal menambah event.')));
+                          }
+                        }),
+                        _menuAction(context, 'Undangan', Icons.mail, const Color(0xFFF59E0B), const Color(0xFFFFF7ED), () {
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => const ManageInvitationsView()));
+                        }),
+                        _menuAction(context, 'Anggota', Icons.people, const Color(0xFF7C3AED), const Color(0xFFEDE9FE), () {
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => const MemberListView()));
+                        }),
                       ],
                     ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 18),
-            const Text(
-              'MENU ADMINISTRASI',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF1F2937), letterSpacing: 0.6),
-            ),
-            const SizedBox(height: 12),
-            GridView.count(
-              crossAxisCount: 3,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              childAspectRatio: 0.9,
-              children: [
-                _menuAction(context, 'Buat Event', Icons.calendar_today, const Color(0xFF2563EB), const Color(0xFFDBEAFE), () async {
-                  final result = await Navigator.push<EventFormValue>(
-                    context, 
-                    MaterialPageRoute(builder: (_) => const EventFormView(title: 'Buat Event Baru'))
-                  );
-                  if (result == null) return;
-                  final success = await _eventController.createEvent(
-                    nama: result.name,
-                    tanggalMulai: result.date,
-                    tanggalSelesai: result.endDate,
-                    jamSelesai: result.jamSelesai,
-                    parentEventId: result.isSubEvent ? result.parentId : null,
-                    jenis: result.jenis,
-                    lokasi: result.lokasi,
-                    deskripsi: result.deskripsi,
-                    targetPeserta: result.targetPeserta,
-                    requiresInvitation: result.requiresInvitation,
-                    penyelenggara: result.penyelenggara,
-                    penanggungJawab: result.penanggungJawab,
-                  );
-                  if (!mounted) return;
-                  if (success) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Event berhasil ditambahkan.')));
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_eventController.errorMessage.value ?? 'Gagal menambah event.')));
-                  }
-                }),
-                _menuAction(context, 'Undangan', Icons.mail, const Color(0xFFF59E0B), const Color(0xFFFFF7ED), () {
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => const ManageInvitationsView()));
-                }),
-                _menuAction(context, 'Anggota', Icons.people, const Color(0xFF7C3AED), const Color(0xFFEDE9FE), () {
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => const MemberListView()));
-                }),
-              ],
-            ),
-            const SizedBox(height: 18),
-            const Text('Event Berlangsung', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF111827))),
-            const SizedBox(height: 12),
-            if (ongoing.isEmpty)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey.shade200),
-                ),
-                child: const Text(
-                  'Belum ada event yang tampil saat ini.',
-                  style: TextStyle(color: Color(0xFF6B7280), fontSize: 13),
-                ),
-              )
-            else
-              Column(
-                children: ongoing.map((e) => _ongoingEventCard(context, e, highlight: true)).toList(),
-              ),
-          ],
+                    const SizedBox(height: 18),
+                    const Text('Event Berlangsung', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF111827))),
+                    const SizedBox(height: 12),
+                    if (ongoing.isEmpty)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade200),
+                        ),
+                        child: const Text(
+                          'Belum ada event yang tampil saat ini.',
+                          style: TextStyle(color: Color(0xFF6B7280), fontSize: 13),
+                        ),
+                      )
+                    else
+                      Column(
+                        children: ongoing.map((e) => _ongoingEventCard(context, e, highlight: true)).toList(),
+                      ),
+                  ],
+                );
+              },
+            );
+          },
         );
       },
     );
@@ -200,22 +225,6 @@ class _ExecutiveDashboardSectionState extends State<ExecutiveDashboardSection> {
     return !now.isBefore(startTime) && !now.isAfter(endTime);
   }
 
-  int _estimateTotalHadir(List<EventModel> events) {
-    try {
-      final attendance = HiveService.attendance.values;
-      return attendance.length;
-    } catch (e) {
-      return 0;
-    }
-  }
-
-  int _estimateIzinSakit(List<EventModel> events) {
-    return 8;
-  }
-
-  int _estimatePerluValidasi(List<EventModel> events) {
-    return 3;
-  }
 
   Widget _smallStatCard(String label, String value, IconData icon, Color bg, Color accent) {
     return Container(

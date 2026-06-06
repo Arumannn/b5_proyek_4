@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/controllers/config_controller.dart';
 import '../../core/services/sync_manager.dart';
-import '../../widgets/gradient_header.dart';
+import '../../widgets/white_status_header.dart';
 import '../auth/auth_controller.dart';
 import 'event_form_models.dart';
 import 'event_permission.dart';
@@ -69,11 +69,15 @@ class _EventFormViewState extends State<EventFormView> {
     _selectedDate = widget.initialValue?.date;
     _selectedEndDate = widget.initialValue?.endDate ?? widget.initialValue?.date;
     _selectedJamSelesai = widget.initialValue?.jamSelesai;
-    _isSubEvent = widget.initialValue?.isSubEvent ?? false;
+    _isSubEvent = (_currentRole == 'manager') ? true : (widget.initialValue?.isSubEvent ?? false);
     _parentId = widget.initialValue?.parentId;
-    _selectedJenis = widget.initialValue?.jenis ?? ConfigController.instance.eventTypes.first;
-    if (!ConfigController.instance.eventTypes.contains(_selectedJenis)) {
-      _selectedJenis = ConfigController.instance.eventTypes.first;
+    final eventTypes = ConfigController.instance.eventTypes;
+    _selectedJenis = widget.initialValue?.jenis ?? eventTypes.first;
+    final jenisMatch = eventTypes.where((e) => e.trim().toLowerCase() == _selectedJenis.trim().toLowerCase()).toList();
+    if (jenisMatch.isNotEmpty) {
+      _selectedJenis = jenisMatch.first;
+    } else if (eventTypes.isNotEmpty) {
+      _selectedJenis = eventTypes.first;
     }
 
     _selectedTargetIds = List<String>.from(widget.initialValue?.targetPeserta ?? []);
@@ -83,7 +87,10 @@ class _EventFormViewState extends State<EventFormView> {
     _selectedPenyelenggara = widget.initialValue?.penyelenggara ?? options.first;
     _customPenyelenggaraController = TextEditingController();
 
-    if (!options.contains(_selectedPenyelenggara)) {
+    final penyeMatch = options.where((o) => o.trim().toLowerCase() == _selectedPenyelenggara.trim().toLowerCase()).toList();
+    if (penyeMatch.isNotEmpty) {
+      _selectedPenyelenggara = penyeMatch.first;
+    } else if (_selectedPenyelenggara != 'Lainnya') {
       _customPenyelenggaraController.text = _selectedPenyelenggara;
       _selectedPenyelenggara = 'Lainnya';
     }
@@ -305,7 +312,7 @@ class _EventFormViewState extends State<EventFormView> {
   Widget build(BuildContext context) {
     if (!_hasAccess) {
       return Scaffold(
-        appBar: const GradientHeader(
+        appBar: const WhiteStatusHeader(
           title: 'Form Event',
           subtitle: 'Akses terbatas',
         ),
@@ -321,14 +328,23 @@ class _EventFormViewState extends State<EventFormView> {
       );
     }
 
+    final isManager = _currentRole == 'manager';
+    final subtitleStr = isManager ? 'Form pembuatan sub-event khusus manager' : 'Form pembuatan event organisasi';
+
     return Scaffold(
       backgroundColor: Colors.white,
-      body: SafeArea(
-        child: ListenableBuilder(
+      appBar: WhiteStatusHeader(
+        title: widget.title,
+        subtitle: subtitleStr,
+      ),
+      body: ListenableBuilder(
           listenable: ConfigController.instance,
           builder: (context, _) {
             final eventTypes = ConfigController.instance.eventTypes;
-            if (!eventTypes.contains(_selectedJenis)) {
+            final jenisMatch = eventTypes.where((e) => e.trim().toLowerCase() == _selectedJenis.trim().toLowerCase()).toList();
+            if (jenisMatch.isNotEmpty) {
+              _selectedJenis = jenisMatch.first;
+            } else if (eventTypes.isNotEmpty) {
               _selectedJenis = eventTypes.first;
             }
 
@@ -336,7 +352,10 @@ class _EventFormViewState extends State<EventFormView> {
               ...ConfigController.instance.penyelenggaraOptions,
               'Lainnya'
             ];
-            if (!penyelenggaraOptions.contains(_selectedPenyelenggara) && _selectedPenyelenggara != 'Lainnya') {
+            final penyeMatch = penyelenggaraOptions.where((o) => o.trim().toLowerCase() == _selectedPenyelenggara.trim().toLowerCase()).toList();
+            if (penyeMatch.isNotEmpty) {
+              _selectedPenyelenggara = penyeMatch.first;
+            } else if (_selectedPenyelenggara != 'Lainnya') {
               _selectedPenyelenggara = penyelenggaraOptions.first;
             }
 
@@ -387,7 +406,6 @@ class _EventFormViewState extends State<EventFormView> {
             );
           }
         ),
-      ),
     );
   }
 }

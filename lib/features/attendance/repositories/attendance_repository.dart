@@ -7,6 +7,8 @@ import '../../../models/attendance_record.dart';
 import '../../../models/member_model.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/utils/qr_service.dart';
+import '../../../core/services/hive_service.dart';
+import '../../../core/enums/status_enums.dart';
 
 class AttendanceResultData {
   final String status; // 'successHadir', 'successTerlambat', 'duplicate', dsb (mirip enum)
@@ -84,6 +86,17 @@ class AttendanceRepository {
         return AttendanceResultData(
           status: 'duplicate',
           failureReason: 'Duplikat absensi untuk member ${member.nim} pada event $eventId',
+        );
+      }
+
+      // Validasi tumpang tindih: Cegah absensi jika izin sudah disetujui
+      final hasApprovedPermission = HiveService.permissions.values.any(
+        (p) => p.eventId == eventId && p.nim == member.nim && p.statusEnum == PermissionStatus.approved,
+      );
+      if (hasApprovedPermission) {
+        return AttendanceResultData(
+          status: 'hasPermission',
+          failureReason: 'Member telah disetujui untuk Izin/Sakit pada event ini.',
         );
       }
 
@@ -219,6 +232,17 @@ class AttendanceRepository {
       final compositeKey = '${eventId}_$nim';
       if (_local.hasAttendance(compositeKey)) {
         return AttendanceResultData(status: 'error', failureReason: 'Absensi sudah ada');
+      }
+
+      // Validasi tumpang tindih: Cegah manual absensi jika izin sudah disetujui
+      final hasApprovedPermission = HiveService.permissions.values.any(
+        (p) => p.eventId == eventId && p.nim == nim && p.statusEnum == PermissionStatus.approved,
+      );
+      if (hasApprovedPermission) {
+        return AttendanceResultData(
+          status: 'error',
+          failureReason: 'Member telah disetujui untuk Izin/Sakit pada event ini.',
+        );
       }
 
       final record = AttendanceRecord.create(

@@ -40,21 +40,35 @@ class _MemberFormViewState extends State<MemberFormView> {
     final existingRole =
         (widget.existing?.role ?? AppConstants.roleMember).trim().toLowerCase();
     final allRoles = ConfigController.instance.activeConfig.rolesConfig;
+    debugPrint('[MemberForm][initState] existingRole: $existingRole, widget.existing.role: ${widget.existing?.role}');
+    debugPrint('[MemberForm][initState] allRoles: ${allRoles.map((e) => '${e.roleName}:${e.jabatanList}').toList()}');
+    
     if (allRoles.isEmpty) {
       _selectedRole = AppConstants.roleMember;
+      debugPrint('[MemberForm][initState] allRoles is empty, fallback to: $_selectedRole');
     } else {
-      final match = allRoles.where((e) => e.roleName.toLowerCase() == existingRole).toList();
+      final match = allRoles.where((e) => ConfigController.instance.roleMatchesConfiguredName(existingRole, e.roleName)).toList();
       if (match.isNotEmpty) {
         _selectedRole = match.first.roleName;
+        debugPrint('[MemberForm][initState] match found for $existingRole: $_selectedRole');
       } else {
         _selectedRole = allRoles.first.roleName;
+        debugPrint('[MemberForm][initState] no match found for $existingRole, fallback to first role: $_selectedRole');
       }
     }
     
     final dbuOptions = ConfigController.instance.dbuOptionsForRole(_selectedRole);
-    _selectedDbu = widget.existing?.divisi ?? dbuOptions.first;
-    if (!dbuOptions.contains(_selectedDbu)) {
+    final existingDbu = (widget.existing?.divisi ?? '').trim().toLowerCase();
+    final dbuMatch = dbuOptions.where((d) => d.trim().toLowerCase() == existingDbu).toList();
+    if (dbuMatch.isNotEmpty) {
+      _selectedDbu = dbuMatch.first;
+      debugPrint('[MemberForm][initState] dbuMatch found: $_selectedDbu');
+    } else if (dbuOptions.isNotEmpty) {
       _selectedDbu = dbuOptions.first;
+      debugPrint('[MemberForm][initState] no dbuMatch, fallback to first dbu: $_selectedDbu (existing: ${widget.existing?.divisi})');
+    } else {
+      _selectedDbu = 'Belum Ditentukan';
+      debugPrint('[MemberForm][initState] dbuOptions is empty, fallback: $_selectedDbu');
     }
   }
 
@@ -227,16 +241,31 @@ class _MemberFormViewState extends State<MemberFormView> {
               ListenableBuilder(
                 listenable: ConfigController.instance,
                 builder: (context, _) {
-                  // Ensure selected role is still valid
+                  // Ensure selected role is still valid and normalized
                   final allRoles = ConfigController.instance.activeConfig.rolesConfig;
-                  if (allRoles.isNotEmpty && !allRoles.any((r) => r.roleName == _selectedRole)) {
-                    _selectedRole = allRoles.first.roleName;
+                  final roleOptions = allRoles.map((e) => e.roleName).toList();
+                  
+                  debugPrint('[MemberForm][BuilderPeran] input _selectedRole: $_selectedRole, roleOptions: $roleOptions');
+                  if (allRoles.isNotEmpty) {
+                    final match = allRoles.where((e) => ConfigController.instance.roleMatchesConfiguredName(_selectedRole, e.roleName)).toList();
+                    if (match.isNotEmpty) {
+                      _selectedRole = match.first.roleName;
+                      debugPrint('[MemberForm][BuilderPeran] match/normalized: $_selectedRole');
+                    } else if (!roleOptions.contains(_selectedRole)) {
+                      if (_selectedRole.isNotEmpty) {
+                        roleOptions.add(_selectedRole);
+                        debugPrint('[MemberForm][BuilderPeran] appending missing _selectedRole to options: $_selectedRole');
+                      } else {
+                        _selectedRole = roleOptions.first;
+                        debugPrint('[MemberForm][BuilderPeran] fallback to first role: $_selectedRole');
+                      }
+                    }
                   }
                   
                   return InlineExpandingDropdownField(
                     label: 'Peran (Role Sistem)',
                     value: _selectedRole,
-                    options: allRoles.map((e) => e.roleName).toList(),
+                    options: roleOptions,
                     placeholder: 'Pilih role',
                     itemLabelBuilder: _roleLabel,
                     onChanged: (value) {
@@ -253,9 +282,22 @@ class _MemberFormViewState extends State<MemberFormView> {
               ListenableBuilder(
                 listenable: ConfigController.instance,
                 builder: (context, _) {
-                  final validOptions = ConfigController.instance.dbuOptionsForRole(_selectedRole);
-                  if (validOptions.isNotEmpty && !validOptions.contains(_selectedDbu)) {
+                  final rawOptions = ConfigController.instance.dbuOptionsForRole(_selectedRole);
+                  final validOptions = List<String>.from(rawOptions);
+                  
+                  debugPrint('[MemberForm][BuilderDBU] input _selectedDbu: $_selectedDbu, _selectedRole: $_selectedRole, rawOptions: $rawOptions');
+                  if (_selectedDbu.isNotEmpty) {
+                    final dbuMatch = validOptions.where((d) => d.trim().toLowerCase() == _selectedDbu.trim().toLowerCase()).toList();
+                    if (dbuMatch.isNotEmpty) {
+                      _selectedDbu = dbuMatch.first;
+                      debugPrint('[MemberForm][BuilderDBU] matched case-insensitive: $_selectedDbu');
+                    } else {
+                      validOptions.add(_selectedDbu);
+                      debugPrint('[MemberForm][BuilderDBU] DBU $_selectedDbu not in config, dynamically appended to options!');
+                    }
+                  } else if (validOptions.isNotEmpty) {
                     _selectedDbu = validOptions.first;
+                    debugPrint('[MemberForm][BuilderDBU] fallback first: $_selectedDbu');
                   }
                   
                   return InlineExpandingDropdownField(

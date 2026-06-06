@@ -66,7 +66,6 @@ void main() {
     });
 
     final invitation = EventInvitation(
-      invitationId: 'inv-1',
       eventId: 'event-1',
       nim: member.nim,
       responseStatus: 'permission_requested',
@@ -75,7 +74,7 @@ void main() {
       invitedAt: DateTime.now(),
     );
     await tester.runAsync(() async {
-      await HiveService.invitations.put(invitation.invitationId, invitation);
+      await HiveService.invitations.put(invitation.compositeKey, invitation);
     });
 
     // Act: pump widget

@@ -27,7 +27,7 @@ class _InvitationDetailViewState extends State<InvitationDetailView> {
       widget.invitation.responseStatusEnum = newStatus;
       widget.invitation.respondedAt = DateTime.now();
       widget.invitation.isSynced = false;
-      await HiveService.invitations.put(widget.invitation.invitationId, widget.invitation);
+      await HiveService.invitations.put(widget.invitation.compositeKey, widget.invitation);
       if (!mounted) return;
       CustomSnackbar.showSuccess(context, 'Respon berhasil diperbarui');
       if (newStatus != InvitationStatus.permissionRequested) {
@@ -163,7 +163,7 @@ class _InvitationDetailViewState extends State<InvitationDetailView> {
                       widget.invitation.responseStatusEnum = InvitationStatus.permissionRequested;
                       widget.invitation.respondedAt = DateTime.now();
                       widget.invitation.isSynced = false;
-                      HiveService.invitations.put(widget.invitation.invitationId, widget.invitation);
+                      HiveService.invitations.put(widget.invitation.compositeKey, widget.invitation);
                     }
                   )));
                 },

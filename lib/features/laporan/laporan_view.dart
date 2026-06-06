@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter/services.dart';
 import '../../core/utils/network_status_controller.dart';
 import '../../core/services/hive_service.dart';
 import '../../models/event_model.dart';
@@ -418,22 +419,26 @@ class _LaporanViewState extends State<LaporanView> {
             'DETAIL PER EVENT',
             style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF1F2937), letterSpacing: 0.5),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.green[50],
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.green[100]!),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.download, size: 12, color: Colors.green[700]),
-                const SizedBox(width: 4),
-                Text(
-                  'Export',
-                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.green[700]),
-                ),
-              ],
+          InkWell(
+            onTap: () => _exportRecap(context),
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.green[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.green[100]!),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.download, size: 12, color: Colors.green[700]),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Export',
+                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.green[700]),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -507,6 +512,163 @@ class _LaporanViewState extends State<LaporanView> {
           ],
         ),
       ),
+    );
+  }
+
+  void _exportRecap(BuildContext context) {
+    final buffer = StringBuffer();
+    buffer.writeln('No;Nama Event;Tanggal;Jenis;Hadir;Izin;Alpha');
+    
+    final data = reportData;
+    for (int i = 0; i < data.length; i++) {
+      final r = data[i];
+      buffer.writeln(
+        '${i + 1};${r['title']};${r['date']};${r['type']};${r['hadir']};${r['izin']};${r['alpha']}'
+      );
+    }
+    
+    _showExportDialog(context, 'Rekap Kehadiran', buffer.toString());
+  }
+
+  void _showExportDialog(BuildContext context, String title, String csvContent) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        double progress = 0.0;
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            if (progress == 0.0) {
+              Future.doWhile(() async {
+                await Future.delayed(const Duration(milliseconds: 150));
+                if (!dialogContext.mounted) return false;
+                setDialogState(() {
+                  progress += 0.1;
+                  if (progress >= 1.0) {
+                    progress = 1.0;
+                  }
+                });
+                return progress < 1.0;
+              });
+            }
+
+            final isFinished = progress >= 1.0;
+
+            return Dialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (!isFinished) ...[
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        height: 60,
+                        width: 60,
+                        child: CircularProgressIndicator(
+                          value: progress,
+                          strokeWidth: 6,
+                          backgroundColor: Colors.grey.shade100,
+                          valueColor: const AlwaysStoppedAnimation<Color>(Colors.green),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      Text(
+                        'Mengekspor data... ${(progress * 100).round()}%',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF1F2937)),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Sedang memproses & menyusun CSV rekap',
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                      const SizedBox(height: 12),
+                    ] else ...[
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFDCFCE7),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.check, color: Color(0xFF16A34A), size: 36),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        '$title Berhasil!',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF1F2937)),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Data rekap berhasil dikompilasi ke format CSV.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                      const SizedBox(height: 16),
+                      Container(
+                        height: 100,
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.grey.shade200),
+                        ),
+                        child: SingleChildScrollView(
+                          child: Text(
+                            csvContent,
+                            style: const TextStyle(fontFamily: 'monospace', fontSize: 10, color: Color(0xFF475569)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () => Navigator.of(dialogContext).pop(),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                              ),
+                              child: const Text('Tutup', style: TextStyle(color: Color(0xFF1F2937), fontWeight: FontWeight.bold)),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () async {
+                                await Clipboard.setData(ClipboardData(text: csvContent));
+                                if (!context.mounted) return;
+                                Navigator.of(dialogContext).pop();
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Rekap berhasil disalin ke clipboard!'),
+                                    backgroundColor: Color(0xFF16A34A),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.copy, size: 16),
+                              label: const Text('Salin CSV'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF16A34A),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                elevation: 0,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

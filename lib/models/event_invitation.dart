@@ -5,52 +5,50 @@ part 'event_invitation.g.dart';
 @HiveType(typeId: 4)
 class EventInvitation {
     @HiveField(0)
-    final String invitationId;
-
-    @HiveField(1)
     final String eventId;
 
-    @HiveField(2)
+    @HiveField(1)
     final String nim;
 
-    @HiveField(3)
+    @HiveField(2)
     String responseStatus;
 
     InvitationStatus get responseStatusEnum => InvitationStatus.fromString(responseStatus);
     set responseStatusEnum(InvitationStatus val) => responseStatus = val.value;
 
-    @HiveField(4)
+    @HiveField(3)
     String? responseMessage;
 
-    @HiveField(5)
+    @HiveField(4)
     DateTime? respondedAt;
 
-    @HiveField(6)
+    @HiveField(5)
     String attendanceStatus;
 
     AttendanceStatus get attendanceStatusEnum => AttendanceStatus.fromString(attendanceStatus);
     set attendanceStatusEnum(AttendanceStatus val) => attendanceStatus = val.value;
 
-    @HiveField(7)
+    @HiveField(6)
     DateTime attendanceTime;
 
-    @HiveField(8)
+    @HiveField(7)
     final String invitedBy;
 
-    @HiveField(9)
+    @HiveField(8)
     final DateTime invitedAt;
 
-    @HiveField(10)
+    @HiveField(9)
     final bool isRequired;
 
-    @HiveField(11)
+    @HiveField(10)
     bool isSynced;
 
-    @HiveField(12)
+    @HiveField(11)
     final String? organizationId;
 
+    String get compositeKey => '${eventId}_$nim';
+
     EventInvitation({
-        required this.invitationId,
         required this.eventId,
         required this.nim,
         this.responseStatus = 'pending',
@@ -73,7 +71,6 @@ class EventInvitation {
         }
 
         return EventInvitation(
-            invitationId: (json['invitationId'] ?? '').toString(),
             eventId: (json['eventId'] ?? '').toString(),
             nim: (json['nim'] ?? '').toString(),
             responseStatus: (json['responseStatus'] ?? 'pending').toString(),
@@ -91,7 +88,6 @@ class EventInvitation {
 
     Map<String, dynamic> toJson() {
         return {
-            'invitationId': invitationId,
             'eventId': eventId,
             'nim': nim,
             'responseStatus': responseStatus,

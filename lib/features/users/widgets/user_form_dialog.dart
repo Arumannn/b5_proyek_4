@@ -56,20 +56,34 @@ class _UserFormDialogState extends State<UserFormDialog> {
 
     final existingRole = (widget.existing?.role ?? AppConstants.roleMember).trim().toLowerCase();
     final allRoles = ConfigController.instance.activeConfig.rolesConfig;
+    debugPrint('[UserFormDialog][initState] existingRole: $existingRole, widget.existing.role: ${widget.existing?.role}');
+    debugPrint('[UserFormDialog][initState] allRoles: ${allRoles.map((e) => '${e.roleName}:${e.jabatanList}').toList()}');
+    
     if (allRoles.isEmpty) {
       _selectedRole = AppConstants.roleMember;
+      debugPrint('[UserFormDialog][initState] allRoles is empty, fallback to: $_selectedRole');
     } else {
-      final match = allRoles.where((e) => e.roleName.toLowerCase() == existingRole).toList();
+      final match = allRoles.where((e) => ConfigController.instance.roleMatchesConfiguredName(existingRole, e.roleName)).toList();
       if (match.isNotEmpty) {
         _selectedRole = match.first.roleName;
+        debugPrint('[UserFormDialog][initState] match found for $existingRole: $_selectedRole');
       } else {
         _selectedRole = allRoles.first.roleName;
+        debugPrint('[UserFormDialog][initState] no match found for $existingRole, fallback to first role: $_selectedRole');
       }
     }
     final dbuOptions = _dbuOptionsForRole(_selectedRole);
-    _selectedDbu = widget.existing?.divisi ?? dbuOptions.first;
-    if (!dbuOptions.contains(_selectedDbu)) {
+    final existingDbu = (widget.existing?.divisi ?? '').trim().toLowerCase();
+    final dbuMatch = dbuOptions.where((d) => d.trim().toLowerCase() == existingDbu).toList();
+    if (dbuMatch.isNotEmpty) {
+      _selectedDbu = dbuMatch.first;
+      debugPrint('[UserFormDialog][initState] dbuMatch found: $_selectedDbu');
+    } else if (dbuOptions.isNotEmpty) {
       _selectedDbu = dbuOptions.first;
+      debugPrint('[UserFormDialog][initState] no dbuMatch, fallback to first dbu: $_selectedDbu (existing: ${widget.existing?.divisi})');
+    } else {
+      _selectedDbu = 'Belum Ditentukan';
+      debugPrint('[UserFormDialog][initState] dbuOptions is empty, fallback: $_selectedDbu');
     }
   }
 
@@ -247,14 +261,29 @@ class _UserFormDialogState extends State<UserFormDialog> {
                           listenable: ConfigController.instance,
                           builder: (context, _) {
                             final allRoles = ConfigController.instance.activeConfig.rolesConfig;
-                            if (allRoles.isNotEmpty && !allRoles.any((r) => r.roleName == _selectedRole)) {
-                              _selectedRole = allRoles.first.roleName;
+                            final roleOptions = allRoles.map((e) => e.roleName).toList();
+                            
+                            debugPrint('[UserFormDialog][BuilderRole] input _selectedRole: $_selectedRole, roleOptions: $roleOptions');
+                            if (allRoles.isNotEmpty) {
+                              final match = allRoles.where((e) => ConfigController.instance.roleMatchesConfiguredName(_selectedRole, e.roleName)).toList();
+                              if (match.isNotEmpty) {
+                                _selectedRole = match.first.roleName;
+                                debugPrint('[UserFormDialog][BuilderRole] match/normalized: $_selectedRole');
+                              } else if (!roleOptions.contains(_selectedRole)) {
+                                if (_selectedRole.isNotEmpty) {
+                                  roleOptions.add(_selectedRole);
+                                  debugPrint('[UserFormDialog][BuilderRole] appending missing _selectedRole to options: $_selectedRole');
+                                } else {
+                                  _selectedRole = roleOptions.first;
+                                  debugPrint('[UserFormDialog][BuilderRole] fallback to first role: $_selectedRole');
+                                }
+                              }
                             }
                             
                             return InlineExpandingDropdownField(
                               label: 'Role',
                               value: _selectedRole,
-                              options: allRoles.map((e) => e.roleName).toList(),
+                              options: roleOptions,
                               placeholder: 'Pilih role',
                               itemLabelBuilder: widget.roleLabelBuilder,
                               onChanged: (value) {
@@ -276,9 +305,22 @@ class _UserFormDialogState extends State<UserFormDialog> {
                         ListenableBuilder(
                           listenable: ConfigController.instance,
                           builder: (context, _) {
-                            final validOptions = _dbuOptionsForRole(_selectedRole);
-                            if (validOptions.isNotEmpty && !validOptions.contains(_selectedDbu)) {
+                            final rawOptions = _dbuOptionsForRole(_selectedRole);
+                            final validOptions = List<String>.from(rawOptions);
+                            
+                            debugPrint('[UserFormDialog][BuilderDBU] input _selectedDbu: $_selectedDbu, _selectedRole: $_selectedRole, rawOptions: $rawOptions');
+                            if (_selectedDbu.isNotEmpty) {
+                              final dbuMatch = validOptions.where((d) => d.trim().toLowerCase() == _selectedDbu.trim().toLowerCase()).toList();
+                              if (dbuMatch.isNotEmpty) {
+                                _selectedDbu = dbuMatch.first;
+                                debugPrint('[UserFormDialog][BuilderDBU] matched case-insensitive: $_selectedDbu');
+                              } else {
+                                validOptions.add(_selectedDbu);
+                                debugPrint('[UserFormDialog][BuilderDBU] DBU $_selectedDbu not in config, dynamically appended to options!');
+                              }
+                            } else if (validOptions.isNotEmpty) {
                               _selectedDbu = validOptions.first;
+                              debugPrint('[UserFormDialog][BuilderDBU] fallback first: $_selectedDbu');
                             }
                             
                             return InlineExpandingDropdownField(

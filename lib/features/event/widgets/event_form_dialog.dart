@@ -202,7 +202,10 @@ class _EventFormDialogState extends State<EventFormDialog> {
                   listenable: ConfigController.instance,
                   builder: (context, _) {
                     final eventTypes = ConfigController.instance.eventTypes;
-                    if (!eventTypes.contains(_selectedJenis)) {
+                    final jenisMatch = eventTypes.where((e) => e.trim().toLowerCase() == _selectedJenis.trim().toLowerCase()).toList();
+                    if (jenisMatch.isNotEmpty) {
+                      _selectedJenis = jenisMatch.first;
+                    } else if (eventTypes.isNotEmpty) {
                       _selectedJenis = eventTypes.first;
                     }
                     return DropdownButtonFormField<String>(
@@ -233,8 +236,13 @@ class _EventFormDialogState extends State<EventFormDialog> {
                   listenable: ConfigController.instance,
                   builder: (context, _) {
                     final penyelenggaraOptions = ConfigController.instance.penyelenggaraOptions;
-                    if (_selectedPenyelenggara != null && !penyelenggaraOptions.contains(_selectedPenyelenggara)) {
-                      _selectedPenyelenggara = penyelenggaraOptions.isNotEmpty ? penyelenggaraOptions.first : null;
+                    if (_selectedPenyelenggara != null) {
+                      final penyeMatch = penyelenggaraOptions.where((o) => o.trim().toLowerCase() == _selectedPenyelenggara!.trim().toLowerCase()).toList();
+                      if (penyeMatch.isNotEmpty) {
+                        _selectedPenyelenggara = penyeMatch.first;
+                      } else if (!penyelenggaraOptions.contains(_selectedPenyelenggara)) {
+                        _selectedPenyelenggara = penyelenggaraOptions.isNotEmpty ? penyelenggaraOptions.first : null;
+                      }
                     }
                     return DropdownButtonFormField<String>(
                       value: _selectedPenyelenggara,

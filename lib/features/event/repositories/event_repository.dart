@@ -120,9 +120,7 @@ class EventRepository {
     if (targetPeserta != null && targetPeserta.isNotEmpty) {
       final now = DateTime.now();
       for (final targetNim in targetPeserta) {
-        final invitationId = 'INV-${created.eventId}-${now.microsecondsSinceEpoch}-$targetNim';
         final invitation = EventInvitation(
-          invitationId: invitationId,
           eventId: created.eventId,
           nim: targetNim,
           attendanceTime: now,
@@ -174,9 +172,7 @@ class EventRepository {
       final now = DateTime.now();
       for (final targetNim in saved.targetPeserta) {
         if (!_local.hasInvitation(saved.eventId, targetNim)) {
-          final invitationId = 'INV-${saved.eventId}-${now.microsecondsSinceEpoch}-$targetNim';
           final invitation = EventInvitation(
-            invitationId: invitationId,
             eventId: saved.eventId,
             nim: targetNim,
             attendanceTime: now,

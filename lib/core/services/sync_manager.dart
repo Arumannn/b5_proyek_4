@@ -590,17 +590,30 @@ class SyncManager {
       EventInvitation invitation) async {
     for (var attempt = 1; attempt <= AppConstants.maxSyncRetries; attempt++) {
       try {
-        await MongoService.instance.insertOne(
+        final existing = await MongoService.instance.findOne(
           collectionName: AppConstants.invitationsCollection,
-          document: invitation.toJson(),
+          filter: {'eventId': invitation.eventId, 'nim': invitation.nim},
         );
+
+        if (existing == null) {
+          await MongoService.instance.insertOne(
+            collectionName: AppConstants.invitationsCollection,
+            document: invitation.toJson(),
+          );
+        } else {
+          await MongoService.instance.updateOne(
+            collectionName: AppConstants.invitationsCollection,
+            filter: {'eventId': invitation.eventId, 'nim': invitation.nim},
+            updateFields: invitation.toJson(),
+          );
+        }
 
         invitation.isSynced = true;
         await HiveService.invitations.put(
-            invitation.invitationId, invitation);
+            invitation.compositeKey, invitation);
 
         debugPrint(
-          '[SyncManager] invitation ✅ synced: ${invitation.invitationId} '
+          '[SyncManager] invitation ✅ synced: ${invitation.compositeKey} '
           '(attempt $attempt)',
         );
         return _SyncResult.success;
@@ -608,17 +621,17 @@ class SyncManager {
         if (MongoService.isDuplicateKeyError(e)) {
           invitation.isSynced = true;
           await HiveService.invitations.put(
-              invitation.invitationId, invitation);
+              invitation.compositeKey, invitation);
           debugPrint(
             '[SyncManager] invitation ⚠️ duplicate: '
-            '${invitation.invitationId} — ditandai synced.',
+            '${invitation.compositeKey} — ditandai synced.',
           );
           return _SyncResult.duplicate;
         }
 
         debugPrint(
           '[SyncManager] invitation ❌ attempt $attempt '
-          'gagal untuk ${invitation.invitationId}: $e',
+          'gagal untuk ${invitation.compositeKey}: $e',
         );
 
         if (attempt < AppConstants.maxSyncRetries) {
@@ -633,7 +646,7 @@ class SyncManager {
 
     debugPrint(
       '[SyncManager] invitation 🔴 maks retry tercapai untuk '
-      '${invitation.invitationId} — tetap pending.',
+      '${invitation.compositeKey} — tetap pending.',
     );
     return _SyncResult.failed;
   }
@@ -750,7 +763,7 @@ class SyncManager {
 
       for (final doc in cloudDocs) {
         final invitation = EventInvitation.fromJson(doc);
-        final existing = HiveService.invitations.get(invitation.invitationId);
+        final existing = HiveService.invitations.get(invitation.compositeKey);
 
         if (existing != null) {
           // Update jika respondedAt cloud lebih baru atau status berubah
@@ -762,12 +775,12 @@ class SyncManager {
                   cloudRespondedAt.isAfter(localRespondedAt));
           if (shouldUpdate) {
             invitation.isSynced = true;
-            await HiveService.invitations.put(invitation.invitationId, invitation);
+            await HiveService.invitations.put(invitation.compositeKey, invitation);
             updateCount++;
           }
         } else {
           invitation.isSynced = true;
-          await HiveService.invitations.put(invitation.invitationId, invitation);
+          await HiveService.invitations.put(invitation.compositeKey, invitation);
           insertCount++;
         }
       }
@@ -831,7 +844,13 @@ class SyncManager {
         return merged.values.toList(growable: false);
       }
 
-      final rolesRaw = await fetchByOrg(['roles']);
+      var rolesRaw = await fetchByOrg(['roles']);
+      if (hasOrgId && rolesRaw.isEmpty) {
+        debugPrint('[SyncManager] rolesRaw is empty for org $orgId, pulling global roles as fallback.');
+        rolesRaw = await MongoService.instance.findMany(
+          collectionName: 'roles',
+        );
+      }
       var eventTypesRaw = await fetchByOrg(['event-types', 'eventtypes']);
 
       // Legacy fallback: beberapa data lama belum menyimpan organizationId.

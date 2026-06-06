@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'event_form_footer.dart';
-import 'event_form_header.dart';
 import 'participant_selector.dart';
+import '../../auth/auth_controller.dart';
 import '../event_form_models.dart';
 import '../../../core/widgets/inline_expanding_dropdown_field.dart';
 import '../../../core/constants/app_constants.dart';
@@ -83,15 +83,14 @@ class EventFormContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        EventFormHeader(title: title),
-        Expanded(
-          child: Form(
-            key: formKey,
-            child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              children: [
+    final role = (AuthController.instance.currentUser.value?.role ?? '').trim().toLowerCase();
+    final isManager = role == AppConstants.roleManager;
+
+    return Form(
+      key: formKey,
+      child: ListView(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        children: [
                 _buildInputLabel('Nama Event', context),
                 TextFormField(
                   controller: nameController,
@@ -261,24 +260,27 @@ class EventFormContent extends StatelessWidget {
                   textCapitalization: TextCapitalization.sentences,
                 ),
                 const SizedBox(height: 16),
-                Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey[200]!),
-                    borderRadius: BorderRadius.circular(12),
-                    color: Colors.grey[50],
+                if (!isManager) ...[
+                  Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey[200]!),
+                      borderRadius: BorderRadius.circular(12),
+                      color: Colors.grey[50],
+                    ),
+                    child: SwitchListTile(
+                      title: const Text('Jadikan Sub Event', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                      subtitle: isSubEvent
+                          ? const Text('Bagian dari event utama', style: TextStyle(fontSize: 12))
+                          : null,
+                      value: isSubEvent,
+                      activeThumbColor: Colors.blue[600],
+                      onChanged: canChangeHierarchy
+                          ? (value) => onSubEventChanged(value)
+                          : null,
+                    ),
                   ),
-                  child: SwitchListTile(
-                    title: const Text('Jadikan Sub Event', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                    subtitle: isSubEvent
-                        ? const Text('Bagian dari event utama', style: TextStyle(fontSize: 12))
-                        : null,
-                    value: isSubEvent,
-                    activeThumbColor: Colors.blue[600],
-                    onChanged: canChangeHierarchy
-                        ? (value) => onSubEventChanged(value)
-                        : null,
-                  ),
-                ),
+                  const SizedBox(height: 16),
+                ],
                 if (isSubEvent) ...[
                   const SizedBox(height: 16),
                   _buildInputLabel('Parent Event', context),
@@ -340,9 +342,6 @@ class EventFormContent extends StatelessWidget {
                 EventFormFooter(onSubmit: onSubmit),
               ],
             ),
-          ),
-        ),
-      ],
     );
   }
 

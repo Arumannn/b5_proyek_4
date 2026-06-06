@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:b5_proyek_4/core/services/config_controller.dart';
+import '../controllers/config_controller.dart';
 import '../services/sync_manager.dart';
 import 'inline_expanding_dropdown_field.dart';
 

@@ -153,10 +153,7 @@ class _ManageInvitationsViewState extends State<ManageInvitationsView> {
       final attendanceTime = event?.tanggalMulai ?? DateTime.now();
 
       for (final nim in selected) {
-        final invitationId =
-            'INV-${DateTime.now().millisecondsSinceEpoch}-$nim';
         final invitation = EventInvitation(
-          invitationId: invitationId,
           eventId: targetEventId,
           nim: nim,
           responseStatus: 'pending',
@@ -170,7 +167,7 @@ class _ManageInvitationsViewState extends State<ManageInvitationsView> {
           isSynced: false,
         );
 
-        await HiveService.invitations.put(invitationId, invitation);
+        await HiveService.invitations.put(invitation.compositeKey, invitation);
       }
 
       if (!mounted) return;

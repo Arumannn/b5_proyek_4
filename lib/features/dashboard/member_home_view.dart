@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
+import '../../core/services/hive_service.dart';
 import '../../core/utils/network_status_controller.dart';
 import '../../core/utils/qr_service.dart';
 import '../../models/event_model.dart';
 import '../../widgets/white_status_header.dart';
 import '../attendance/attendance_history_view.dart';
+import '../attendance/permission_form_view.dart';
 import '../attendance/qr_display_view.dart';
 import '../auth/auth_controller.dart';
 import '../event/event_controller.dart';
+import 'invitation_detail_view.dart';
 import 'widgets/my_invitation_section.dart';
 
 class MemberHomeView extends StatefulWidget {
@@ -164,7 +168,13 @@ class _MemberHomeViewState extends State<MemberHomeView> {
                   builder: (context, events, _) {
                     final now = DateTime.now();
                     final ongoing = events.where((e) {
-                      return _isOngoingEvent(e, now) && e.parentEventId == null;
+                      final isInvited = e.targetPeserta.any((nim) =>
+                          nim.trim().toLowerCase() ==
+                          currentUser.nim.trim().toLowerCase());
+                      return !e.isDeleted &&
+                          _isOngoingEvent(e, now) &&
+                          e.parentEventId == null &&
+                          isInvited;
                     }).toList();
 
                     return Column(
@@ -261,24 +271,69 @@ class _MemberHomeViewState extends State<MemberHomeView> {
                                             ],
                                           ),
                                           const SizedBox(height: 16),
-                                          const Divider(height: 1, color: Color(0xFFF9FAFB)),
-                                          const SizedBox(height: 12),
-                                          SizedBox(
-                                            width: double.infinity,
-                                            child: ElevatedButton(
-                                              onPressed: () {},
-                                              style: ElevatedButton.styleFrom(
-                                                backgroundColor: Colors.orange.shade50,
-                                                foregroundColor: Colors.orange.shade600,
-                                                elevation: 0,
-                                                padding: const EdgeInsets.symmetric(vertical: 12),
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius: BorderRadius.circular(8),
-                                                  side: BorderSide(color: Colors.orange.shade100),
-                                                ),
-                                              ),
-                                              child: const Text('Ajukan Izin/Sakit', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                                            ),
+                                          ValueListenableBuilder(
+                                            valueListenable: HiveService.invitations.listenable(),
+                                            builder: (context, box, _) {
+                                              final invitations = box.values.where(
+                                                (inv) =>
+                                                    inv.eventId == e.eventId &&
+                                                    inv.nim.trim().toLowerCase() == currentUser.nim.trim().toLowerCase(),
+                                              ).toList();
+
+                                              final hasResponded = invitations.isNotEmpty &&
+                                                  invitations.first.responseStatus.trim().toLowerCase() != 'pending';
+
+                                              if (hasResponded) {
+                                                return const SizedBox.shrink();
+                                              }
+
+                                              return Column(
+                                                children: [
+                                                  const Divider(height: 1, color: Color(0xFFF9FAFB)),
+                                                  const SizedBox(height: 12),
+                                                  SizedBox(
+                                                    width: double.infinity,
+                                                    child: ElevatedButton(
+                                                      onPressed: () {
+                                                        if (invitations.isNotEmpty) {
+                                                          Navigator.push(
+                                                            context,
+                                                            MaterialPageRoute(
+                                                              builder: (_) => InvitationDetailView(
+                                                                invitation: invitations.first,
+                                                                eventTitle: e.nama,
+                                                              ),
+                                                            ),
+                                                          );
+                                                        } else {
+                                                          Navigator.push(
+                                                            context,
+                                                            MaterialPageRoute(
+                                                              builder: (_) => PermissionFormView(
+                                                                eventId: e.eventId,
+                                                                eventTitle: e.nama,
+                                                                onSuccessSubmit: () {},
+                                                              ),
+                                                            ),
+                                                          );
+                                                        }
+                                                      },
+                                                      style: ElevatedButton.styleFrom(
+                                                        backgroundColor: Colors.orange.shade50,
+                                                        foregroundColor: Colors.orange.shade600,
+                                                        elevation: 0,
+                                                        padding: const EdgeInsets.symmetric(vertical: 12),
+                                                        shape: RoundedRectangleBorder(
+                                                          borderRadius: BorderRadius.circular(8),
+                                                          side: BorderSide(color: Colors.orange.shade100),
+                                                        ),
+                                                      ),
+                                                      child: const Text('Ajukan Izin/Sakit', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                                                    ),
+                                                  ),
+                                                ],
+                                              );
+                                            },
                                           ),
                                         ],
                                       ),

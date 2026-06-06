@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_constants.dart';
+import '../../core/controllers/config_controller.dart';
 import '../../core/services/hive_service.dart';
 import '../../models/attendance_record.dart';
 import '../../models/event_model.dart';
@@ -181,7 +182,20 @@ class _AttendanceRecapViewState extends State<AttendanceRecapView> {
   List<AttendanceRecord> get _readOnlyRecords {
     final eventId = _selectedReadOnlyEventId;
     if (eventId == null) return const <AttendanceRecord>[];
-    return _records.where((r) => r.eventId == eventId).toList(growable: false);
+    
+    var records = _records.where((r) => r.eventId == eventId);
+    
+    final currentUser = AuthController.instance.currentUser.value;
+    if (currentUser != null) {
+      final role = currentUser.role.trim().toLowerCase();
+      final isOrganizer = ConfigController.instance.roleMatchesConfiguredName(role, AppConstants.roleOrganizer);
+      final isMember = ConfigController.instance.roleMatchesConfiguredName(role, AppConstants.roleMember);
+      if (isOrganizer || isMember) {
+        records = records.where((r) => r.nim == currentUser.nim);
+      }
+    }
+    
+    return records.toList(growable: false);
   }
 
   String _eventLabel(String eventId) {

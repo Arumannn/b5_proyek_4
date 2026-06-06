@@ -18,7 +18,7 @@ class EventLocalDataSource {
   }
 
   Future<void> saveInvitation(EventInvitation invitation) async {
-    await HiveService.invitations.put(invitation.invitationId, invitation);
+    await HiveService.invitations.put(invitation.compositeKey, invitation);
   }
 
   bool hasInvitation(String eventId, String nim) {

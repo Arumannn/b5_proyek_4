@@ -36,10 +36,10 @@ class DashboardPermission {
   static const String keyUpdateEvent = 'update_event';
   static const String keyReadKehadiran = 'read_kehadiran';
 
-  // Executive dashboard hanya untuk Executive.
+  // Executive dashboard untuk Executive dan Manager.
   static bool showExecutiveAdmin(String role) {
-    if (_isExecutive(role)) return true;
-    if (_isManager(role) || _isOrganizer(role) || _isMember(role)) return false;
+    if (_isExecutive(role) || _isManager(role)) return true;
+    if (_isOrganizer(role) || _isMember(role)) return false;
     return _hasPermission(role, keyReadDashboard);
   }
   

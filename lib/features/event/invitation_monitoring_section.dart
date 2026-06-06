@@ -453,7 +453,7 @@ class _InvitationMonitoringSectionState extends State<InvitationMonitoringSectio
       invitation.responseStatusEnum = status;
       invitation.respondedAt = DateTime.now();
       invitation.isSynced = false;
-      await HiveService.invitations.put(invitation.invitationId, invitation);
+      await HiveService.invitations.put(invitation.compositeKey, invitation);
 
       if (!context.mounted) return;
       CustomSnackbar.showSuccess(context, 'Respons undangan berhasil diperbarui.');
