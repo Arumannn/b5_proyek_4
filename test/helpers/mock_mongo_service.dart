@@ -1,6 +1,6 @@
 import 'package:mockito/mockito.dart';
 import 'package:mongo_dart/mongo_dart.dart';
-import 'package:b5_proyek_4/core/services/mongo_service.dart';
+import 'package:b5_proyek_4/data/services/mongo_service.dart';
 
 class MockMongoService extends Mock implements MongoService {
   int insertOneCallCount = 0;

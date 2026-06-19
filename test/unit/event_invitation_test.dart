@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:b5_proyek_4/models/event_invitation.dart';
-import 'package:b5_proyek_4/core/enums/status_enums.dart';
+import 'package:b5_proyek_4/domain/models/event/event_invitation.dart';
+import 'package:b5_proyek_4/domain/enums/status_enums.dart';
 
 void main() {
   group('EventInvitation', () {

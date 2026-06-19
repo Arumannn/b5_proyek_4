@@ -2,9 +2,9 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:b5_proyek_4/core/constants/app_constants.dart';
-import 'package:b5_proyek_4/core/services/hive_service.dart';
-import 'package:b5_proyek_4/features/auth/auth_controller.dart';
+import 'package:b5_proyek_4/domain/constants/app_constants.dart';
+import 'package:b5_proyek_4/data/services/hive_service.dart';
+import 'package:b5_proyek_4/domain/controllers/auth/auth_controller.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

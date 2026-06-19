@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:b5_proyek_4/core/constants/app_constants.dart';
-import 'package:b5_proyek_4/models/attendance_record.dart';
-import 'package:b5_proyek_4/models/event_model.dart';
-import 'package:b5_proyek_4/models/member_model.dart';
-import 'package:b5_proyek_4/models/permission_record.dart';
+import 'package:b5_proyek_4/domain/constants/app_constants.dart';
+import 'package:b5_proyek_4/domain/models/attendance/attendance_record.dart';
+import 'package:b5_proyek_4/domain/models/event/event_model.dart';
+import 'package:b5_proyek_4/domain/models/users/member_model.dart';
+import 'package:b5_proyek_4/domain/models/attendance/permission_record.dart';
 
 void main() {
   group('MemberModel', () {

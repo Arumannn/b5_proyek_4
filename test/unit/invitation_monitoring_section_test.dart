@@ -3,10 +3,10 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
-import 'package:b5_proyek_4/core/services/hive_service.dart';
-import 'package:b5_proyek_4/models/member_model.dart';
-import 'package:b5_proyek_4/models/event_invitation.dart';
-import 'package:b5_proyek_4/features/event/invitation_monitoring_section.dart';
+import 'package:b5_proyek_4/data/services/hive_service.dart';
+import 'package:b5_proyek_4/domain/models/users/member_model.dart';
+import 'package:b5_proyek_4/domain/models/event/event_invitation.dart';
+import 'package:b5_proyek_4/presentation/views/event/invitation_monitoring_section.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

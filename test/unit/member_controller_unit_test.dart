@@ -2,9 +2,9 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:b5_proyek_4/core/services/hive_service.dart';
-import 'package:b5_proyek_4/features/users/member_controller.dart';
-import 'package:b5_proyek_4/models/member_model.dart';
+import 'package:b5_proyek_4/data/services/hive_service.dart';
+import 'package:b5_proyek_4/domain/controllers/users/member_controller.dart';
+import 'package:b5_proyek_4/domain/models/users/member_model.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:b5_proyek_4/core/utils/qr_service.dart';
+import 'package:b5_proyek_4/domain/utils/qr_service.dart';
 
 void main() {
   group('QrService', () {

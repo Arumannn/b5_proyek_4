@@ -2,13 +2,13 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:b5_proyek_4/core/services/hive_service.dart';
-import 'package:b5_proyek_4/core/utils/qr_service.dart';
-import 'package:b5_proyek_4/features/attendance/attendance_controller.dart';
-import 'package:b5_proyek_4/models/attendance_record.dart';
-import 'package:b5_proyek_4/models/event_model.dart';
-import 'package:b5_proyek_4/models/member_model.dart';
-import 'package:b5_proyek_4/core/services/mongo_service.dart';
+import 'package:b5_proyek_4/data/services/hive_service.dart';
+import 'package:b5_proyek_4/domain/utils/qr_service.dart';
+import 'package:b5_proyek_4/domain/controllers/attendance/attendance_controller.dart';
+import 'package:b5_proyek_4/domain/models/attendance/attendance_record.dart';
+import 'package:b5_proyek_4/domain/models/event/event_model.dart';
+import 'package:b5_proyek_4/domain/models/users/member_model.dart';
+import 'package:b5_proyek_4/data/services/mongo_service.dart';
 import '../helpers/mock_mongo_service.dart';
 
 void main() {

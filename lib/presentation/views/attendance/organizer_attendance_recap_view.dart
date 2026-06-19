@@ -1,0 +1,14 @@
+import 'package:flutter/material.dart';
+
+import 'package:b5_proyek_4/presentation/views/attendance/attendance_recap_shared_view.dart';
+
+class OrganizerAttendanceRecapView extends StatelessWidget {
+  const OrganizerAttendanceRecapView({super.key});
+  @override
+  Widget build(BuildContext context) {
+    return const AttendanceRecapSharedView(
+      title: 'Rekap Kehadiran (Read-Only)',
+      isReadOnly: true,
+    );
+  }
+}

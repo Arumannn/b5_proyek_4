@@ -3,12 +3,12 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
-import 'package:b5_proyek_4/core/services/hive_service.dart';
+import 'package:b5_proyek_4/data/services/hive_service.dart';
 import 'package:mongo_dart/mongo_dart.dart';
-import 'package:b5_proyek_4/core/services/mongo_service.dart';
-import 'package:b5_proyek_4/core/services/sync_manager.dart';
-import 'package:b5_proyek_4/features/auth/auth_controller.dart';
-import 'package:b5_proyek_4/models/member_model.dart';
+import 'package:b5_proyek_4/data/services/mongo_service.dart';
+import 'package:b5_proyek_4/data/services/sync_manager.dart';
+import 'package:b5_proyek_4/domain/controllers/auth/auth_controller.dart';
+import 'package:b5_proyek_4/domain/models/users/member_model.dart';
 
 class MockMongoService extends Mock implements MongoService {
   @override

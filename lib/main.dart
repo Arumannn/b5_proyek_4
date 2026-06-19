@@ -3,16 +3,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'core/constants/app_constants.dart';
-import 'core/theme/app_theme.dart';
-import 'features/auth/auth_controller.dart';
-import 'features/auth/login_view.dart';
-import 'core/services/hive_service.dart';
-import 'core/services/mongo_service.dart';
-import 'core/utils/network_status_controller.dart';
-import 'core/services/fcm_service.dart';
+import 'package:b5_proyek_4/domain/constants/app_constants.dart';
+import 'package:b5_proyek_4/presentation/theme/app_theme.dart';
+import 'package:b5_proyek_4/domain/controllers/auth/auth_controller.dart';
+import 'package:b5_proyek_4/presentation/views/auth/login_view.dart';
+import 'package:b5_proyek_4/data/services/hive_service.dart';
+import 'package:b5_proyek_4/data/services/mongo_service.dart';
+import 'package:b5_proyek_4/domain/controllers/network_status_controller.dart';
+import 'package:b5_proyek_4/data/services/fcm_service.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'core/services/sync_manager.dart';
+import 'package:b5_proyek_4/data/services/sync_manager.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

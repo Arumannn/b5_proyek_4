@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:b5_proyek_4/models/permission_record.dart';
+import 'package:b5_proyek_4/domain/models/attendance/permission_record.dart';
 
 void main() {
   group('PermissionRecord', () {
